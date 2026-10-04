@@ -267,7 +267,7 @@ chrome.storage.local.remove('devIngestUrl')
 The manifest already includes `http://localhost:3001/*` in `host_permissions` and the content script `matches`, so no rebuild is needed when switching. Run the local analyzer with:
 
 ```bash
-cd /Users/rick/Development/GitHub/Bridge-Game-Analysis
+cd /Volumes/Express2T/Development/GitHub/Bridge-Game-Analysis
 python3 -m http.server 3001
 ```
 
