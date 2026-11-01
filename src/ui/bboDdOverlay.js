@@ -28,11 +28,14 @@ const BADGE_CLASS = 'bc-dd-trick'
 const CHIP_CLASS = 'bc-dd-chip'
 const TOTALS_CLASS = 'bc-dd-totals'
 export const POPOUT_ID = 'bridge-classroom-dd-popout'
+export const RESTART_ID = 'bridge-classroom-dd-restart'
 
 const SUIT_BY_SYMBOL = { '♠': 'S', '♥': 'H', '♦': 'D', '♣': 'C' }
 const ERROR_BG = 'rgba(220, 0, 0, 0.22)'
 const ERROR_FG = 'rgb(200, 0, 0)'
 const ERROR_BG_TABLE = 'rgb(255, 205, 205)'
+// BBO's own button blue, so the lead marker reads as part of the viewer.
+const LEAD_FG = 'rgb(35, 95, 198)'
 // Partner in orange, not your red: whose error it was should read at a
 // glance. Darker than a pure orange so 13px type holds up on white.
 const PD_FG = 'rgb(205, 100, 0)'
@@ -158,33 +161,57 @@ export function cardsInHands(viewer, isVisible = defaultVisible) {
   return n
 }
 
-/** Mark the error card among the four on the table, while its trick is the one
- *  showing. BBO keeps those four elements in place before the play starts too,
- *  so the trick on screen is worked out from what has left the hands, not from
- *  what the table appears to hold. */
+/** Cards played so far, as far as the hands show. */
+export function cardsPlayed(viewer, isVisible = defaultVisible) {
+  return 52 - cardsInHands(viewer, isVisible)
+}
+
+/** Mark the four cards on the table while their trick is showing: the card
+ *  that led it, outlined — the hands no longer say who won the trick before —
+ *  and an error card in red. BBO keeps those four elements in place before the
+ *  play starts too, so the trick on screen is worked out from what has left
+ *  the hands, not from what the table appears to hold. */
 export function drawTable(viewer, summary, isVisible = defaultVisible) {
-  const played = 52 - cardsInHands(viewer, isVisible)
+  const played = cardsPlayed(viewer, isVisible)
   const showing = played > 0 ? Math.ceil(played / 4) : 0
   for (const card of viewer.querySelectorAll('.handDiagramCurrentTrickClass')) {
     const text = card.textContent.replace(/\s+/g, '')
     const suit = SYMBOL_SUIT[text[0]]
     const rank = rankOf(text.slice(1))
     const info = suit && rank ? summary?.cards[suit + rank] : null
-    const mark = info && info.cost > 0 && info.trick === showing
-    const want = mark ? 'error' : ''
+    const here = info && info.trick === showing
+    const error = here && info.cost > 0
+    const lead = here && info.lead
+    const want = (error ? 'error' : '') + (lead ? 'lead' : '')
     if ((card.dataset.bcDdTable ?? '') === want) continue
-    if (mark) {
-      card.dataset.bcDdTableBg ??= card.style.backgroundColor
-      card.dataset.bcDdTable = want
-      card.style.backgroundColor = ERROR_BG_TABLE
-      card.title = `Double-dummy error, cost ${info.cost} trick${info.cost === 1 ? '' : 's'}`
-    } else {
-      card.style.backgroundColor = card.dataset.bcDdTableBg ?? card.style.backgroundColor
-      delete card.dataset.bcDdTable
-      delete card.dataset.bcDdTableBg
-      card.removeAttribute('title')
+    restoreTableCard(card)
+    if (!want) continue
+    card.dataset.bcDdTable = want
+    card.dataset.bcDdTableBg = card.style.backgroundColor
+    card.dataset.bcDdTableOutline = card.style.outline
+    if (error) card.style.backgroundColor = ERROR_BG_TABLE
+    if (lead) {
+      card.style.outline = `3px solid ${LEAD_FG}`
+      card.style.outlineOffset = '-1px'
     }
+    card.title = [
+      lead && 'Led this trick',
+      error && `Double-dummy error, cost ${info.cost} trick${info.cost === 1 ? '' : 's'}`,
+    ]
+      .filter(Boolean)
+      .join(' · ')
   }
+}
+
+function restoreTableCard(card) {
+  if (card.dataset.bcDdTable === undefined) return
+  card.style.backgroundColor = card.dataset.bcDdTableBg ?? ''
+  card.style.outline = card.dataset.bcDdTableOutline ?? ''
+  card.style.outlineOffset = ''
+  delete card.dataset.bcDdTable
+  delete card.dataset.bcDdTableBg
+  delete card.dataset.bcDdTableOutline
+  card.removeAttribute('title')
 }
 
 /** BBO's own Previous trick / Next trick buttons, or null. */
@@ -239,12 +266,7 @@ export async function stepToTrick({ prev, next, cards, sleep, trick }) {
 
 /** Remove every mark we made in the deal viewer. */
 export function clearDeal(doc) {
-  for (const card of doc.querySelectorAll('[data-bc-dd-table]')) {
-    card.style.backgroundColor = card.dataset.bcDdTableBg ?? card.style.backgroundColor
-    delete card.dataset.bcDdTable
-    delete card.dataset.bcDdTableBg
-    card.removeAttribute('title')
-  }
+  for (const card of doc.querySelectorAll('[data-bc-dd-table]')) restoreTableCard(card)
   for (const el of doc.querySelectorAll('[data-bc-dd]')) {
     el.querySelector(`.${BADGE_CLASS}`)?.remove()
     if (el.dataset.bcDdBg !== undefined) el.style.backgroundColor = el.dataset.bcDdBg
@@ -469,27 +491,34 @@ export function drawTotals(doc, list, entries, username, isVisible = defaultVisi
   footer.appendChild(el)
 }
 
-/** A button under BBO's deal menu, styled to sit beside it. */
-export function syncPopout(doc, viewer, onClick) {
-  const existing = doc.getElementById(POPOUT_ID)
+/** A button under BBO's deal menu, styled to sit beside it. `row` stacks
+ *  them: 0 directly under the menu, 1 under that. `onClick` null removes it. */
+function syncMenuButton(doc, viewer, { id, row, label, title, onClick }) {
+  const existing = doc.getElementById(id)
   const menu = viewer?.querySelector('.moreClass')
-  if (!menu) {
+  if (!menu || !onClick) {
     existing?.remove()
     return null
   }
-  if (existing && existing.parentElement === menu.parentElement) return existing
+  if (existing && existing.parentElement === menu.parentElement) {
+    existing.onclick = (e) => {
+      e.stopPropagation()
+      onClick()
+    }
+    return existing
+  }
   existing?.remove()
   const top = Number.parseFloat(menu.style.top) || 0
   const height = Number.parseFloat(menu.style.height) || 40
   const btn = doc.createElement('button')
-  btn.id = POPOUT_ID
+  btn.id = id
   btn.type = 'button'
-  btn.textContent = 'Classroom'
-  btn.title = 'Open this board in Bridge Classroom'
+  btn.textContent = label
+  btn.title = title
   Object.assign(btn.style, {
     position: 'absolute',
     left: menu.style.left,
-    top: `${top + height + 6}px`,
+    top: `${top + height + 6 + row * 30}px`,
     width: menu.style.width,
     height: '26px',
     padding: '0',
@@ -501,17 +530,46 @@ export function syncPopout(doc, viewer, onClick) {
     cursor: 'pointer',
     zIndex: menu.style.zIndex || '300',
   })
-  btn.addEventListener('click', (e) => {
+  btn.onclick = (e) => {
     e.stopPropagation()
     onClick()
-  })
+  }
   menu.parentElement.appendChild(btn)
   return btn
 }
 
+/** "Classroom": send this board to Bridge Classroom. */
+export function syncPopout(doc, viewer, onClick) {
+  return syncMenuButton(doc, viewer, {
+    id: POPOUT_ID,
+    row: 0,
+    label: 'Classroom',
+    title: 'Open this board in Bridge Classroom',
+    onClick,
+  })
+}
+
+/** "Restart": back to the start of the play, so error cards already played
+ *  are in the hands again to click. Shown only once play has moved on. */
+export function syncRestart(doc, viewer, onClick) {
+  return syncMenuButton(doc, viewer, {
+    id: RESTART_ID,
+    row: 1,
+    label: '⟲ Restart',
+    title: 'Back to the start of the play',
+    onClick,
+  })
+}
+
 // ── Controller ───────────────────────────────────────────────────────────────
 
-export function startDdOverlay({ doc = document, win = window, sendMessage, onError = () => {} }) {
+export function startDdOverlay({
+  doc = document,
+  win = window,
+  sendMessage,
+  onError = () => {},
+  onNotice = onError,
+}) {
   const state = {
     list: null,
     username: null,
@@ -554,6 +612,7 @@ export function startDdOverlay({ doc = document, win = window, sendMessage, onEr
     if (!shown) {
       clearDeal(doc)
       syncPopout(doc, null)
+      syncRestart(doc, null)
       return
     }
     const { hand: cur, matched } = shown
@@ -567,33 +626,66 @@ export function startDdOverlay({ doc = document, win = window, sendMessage, onEr
     drawDeal(matched.hands, summary, doc)
     drawTable(matched.viewer, summary)
     syncPopout(doc, matched.viewer, () => popOut(cur.lin))
+    syncRestart(
+      doc,
+      matched.viewer,
+      summary && cardsPlayed(matched.viewer) > 0 ? () => jumpTo(matched.viewer, 0) : null
+    )
   }
 
   // A click on an error card steps BBO's viewer to that card's trick. BBO
   // itself does nothing on a card click (checked), so nothing is overridden.
+  // Stepping BBO's viewer: an error card's click goes to its trick; Restart
+  // goes back to the start. BBO does nothing itself on a card click (checked),
+  // so nothing is overridden.
   let jumping = false
+  let tipShown = false
+  function jumpTo(viewer, trick) {
+    const buttons = trickButtons(doc)
+    if (!buttons || jumping) return
+    if (trick > cardsPlayed(viewer) / 4 && animationOn() && !tipShown) {
+      tipShown = true
+      onNotice(
+        'BBO animates each trick, so this takes a moment. Turning off Animation in ' +
+          'Account ▸ Settings makes it instant.'
+      )
+    }
+    jumping = true
+    stepToTrick({
+      ...buttons,
+      cards: () => cardsInHands(viewer),
+      sleep: (ms) => new Promise((r) => win.setTimeout(r, ms)),
+      trick,
+    })
+      .catch((err) => console.warn('[bc] could not step to the trick:', err?.message ?? err))
+      .finally(() => {
+        jumping = false
+        schedule()
+      })
+  }
+
+  // BBO keeps its Animation setting in its own localStorage, per user ("n" when
+  // off), and reads it only when the client starts — so it can be read here but
+  // not usefully changed. Unset means BBO's default, which is on.
+  function animationOn() {
+    if (!state.username) return true
+    try {
+      return win.localStorage.getItem(`${state.username}_general_animate`) !== 'n'
+    } catch {
+      return true
+    }
+  }
+
   doc.addEventListener(
     'click',
     (e) => {
       const card = e.target?.closest?.('[data-bc-dd]')
       if (!card || !card.closest('hand-diagram-panel')) return
       const trick = Number.parseInt(card.dataset.bcDd, 10)
-      const buttons = trickButtons(doc)
       const viewer = card.closest('deal-viewer')
-      if (!Number.isInteger(trick) || !buttons || !viewer || jumping) return
+      if (!Number.isInteger(trick) || !viewer) return
       e.stopPropagation()
-      jumping = true
-      stepToTrick({
-        ...buttons,
-        cards: () => cardsInHands(viewer),
-        sleep: (ms) => new Promise((r) => win.setTimeout(r, ms)),
-        trick,
-      })
-        .catch((err) => console.warn('[bc] could not step to the trick:', err?.message ?? err))
-        .finally(() => {
-          jumping = false
-          schedule()
-        })
+      jumpTo(viewer, trick)
     },
     true
   )

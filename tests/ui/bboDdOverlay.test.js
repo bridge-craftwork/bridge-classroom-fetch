@@ -11,6 +11,8 @@ import {
   drawTable,
   cardsInHands,
   stepToTrick,
+  syncRestart,
+  RESTART_ID,
   chipFor,
   syncPopout,
   rankOf,
@@ -270,5 +272,57 @@ describe('the trick on the table', () => {
   it('counts the cards still in the hands', () => {
     const { viewer } = matchPanels(doc, deal1, visible)
     expect(cardsInHands(viewer, visible)).toBe(52)
+  })
+})
+
+// Trick 1 of board 1 played: its four cards leave the hands and land on the
+// table, in BBO's markup. West led S4; North's S8 is made the error here so
+// the table shows both marks at once.
+function playTrick1(doc, viewer) {
+  const SYM = { S: '♠', H: '♥', D: '♦', C: '♣' }
+  const first4 = plays.slice(0, 4)
+  for (const panel of viewer.querySelectorAll('hand-diagram-panel')) {
+    for (const { el, code } of readPanel(panel) ?? []) {
+      if (first4.includes(code)) el.closest('hand-diagram-card').remove()
+    }
+  }
+  const table = [...viewer.querySelectorAll('.handDiagramCurrentTrickClass')]
+  first4.forEach((code, i) => {
+    table[i].querySelector('.innerDivClass').innerHTML =
+      `<span>${SYM[code[0]]}</span>${code[1] === 'T' ? '10' : code[1]}`
+  })
+  return table
+}
+
+describe('the trick on the table, once played', () => {
+  it('outlines the card that led, and reds the error', () => {
+    const { viewer } = matchPanels(doc, deal1, visible)
+    const table = playTrick1(doc, viewer)
+    const trace = entry1.trace.map((t) =>
+      t.card === 'S8' ? { ...t, seat: 'N', cost: 1 } : { ...t, cost: 0 }
+    )
+    drawTable(viewer, summarizeTrace(trace, { declarer: 'S', mySeat: 'N' }), visible)
+    const marks = Object.fromEntries(
+      table.map((c) => [c.textContent.trim(), c.dataset.bcDdTable ?? ''])
+    )
+    expect(marks).toEqual({ '♠4': 'lead', '♠8': 'error', '♠Q': '', '♠A': '' })
+    expect(table[0].style.outline).toMatch(/3px solid/)
+
+    clearDeal(doc)
+    expect(table[0].style.outline).toBe('')
+    expect(doc.querySelectorAll('[data-bc-dd-table]')).toHaveLength(0)
+  })
+})
+
+describe('Restart', () => {
+  it('sits under the Classroom button, and goes when there is nothing to restart', () => {
+    const { viewer } = matchPanels(doc, deal1, visible)
+    let n = 0
+    const btn = syncRestart(doc, viewer, () => n++)
+    expect(btn.style.top).toBe('82px')
+    btn.click()
+    expect(n).toBe(1)
+    syncRestart(doc, viewer, null)
+    expect(doc.getElementById(RESTART_ID)).toBeNull()
   })
 })

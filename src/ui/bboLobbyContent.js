@@ -614,6 +614,7 @@ if (typeof globalThis.chrome !== 'undefined' || typeof globalThis.browser !== 'u
     const ddOverlay = startDdOverlay({
       sendMessage,
       onError: (text) => showToast(document, `Bridge Classroom: ${text}`),
+      onNotice: (text) => showToast(document, text),
     })
 
     // Watch for the history panel to mount or its content to change. The deal

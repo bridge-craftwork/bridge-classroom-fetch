@@ -68,8 +68,9 @@ describe('summarizeTrace', () => {
 
   it('numbers each card with its trick', () => {
     const { cards } = summarizeTrace(trace, { declarer: 'S', mySeat: 'N' })
-    expect(cards.S4).toEqual({ trick: 1, cost: 0, seat: 'W' })
-    expect(cards.DA).toEqual({ trick: 2, cost: 1, seat: 'S' })
+    expect(cards.S4).toEqual({ trick: 1, lead: true, cost: 0, seat: 'W' })
+    expect(cards.DA).toEqual({ trick: 2, lead: true, cost: 1, seat: 'S' })
+    expect(cards.SQ.lead).toBe(false)
   })
 
   it("charges dummy's cards to declarer, so dummy's own count stays clean", () => {

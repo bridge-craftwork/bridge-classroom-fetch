@@ -62,7 +62,8 @@ export function seatOf(players, username) {
 /** The solver's trace → what to draw.
  *
  *  `trace` is dd_play's [{ index, seat, card, cost }]. Returns:
- *    cards:  { [solverCard]: { trick, cost, seat } } — every card played
+ *    cards:  { [solverCard]: { trick, lead, cost, seat } } — every card played;
+ *            `lead` marks the card that led its trick
  *    counts: { me, partner, opps } — each { errors, tricks }, me and partner
  *            with `dummy` too — or null when
  *            `mySeat` is null (a board the user only watched)
@@ -74,7 +75,12 @@ export function summarizeTrace(trace, { declarer, mySeat }) {
   const cards = {}
   const bySeat = { N: zero(), E: zero(), S: zero(), W: zero() }
   for (const t of trace ?? []) {
-    cards[t.card] = { trick: Math.floor(t.index / 4) + 1, cost: t.cost, seat: t.seat }
+    cards[t.card] = {
+      trick: Math.floor(t.index / 4) + 1,
+      lead: t.index % 4 === 0,
+      cost: t.cost,
+      seat: t.seat,
+    }
     if (t.cost > 0) {
       const who = t.seat === dummy ? declarer : t.seat
       bySeat[who].errors += 1
