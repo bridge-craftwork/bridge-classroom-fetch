@@ -177,15 +177,14 @@ function errorMark(played) {
 
 // What the player who erred could have played instead, shown in their hand
 // while the trick with the error is on the table: the bridge-solver site's
-// node colours — green for double-dummy best, red with what it would have
-// cost otherwise.
+// node colours — green for double-dummy best, red otherwise.
 function altMark({ good, cost }) {
   return {
     key: `alt:${good ? 'good' : cost}`,
     apply(el, doc) {
-      // As with the errors' badges: red alone is one trick, the usual case,
-      // and a number appears only for more.
-      if (!good && cost > 1) el.append(cardLabel(doc, `−${cost}`, ERROR_FG))
+      // No count on the red ones: what matters is finding the green card, and
+      // the obviously bad choices would always carry the biggest numbers. The
+      // tooltip still says how many.
       Object.assign(el.style, { backgroundColor: good ? ALT_GOOD : ALT_BAD, borderRadius: '4px' })
       el.title = good
         ? 'Would have been double-dummy best here'
