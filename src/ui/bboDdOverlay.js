@@ -148,7 +148,10 @@ export function drawDeal(hands, summary, doc) {
       trick.textContent = `T${info.trick}`
       Object.assign(trick.style, {
         fontSize: '0.7em',
-        margin: '0 1px 0 3px',
+        // BBO's card text ends in whitespace (" 4\n"), which renders as a full
+        // space before this label. Pulled back over it, so the label sits
+        // against the rank; the smaller type and the shared chip group them.
+        margin: '0 1px 0 -0.3em',
         fontWeight: '600',
         color: 'rgb(85, 85, 85)',
       })
