@@ -125,4 +125,16 @@ describe('createDdSolver', () => {
     expect(entry).toMatchObject({ contract: null, trace: [] })
     expect(loads).toBe(0)
   })
+
+  it("gives the alternatives at an error: West's spade J, where only the heart Q held 10", async () => {
+    const node = await solver.alternatives(board(1).lin, 39)
+    expect(node).toMatchObject({ index: 39, seat: 'W', card: 'SJ', cost: 1 })
+    expect(node.alternatives).toEqual([
+      { card: 'SK', tricks: 11, cost: 1 },
+      { card: 'SJ', tricks: 11, cost: 1 },
+      { card: 'HA', tricks: 11, cost: 1 },
+      { card: 'HQ', tricks: 10, cost: 0 },
+    ])
+    expect(await solver.alternatives(board(1).lin, 52)).toBeNull()
+  })
 })

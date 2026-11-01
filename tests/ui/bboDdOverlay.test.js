@@ -11,6 +11,7 @@ import {
   drawTable,
   cardsInHands,
   stepToTrick,
+  alternativesForTrick,
   syncRestart,
   RESTART_ID,
   chipFor,
@@ -354,5 +355,55 @@ describe('the cost badge', () => {
     clearDeal(doc)
     expect(viewer.querySelectorAll('.bc-dd-cost')).toHaveLength(0)
     expect(table[1].querySelector('.innerDivClass').style.marginLeft).toBe('')
+  })
+})
+
+describe('what the error should have been', () => {
+  // The solver's real answer at board 1's trick-10 error (ddSolver.test.js).
+  const node39 = {
+    index: 39,
+    seat: 'W',
+    card: 'SJ',
+    cost: 1,
+    alternatives: [
+      { card: 'SK', tricks: 11, cost: 1 },
+      { card: 'SJ', tricks: 11, cost: 1 },
+      { card: 'HA', tricks: 11, cost: 1 },
+      { card: 'HQ', tricks: 10, cost: 0 },
+    ],
+  }
+  const trace = [{ index: 39, seat: 'W', card: 'SJ', cost: 1 }]
+
+  it('marks the cards the player held instead, while that trick is showing', () => {
+    const alts = alternativesForTrick(trace, 10, new Map([[39, node39]]))
+    // The card played is on the table, not in the hand.
+    expect(alts).toEqual({
+      W: {
+        SK: { good: false, cost: 1 },
+        HA: { good: false, cost: 1 },
+        HQ: { good: true, cost: 0 },
+      },
+    })
+    expect(alternativesForTrick(trace, 9, new Map([[39, node39]]))).toEqual({})
+    expect(alternativesForTrick(trace, 10, new Map([[39, 'pending']]))).toEqual({})
+  })
+
+  it('draws them over the error marks in that hand, and takes them away again', () => {
+    const { hands } = matchPanels(doc, deal1, visible)
+    const summary = summarizeTrace(entry1.trace, { declarer: 'S', mySeat: 'N' })
+    const alts = alternativesForTrick(trace, 10, new Map([[39, node39]]))
+    drawDeal(hands, summary, doc, alts)
+    const west = hands.find((h) => h.seat === 'W').cards
+    const el = (code) => west.find((c) => c.code === code).el
+    expect(el('HQ').title).toBe('Would have been double-dummy best here')
+    // Red alone says one trick; a number only for more.
+    expect(el('HA').querySelector('.bc-dd-trick')).toBeNull()
+    expect(el('HA').title).toBe('Would also have lost 1 trick')
+    // Not a card to jump from: it is no error of its own.
+    expect(el('HQ').dataset.bcDd).toBeUndefined()
+
+    drawDeal(hands, summary, doc, null)
+    expect(el('HQ').title).toBe('')
+    expect(el('SJ').querySelector('.bc-dd-trick').textContent).toBe('T10')
   })
 })

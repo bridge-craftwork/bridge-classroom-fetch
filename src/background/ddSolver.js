@@ -97,7 +97,31 @@ export function createDdSolver({ loadSolver, storage, now = () => Date.now() }) 
     return out
   }
 
-  return { trace, lookup }
+  /** Every legal card at play `node` (0-based) of the board, each with what
+   *  it would have cost: bridge-solver's dd_play_node, for showing what an
+   *  error should have been. Small, so solved on demand and not cached here. */
+  async function alternatives(lin, node) {
+    const built = buildPlayRequest(lin)
+    if (!built || !Number.isInteger(node) || node < 0 || node >= built.request.plays.length) {
+      return null
+    }
+    const { Analyzer } = await getSolver()
+    const analyzer = new Analyzer()
+    try {
+      const out = JSON.parse(analyzer.dd_play_node(JSON.stringify(built.request), node))
+      return {
+        index: out.index,
+        seat: out.seat,
+        card: out.card,
+        cost: out.cost,
+        alternatives: out.alternatives.map(({ card, tricks, cost }) => ({ card, tricks, cost })),
+      }
+    } finally {
+      analyzer.free?.()
+    }
+  }
+
+  return { trace, lookup, alternatives }
 }
 
 function strip({ v, t, ...entry }) {

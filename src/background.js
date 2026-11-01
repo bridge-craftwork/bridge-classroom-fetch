@@ -425,6 +425,13 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .catch((err) => sendResponse({ type: 'dd-error', error: err?.message ?? String(err) }))
     return true
   }
+  if (message?.type === 'dd-node') {
+    ddSolver
+      .alternatives(message.lin, message.node)
+      .then((node) => sendResponse({ type: 'dd-node', node }))
+      .catch((err) => sendResponse({ type: 'dd-error', error: err?.message ?? String(err) }))
+    return true
+  }
   if (message?.type === 'dd-lookup') {
     ddSolver
       .lookup(message.resultkeys)

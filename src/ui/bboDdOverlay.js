@@ -42,6 +42,8 @@ const COST_GOOD = '#1d7a3f' // the defence gave one back
 const LEAD_BG = '#e8eef5'
 const LEAD_BAR = '#5b86b5'
 const WON_BG = '#d4edda' // --green-pale
+const ALT_GOOD = 'rgba(46, 160, 67, 0.34)' // --alt-good
+const ALT_BAD = 'rgba(216, 72, 72, 0.34)' // --alt-bad
 // Partner in orange, not your red: whose error it was should read at a
 // glance. Darker than a pure orange so 13px type holds up on white.
 const PD_FG = 'rgb(205, 100, 0)'
@@ -122,40 +124,46 @@ export function matchPanels(doc, deal, isVisible = defaultVisible) {
 /** Mark every played card with its trick, and the costly ones in red.
  *  Idempotent: a card already showing the right mark is left alone, so the
  *  mutation observer that calls this does not feed on its own output. */
-export function drawDeal(hands, summary, doc) {
-  for (const { cards } of hands) {
+export function drawDeal(hands, summary, doc, alternatives = null) {
+  for (const { seat, cards } of hands) {
+    const alts = alternatives?.[seat] ?? null
     for (const { el, code } of cards) {
-      // Errors only. Every card's trick is known, but numbering all 52 makes a
-      // diagram nobody can read at a glance; the errors are what to look at.
-      const played = summary?.cards[code]
-      const info = played?.cost > 0 ? played : null
-      const want = info ? `${info.trick}:${info.cost}:${info.signed}` : ''
-      if ((el.dataset.bcDd ?? '') === want) continue
-      for (const added of el.querySelectorAll(`.${BADGE_CLASS}, .${PILL_CLASS}`)) added.remove()
-      if (el.dataset.bcDdStyle !== undefined) el.style.cssText = el.dataset.bcDdStyle
-      delete el.dataset.bcDd
-      delete el.dataset.bcDdStyle
-      el.removeAttribute('title')
-      if (!info) continue
+      const mark = alts?.[code] ? altMark(alts[code]) : errorMark(summary?.cards[code], doc)
+      const want = mark?.key ?? ''
+      if ((el.dataset.bcDdMark ?? '') === want) continue
+      unmarkCard(el)
+      if (!mark) continue
+      el.dataset.bcDdMark = want
       el.dataset.bcDdStyle = el.style.cssText
-      el.dataset.bcDd = want
+      mark.apply(el, doc)
+    }
+  }
+}
+
+function unmarkCard(el) {
+  for (const added of el.querySelectorAll(`.${BADGE_CLASS}, .${PILL_CLASS}`)) added.remove()
+  if (el.dataset.bcDdStyle !== undefined) el.style.cssText = el.dataset.bcDdStyle
+  delete el.dataset.bcDd
+  delete el.dataset.bcDdMark
+  delete el.dataset.bcDdStyle
+  el.removeAttribute('title')
+}
+
+// Errors only. Every card's trick is known, but numbering all 52 makes a
+// diagram nobody can read at a glance; the errors are what to look at.
+function errorMark(played) {
+  if (!(played?.cost > 0)) return null
+  const info = played
+  return {
+    key: `error:${info.trick}:${info.cost}:${info.signed}`,
+    apply(el, doc) {
+      // The trick, read by the click handler that steps the viewer to it.
+      el.dataset.bcDd = `${info.trick}:${info.cost}`
       // Which trick, as "T4": here, unlike the site's trick table, no row says
       // it, and a bare number beside a card reads as part of the card. The
       // signed badge is kept for errors that cost more than one trick; one is
       // the usual case, and the chip alone says it.
-      const trick = doc.createElement('span')
-      trick.className = BADGE_CLASS
-      trick.textContent = `T${info.trick}`
-      Object.assign(trick.style, {
-        fontSize: '0.7em',
-        // BBO's card text ends in whitespace (" 4\n"), which renders as a full
-        // space before this label. Pulled back over it, so the label sits
-        // against the rank; the smaller type and the shared chip group them.
-        margin: '0 1px 0 -0.3em',
-        fontWeight: '600',
-        color: 'rgb(85, 85, 85)',
-      })
-      el.append(trick)
+      el.append(cardLabel(doc, `T${info.trick}`, 'rgb(85, 85, 85)'))
       if (Math.abs(info.signed) > 1) el.append(costPill(doc, info.signed))
       Object.assign(el.style, {
         backgroundColor: COST_CHIP,
@@ -163,8 +171,64 @@ export function drawDeal(hands, summary, doc) {
         cursor: 'pointer',
       })
       el.title = `${costText(info.signed)} — trick ${info.trick}. Click to go to the trick.`
-    }
+    },
   }
+}
+
+// What the player who erred could have played instead, shown in their hand
+// while the trick with the error is on the table: the bridge-solver site's
+// node colours — green for double-dummy best, red with what it would have
+// cost otherwise.
+function altMark({ good, cost }) {
+  return {
+    key: `alt:${good ? 'good' : cost}`,
+    apply(el, doc) {
+      // As with the errors' badges: red alone is one trick, the usual case,
+      // and a number appears only for more.
+      if (!good && cost > 1) el.append(cardLabel(doc, `−${cost}`, ERROR_FG))
+      Object.assign(el.style, { backgroundColor: good ? ALT_GOOD : ALT_BAD, borderRadius: '4px' })
+      el.title = good
+        ? 'Would have been double-dummy best here'
+        : `Would also have lost ${cost} trick${cost === 1 ? '' : 's'}`
+    },
+  }
+}
+
+function cardLabel(doc, text, color) {
+  const label = doc.createElement('span')
+  label.className = BADGE_CLASS
+  label.textContent = text
+  Object.assign(label.style, {
+    fontSize: '0.7em',
+    // BBO's card text ends in whitespace (" 4\n"), which renders as a full
+    // space before this label. Pulled back over it, so the label sits against
+    // the rank; the smaller type and the shared chip group them.
+    margin: '0 1px 0 -0.3em',
+    fontWeight: '600',
+    color,
+  })
+  return label
+}
+
+/** For each error in the trick on the table, the alternatives at it, keyed by
+ *  seat and card: { [seat]: { [card]: { good, cost } } }. `nodes` maps a play
+ *  index to dd_play_node's answer. The card actually played is on the table,
+ *  not in the hand, so it is left out. */
+export function alternativesForTrick(summaryTrace, showing, nodes) {
+  const out = {}
+  for (const t of summaryTrace) {
+    if (Math.floor(t.index / 4) + 1 !== showing || !(t.cost > 0)) continue
+    const node = nodes.get(t.index)
+    if (!node?.alternatives) continue
+    const best = Math.min(...node.alternatives.map((a) => a.cost))
+    const cards = {}
+    for (const alt of node.alternatives) {
+      if (alt.card === t.card) continue
+      cards[alt.card] = { good: alt.cost === best, cost: alt.cost - best }
+    }
+    out[t.seat] = cards
+  }
+  return out
 }
 
 /** The round signed badge: "−1" red when the declaring side gave a trick away,
@@ -369,13 +433,7 @@ export async function stepToTrick({ prev, next, cards, sleep, trick }) {
 /** Remove every mark we made in the deal viewer. */
 export function clearDeal(doc) {
   for (const card of doc.querySelectorAll('[data-bc-dd-table]')) restoreTableCard(card)
-  for (const el of doc.querySelectorAll('[data-bc-dd]')) {
-    for (const added of el.querySelectorAll(`.${BADGE_CLASS}, .${PILL_CLASS}`)) added.remove()
-    if (el.dataset.bcDdStyle !== undefined) el.style.cssText = el.dataset.bcDdStyle
-    delete el.dataset.bcDd
-    delete el.dataset.bcDdStyle
-    el.removeAttribute('title')
-  }
+  for (const el of doc.querySelectorAll('[data-bc-dd-mark]')) unmarkCard(el)
 }
 
 /** What the board list shows for one analysed board.
@@ -726,7 +784,12 @@ export function startDdOverlay({
           trump: trumpOf(entry.contract),
         })
       : null
-    drawDeal(matched.hands, summary, doc)
+    drawDeal(
+      matched.hands,
+      summary,
+      doc,
+      entry?.contract ? alternativesShown(cur, entry, matched.viewer) : null
+    )
     drawTable(matched.viewer, summary)
     syncPopout(doc, matched.viewer, () => popOut(cur.lin))
     syncRestart(
@@ -738,6 +801,29 @@ export function startDdOverlay({
 
   // A click on an error card steps BBO's viewer to that card's trick. BBO
   // itself does nothing on a card click (checked), so nothing is overridden.
+  // What an error should have been: once its trick is on the table, the
+  // alternatives at that card, solved on demand and kept for the visit.
+  const nodes = new Map() // resultkey → Map(play index → dd_play_node answer)
+  function alternativesShown(hand, entry, viewer) {
+    if (jumping) return null
+    const played = cardsPlayed(viewer)
+    if (played === 0 || played % 4 !== 0) return null
+    const showing = played / 4
+    let mine = nodes.get(hand.hk)
+    if (!mine) nodes.set(hand.hk, (mine = new Map()))
+    for (const t of entry.trace) {
+      if (Math.floor(t.index / 4) + 1 !== showing || !(t.cost > 0) || mine.has(t.index)) continue
+      mine.set(t.index, 'pending')
+      sendMessage({ type: 'dd-node', lin: hand.lin, node: t.index })
+        .then((res) => {
+          mine.set(t.index, res?.type === 'dd-node' ? res.node : null)
+          schedule()
+        })
+        .catch(() => mine.set(t.index, null))
+    }
+    return alternativesForTrick(entry.trace, showing, mine)
+  }
+
   // Stepping BBO's viewer: an error card's click goes to its trick; Restart
   // goes back to the start. BBO does nothing itself on a card click (checked),
   // so nothing is overridden.
