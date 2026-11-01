@@ -98,7 +98,9 @@ describe('drawing the deal', () => {
     expect(badges).toHaveLength(1)
     const sj = hands.flatMap((h) => h.cards).find((c) => c.code === 'SJ').el
     expect(sj.querySelector('.bc-dd-trick').textContent).toBe('10')
-    expect(sj.title).toMatch(/cost 1 trick\. Click to go to the trick\.$/)
+    // West defends, so the badge reads +1: the defence gave a trick back.
+    expect(sj.title).toBe('Defence gave back 1 trick — trick 10. Click to go to the trick.')
+    expect(sj.querySelector('.bc-dd-cost').textContent).toBe('+1')
     expect(sj.style.backgroundColor).not.toBe('')
 
     // Redrawing changes nothing — what keeps the mutation observer quiet.
@@ -295,21 +297,31 @@ function playTrick1(doc, viewer) {
 }
 
 describe('the trick on the table, once played', () => {
-  it('outlines the card that led, and reds the error', () => {
+  it('marks the lead, the winner and the error as the bridge-solver site does', () => {
     const { viewer } = matchPanels(doc, deal1, visible)
     const table = playTrick1(doc, viewer)
     const trace = entry1.trace.map((t) =>
       t.card === 'S8' ? { ...t, seat: 'N', cost: 1 } : { ...t, cost: 0 }
     )
-    drawTable(viewer, summarizeTrace(trace, { declarer: 'S', mySeat: 'N' }), visible)
+    drawTable(viewer, summarizeTrace(trace, { declarer: 'S', mySeat: 'N', trump: 'N' }), visible)
+    const face = (c) => c.querySelector('.innerDivClass').lastChild.textContent
     const marks = Object.fromEntries(
-      table.map((c) => [c.textContent.trim(), c.dataset.bcDdTable ?? ''])
+      table.map((c) => [c.querySelector('span').textContent + face(c), c.dataset.bcDdTable ?? ''])
     )
-    expect(marks).toEqual({ '♠4': 'lead', '♠8': 'error', '♠Q': '', '♠A': '' })
-    expect(table[0].style.outline).toMatch(/3px solid/)
+    expect(marks).toEqual({ '♠4': 'lead', '♠8': 'error', '♠Q': '', '♠A': 'won' })
+    expect(table[0].style.boxShadow).toMatch(/inset 3px/)
+    expect(table[0].querySelector('.bc-dd-lead')).not.toBeNull()
+    // North is dummy to South's 3NT: the declaring side lost it.
+    expect(table[1].querySelector('.bc-dd-cost').textContent).toBe('−1')
+
+    // Redrawing reads the cards back through our own badge and changes nothing.
+    const before = viewer.innerHTML
+    drawTable(viewer, summarizeTrace(trace, { declarer: 'S', mySeat: 'N', trump: 'N' }), visible)
+    expect(viewer.innerHTML).toBe(before)
 
     clearDeal(doc)
-    expect(table[0].style.outline).toBe('')
+    expect(table[0].style.boxShadow).toBe('')
+    expect(viewer.querySelectorAll('.bc-dd-lead, .bc-dd-cost')).toHaveLength(0)
     expect(doc.querySelectorAll('[data-bc-dd-table]')).toHaveLength(0)
   })
 })

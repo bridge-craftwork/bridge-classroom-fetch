@@ -1,7 +1,14 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { buildPlayRequest, summarizeTrace, seatOf, solverCard } from '../../src/lib/ddPlay.js'
+import {
+  buildPlayRequest,
+  summarizeTrace,
+  seatOf,
+  solverCard,
+  trickWinners,
+  trumpOf,
+} from '../../src/lib/ddPlay.js'
 import { parseMhHand } from '../../src/adapters/bbo/parsers/mhXml.js'
 
 const lin = (n) =>
@@ -68,8 +75,11 @@ describe('summarizeTrace', () => {
 
   it('numbers each card with its trick', () => {
     const { cards } = summarizeTrace(trace, { declarer: 'S', mySeat: 'N' })
-    expect(cards.S4).toEqual({ trick: 1, lead: true, cost: 0, seat: 'W' })
-    expect(cards.DA).toEqual({ trick: 2, lead: true, cost: 1, seat: 'S' })
+    expect(cards.S4).toEqual({ trick: 1, lead: true, won: false, cost: 0, signed: 0, seat: 'W' })
+    // South declares: a declaring-side error moves declarer's total down.
+    expect(cards.DA).toEqual({ trick: 2, lead: true, won: false, cost: 1, signed: -1, seat: 'S' })
+    // East defends: the defence handing a trick back moves it up.
+    expect(cards.SQ.signed).toBe(2)
     expect(cards.SQ.lead).toBe(false)
   })
 
@@ -82,5 +92,29 @@ describe('summarizeTrace', () => {
 
   it('counts nothing as "me" for a board the user only watched', () => {
     expect(summarizeTrace(trace, { declarer: 'S', mySeat: null }).counts).toBeNull()
+  })
+})
+
+describe('trickWinners', () => {
+  const t = (cards) => cards.map((card, index) => ({ index, card, seat: 'N', cost: 0 }))
+
+  it('takes the highest card of the suit led at no-trumps', () => {
+    expect(trickWinners(t(['S4', 'S8', 'SQ', 'SA']), 'N')).toEqual(['SA'])
+    expect(trickWinners(t(['S4', 'HA', 'S9', 'S2']), 'N')).toEqual(['S9'])
+  })
+
+  it('lets a trump beat the suit led, and a higher trump beat it', () => {
+    expect(trickWinners(t(['SA', 'H2', 'SK', 'S3']), 'H')).toEqual(['H2'])
+    expect(trickWinners(t(['SA', 'H2', 'H5', 'S3']), 'H')).toEqual(['H5'])
+  })
+
+  it('names no winner for a trick a claim cut short', () => {
+    expect(trickWinners(t(['SA', 'SK', 'SQ', 'SJ', 'HA', 'HK']), 'N')).toEqual(['SA'])
+  })
+
+  it('reads the strain from the contract', () => {
+    expect(trumpOf('3NT')).toBe('N')
+    expect(trumpOf('5HX')).toBe('H')
+    expect(trumpOf(null)).toBeNull()
   })
 })

@@ -59,26 +59,64 @@ export function seatOf(players, username) {
   return SEATS.find((s) => players[s]?.toLowerCase() === want) ?? null
 }
 
+/** The strain of a contract string ("4S", "3NTX") as the solver writes it. */
+export function trumpOf(contract) {
+  const strain = /^[1-7](NT|[CDHS])/.exec(contract ?? '')?.[1]
+  return strain ? (strain === 'NT' ? 'N' : strain) : null
+}
+
+/** Who won each complete trick: the highest trump, else the highest card of the
+ *  suit led. `trump` is 'S'|'H'|'D'|'C'|'N'. Returns the winning cards, one per
+ *  complete trick; a trick cut short by a claim has none. */
+export function trickWinners(trace, trump) {
+  const winners = []
+  for (let i = 0; i + 4 <= (trace?.length ?? 0); i += 4) {
+    const trick = trace.slice(i, i + 4)
+    const led = trick[0].card[0]
+    let best = trick[0]
+    for (const t of trick.slice(1)) {
+      const suit = t.card[0]
+      const bestSuit = best.card[0]
+      if (suit === bestSuit) {
+        if (RANK_ORDER.indexOf(t.card[1]) < RANK_ORDER.indexOf(best.card[1])) best = t
+      } else if (suit === trump && bestSuit !== trump) {
+        best = t
+      } else if (suit === led && bestSuit !== trump && bestSuit !== led) {
+        best = t
+      }
+    }
+    winners.push(best.card)
+  }
+  return winners
+}
+
 /** The solver's trace → what to draw.
  *
  *  `trace` is dd_play's [{ index, seat, card, cost }]. Returns:
- *    cards:  { [solverCard]: { trick, lead, cost, seat } } — every card played;
- *            `lead` marks the card that led its trick
+ *    cards:  { [solverCard]: { trick, lead, won, cost, signed, seat } } — every
+ *            card played. `lead` marks the card that led its trick and `won` the
+ *            one that took it. `signed` is the cost as it moved declarer's total,
+ *            the bridge-solver site's convention: negative for a trick the
+ *            declaring side gave away, positive for one the defence handed back
  *    counts: { me, partner, opps } — each { errors, tricks }, me and partner
  *            with `dummy` too — or null when
  *            `mySeat` is null (a board the user only watched)
  *
  *  Dummy's cards are declarer's decisions, so they count against declarer:
  *  when you are dummy, partner's line is partner's, not yours. */
-export function summarizeTrace(trace, { declarer, mySeat }) {
+export function summarizeTrace(trace, { declarer, mySeat, trump = null }) {
   const dummy = PARTNER[declarer]
+  const won = new Set(trump ? trickWinners(trace, trump) : [])
   const cards = {}
   const bySeat = { N: zero(), E: zero(), S: zero(), W: zero() }
   for (const t of trace ?? []) {
+    const declaring = t.seat === declarer || t.seat === dummy
     cards[t.card] = {
       trick: Math.floor(t.index / 4) + 1,
       lead: t.index % 4 === 0,
+      won: won.has(t.card),
       cost: t.cost,
+      signed: t.cost > 0 ? (declaring ? -t.cost : t.cost) : 0,
       seat: t.seat,
     }
     if (t.cost > 0) {

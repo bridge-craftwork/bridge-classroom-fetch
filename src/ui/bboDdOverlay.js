@@ -21,21 +21,27 @@
 
 import { parseMhList, parseMhHand } from '../adapters/bbo/parsers/mhXml.js'
 import { parseLin } from '../adapters/bbo/parsers/lin.js'
-import { summarizeTrace, seatOf, solverCard } from '../lib/ddPlay.js'
+import { summarizeTrace, seatOf, solverCard, trumpOf } from '../lib/ddPlay.js'
 
 const TAG = 'bridge-classroom-bbo'
 const BADGE_CLASS = 'bc-dd-trick'
+const PILL_CLASS = 'bc-dd-cost'
+const CHEVRON_CLASS = 'bc-dd-lead'
 const CHIP_CLASS = 'bc-dd-chip'
 const TOTALS_CLASS = 'bc-dd-totals'
 export const POPOUT_ID = 'bridge-classroom-dd-popout'
 export const RESTART_ID = 'bridge-classroom-dd-restart'
 
 const SUIT_BY_SYMBOL = { '♠': 'S', '♥': 'H', '♦': 'D', '♣': 'C' }
-const ERROR_BG = 'rgba(220, 0, 0, 0.22)'
 const ERROR_FG = 'rgb(200, 0, 0)'
-const ERROR_BG_TABLE = 'rgb(255, 205, 205)'
-// BBO's own button blue, so the lead marker reads as part of the viewer.
-const LEAD_FG = 'rgb(35, 95, 198)'
+// The bridge-solver site's play-table convention (web/src/components/
+// PlayTrace.vue there), so a board reads the same in both places.
+const COST_CHIP = 'rgba(216, 72, 72, 0.28)' // --cost-mild
+const COST_BAD = '#c62828' // declarer lost a trick
+const COST_GOOD = '#1d7a3f' // the defence gave one back
+const LEAD_BG = '#e8eef5'
+const LEAD_BAR = '#5b86b5'
+const WON_BG = '#d4edda' // --green-pale
 // Partner in orange, not your red: whose error it was should read at a
 // glance. Darker than a pure orange so 13px type holds up on white.
 const PD_FG = 'rgb(205, 100, 0)'
@@ -123,30 +129,66 @@ export function drawDeal(hands, summary, doc) {
       // diagram nobody can read at a glance; the errors are what to look at.
       const played = summary?.cards[code]
       const info = played?.cost > 0 ? played : null
-      const want = info ? `${info.trick}:${info.cost}` : ''
+      const want = info ? `${info.trick}:${info.cost}:${info.signed}` : ''
       if ((el.dataset.bcDd ?? '') === want) continue
-      el.querySelector(`.${BADGE_CLASS}`)?.remove()
-      el.style.backgroundColor = el.dataset.bcDdBg ?? el.style.backgroundColor
+      for (const added of el.querySelectorAll(`.${BADGE_CLASS}, .${PILL_CLASS}`)) added.remove()
+      if (el.dataset.bcDdStyle !== undefined) el.style.cssText = el.dataset.bcDdStyle
       delete el.dataset.bcDd
+      delete el.dataset.bcDdStyle
+      el.removeAttribute('title')
       if (!info) continue
-      el.dataset.bcDdBg ??= el.style.backgroundColor
+      el.dataset.bcDdStyle = el.style.cssText
       el.dataset.bcDd = want
-      const badge = doc.createElement('span')
-      badge.className = BADGE_CLASS
-      badge.textContent = String(info.trick)
-      Object.assign(badge.style, {
-        fontSize: '0.55em',
+      // Which trick, small and quiet: here, unlike the site's trick table, no
+      // row says it.
+      const trick = doc.createElement('span')
+      trick.className = BADGE_CLASS
+      trick.textContent = String(info.trick)
+      Object.assign(trick.style, {
+        fontSize: '0.45em',
         verticalAlign: 'sub',
         marginLeft: '1px',
-        fontWeight: '700',
-        color: ERROR_FG,
+        color: MUTED_FG,
       })
-      el.appendChild(badge)
-      el.style.backgroundColor = ERROR_BG
-      el.style.cursor = 'pointer'
-      el.title = `Trick ${info.trick}: double-dummy error, cost ${info.cost} trick${info.cost === 1 ? '' : 's'}. Click to go to the trick.`
+      el.append(trick, costPill(doc, info.signed))
+      Object.assign(el.style, {
+        backgroundColor: COST_CHIP,
+        borderRadius: '4px',
+        cursor: 'pointer',
+      })
+      el.title = `${costText(info.signed)} — trick ${info.trick}. Click to go to the trick.`
     }
   }
+}
+
+/** The round signed badge: "−1" red when the declaring side gave a trick away,
+ *  "+1" green when the defence handed one back. */
+function costPill(doc, signed) {
+  const pill = doc.createElement('span')
+  pill.className = PILL_CLASS
+  pill.textContent = signed > 0 ? `+${signed}` : `−${-signed}`
+  Object.assign(pill.style, {
+    display: 'inline-block',
+    marginLeft: '2px',
+    padding: '0 0.35em',
+    minWidth: '1.6em',
+    height: '1.6em',
+    lineHeight: '1.6em',
+    boxSizing: 'border-box',
+    borderRadius: '999px',
+    background: signed > 0 ? COST_GOOD : COST_BAD,
+    color: '#fff',
+    font: '700 0.42em sans-serif',
+    textAlign: 'center',
+    verticalAlign: 'middle',
+  })
+  return pill
+}
+
+function costText(signed) {
+  const n = Math.abs(signed)
+  const tricks = `${n} trick${n === 1 ? '' : 's'}`
+  return signed > 0 ? `Defence gave back ${tricks}` : `Declarer's side lost ${tricks}`
 }
 
 const SYMBOL_SUIT = { '♠': 'S', '♥': 'H', '♦': 'D', '♣': 'C' }
@@ -166,37 +208,89 @@ export function cardsPlayed(viewer, isVisible = defaultVisible) {
   return 52 - cardsInHands(viewer, isVisible)
 }
 
-/** Mark the four cards on the table while their trick is showing: the card
- *  that led it, outlined — the hands no longer say who won the trick before —
- *  and an error card in red. BBO keeps those four elements in place before the
- *  play starts too, so the trick on screen is worked out from what has left
- *  the hands, not from what the table appears to hold. */
+/** Mark the four cards on the table while their trick is showing, as the
+ *  bridge-solver site's play table does: the card that led tinted blue with a
+ *  bar and chevron down its left edge, the card that won tinted green, and an
+ *  error as a chip with its signed badge. A card that led and won keeps both —
+ *  green, with the bar — since whoever wins leads next and that is common.
+ *
+ *  BBO keeps the four table elements in place before the play starts too, so
+ *  the trick on screen is worked out from what has left the hands, not from
+ *  what the table appears to hold. */
 export function drawTable(viewer, summary, isVisible = defaultVisible) {
   const played = cardsPlayed(viewer, isVisible)
   const showing = played > 0 ? Math.ceil(played / 4) : 0
+  const complete = played > 0 && played % 4 === 0
+  const doc = viewer.ownerDocument
   for (const card of viewer.querySelectorAll('.handDiagramCurrentTrickClass')) {
-    const text = card.textContent.replace(/\s+/g, '')
+    const text = card.textContent.replace(/[\s+−-]\d*$/u, '').replace(/\s+/g, '')
     const suit = SYMBOL_SUIT[text[0]]
     const rank = rankOf(text.slice(1))
     const info = suit && rank ? summary?.cards[suit + rank] : null
     const here = info && info.trick === showing
-    const error = here && info.cost > 0
-    const lead = here && info.lead
-    const want = (error ? 'error' : '') + (lead ? 'lead' : '')
+    const flags = {
+      lead: !!(here && info.lead),
+      won: !!(here && complete && info.won),
+      error: !!(here && info.cost > 0),
+    }
+    const want = Object.keys(flags)
+      .filter((k) => flags[k])
+      .join(' ')
     if ((card.dataset.bcDdTable ?? '') === want) continue
     restoreTableCard(card)
     if (!want) continue
     card.dataset.bcDdTable = want
-    card.dataset.bcDdTableBg = card.style.backgroundColor
-    card.dataset.bcDdTableOutline = card.style.outline
-    if (error) card.style.backgroundColor = ERROR_BG_TABLE
-    if (lead) {
-      card.style.outline = `3px solid ${LEAD_FG}`
-      card.style.outlineOffset = '-1px'
+    card.dataset.bcDdTableStyle = card.style.cssText
+    if (flags.lead) {
+      card.style.backgroundColor = LEAD_BG
+      card.style.boxShadow = `inset 3px 0 0 ${LEAD_BAR}`
+      const chevron = doc.createElement('span')
+      chevron.className = CHEVRON_CLASS
+      Object.assign(chevron.style, {
+        position: 'absolute',
+        left: '3px',
+        top: '50%',
+        transform: 'translateY(-50%)',
+        width: '4.5px',
+        height: '14px',
+        background: LEAD_BAR,
+        clipPath: 'polygon(0 0, 0 100%, 100% 50%)',
+        pointerEvents: 'none',
+      })
+      card.appendChild(chevron)
+    }
+    if (flags.won) card.style.backgroundColor = WON_BG
+    if (flags.error) {
+      const face = card.querySelector('.innerDivClass') ?? card
+      face.dataset.bcDdTableFace = face.style.cssText
+      Object.assign(face.style, {
+        backgroundColor: COST_CHIP,
+        borderRadius: '4px',
+        // BBO positions the rank absolutely in the card, so a margin on the
+        // right does nothing; one on the left moves it over to clear the badge.
+        marginLeft: '-10px',
+      })
+      // On the table the badge is pinned inside the card's right edge, not laid
+      // out beside the rank: BBO's table cards are a fixed height that clips
+      // overflow, so anything in the flow wraps out of sight, and anything
+      // outside the edge is cut off. The rank is centred, so the right side
+      // has room.
+      const pill = costPill(doc, info.signed)
+      Object.assign(pill.style, {
+        position: 'absolute',
+        top: '50%',
+        right: '3px',
+        transform: 'translateY(-50%)',
+        margin: '0',
+        fontSize: '12px',
+        zIndex: '1',
+      })
+      card.appendChild(pill)
     }
     card.title = [
-      lead && 'Led this trick',
-      error && `Double-dummy error, cost ${info.cost} trick${info.cost === 1 ? '' : 's'}`,
+      flags.lead && 'Led',
+      flags.won && 'Won the trick',
+      flags.error && costText(info.signed),
     ]
       .filter(Boolean)
       .join(' · ')
@@ -205,12 +299,15 @@ export function drawTable(viewer, summary, isVisible = defaultVisible) {
 
 function restoreTableCard(card) {
   if (card.dataset.bcDdTable === undefined) return
-  card.style.backgroundColor = card.dataset.bcDdTableBg ?? ''
-  card.style.outline = card.dataset.bcDdTableOutline ?? ''
-  card.style.outlineOffset = ''
+  for (const added of card.querySelectorAll(`.${CHEVRON_CLASS}, .${PILL_CLASS}`)) added.remove()
+  const face = card.querySelector('[data-bc-dd-table-face]')
+  if (face) {
+    face.style.cssText = face.dataset.bcDdTableFace
+    delete face.dataset.bcDdTableFace
+  }
+  card.style.cssText = card.dataset.bcDdTableStyle ?? card.style.cssText
   delete card.dataset.bcDdTable
-  delete card.dataset.bcDdTableBg
-  delete card.dataset.bcDdTableOutline
+  delete card.dataset.bcDdTableStyle
   card.removeAttribute('title')
 }
 
@@ -268,10 +365,10 @@ export async function stepToTrick({ prev, next, cards, sleep, trick }) {
 export function clearDeal(doc) {
   for (const card of doc.querySelectorAll('[data-bc-dd-table]')) restoreTableCard(card)
   for (const el of doc.querySelectorAll('[data-bc-dd]')) {
-    el.querySelector(`.${BADGE_CLASS}`)?.remove()
-    if (el.dataset.bcDdBg !== undefined) el.style.backgroundColor = el.dataset.bcDdBg
+    for (const added of el.querySelectorAll(`.${BADGE_CLASS}, .${PILL_CLASS}`)) added.remove()
+    if (el.dataset.bcDdStyle !== undefined) el.style.cssText = el.dataset.bcDdStyle
     delete el.dataset.bcDd
-    delete el.dataset.bcDdBg
+    delete el.dataset.bcDdStyle
     el.removeAttribute('title')
   }
 }
@@ -621,6 +718,7 @@ export function startDdOverlay({
       ? summarizeTrace(entry.trace, {
           declarer: entry.declarer,
           mySeat: seatOf(entry.players, state.username),
+          trump: trumpOf(entry.contract),
         })
       : null
     drawDeal(matched.hands, summary, doc)
