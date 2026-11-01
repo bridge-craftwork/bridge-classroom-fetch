@@ -123,6 +123,8 @@ describe('the board list', () => {
     expect(lines).toEqual(['opp 1'])
     // Centred on the visible 46px row, not the taller cell.
     expect(chips[0].style.top).toBe('23px')
+    // Three lines filling the row: 14px lines, 13px type.
+    expect(chips[0].style.fontSize).toBe('13px')
     expect(
       chips[0].closest('result-list-item').querySelector('.cellClass').textContent.trim()
     ).toBe('1')

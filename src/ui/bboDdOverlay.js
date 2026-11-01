@@ -228,20 +228,24 @@ export function drawIndex(doc, list, entries, username, isVisible = defaultVisib
     el.className = CHIP_CLASS
     el.dataset.bcDdChip = key
     el.title = chip.title
+    // As large as three lines allow in the row: 13px type on 14px lines in
+    // BBO's 46px rows, with a pixel of padding above and below.
+    const h = rowHeight(row, cell)
+    const lineH = Math.max(12, Math.floor((h - 4) / 3))
     Object.assign(el.style, {
       // Centred on the row, not the cell: BBO's cells are taller than the
       // rows that clip them (53.7px in a 46px row), so the cell's own middle
       // sits low.
       position: 'absolute',
       right: '3px',
-      top: `${rowHeight(row, cell) / 2}px`,
+      top: `${h / 2}px`,
       transform: 'translateY(-50%)',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'stretch',
-      fontSize: '10px',
-      lineHeight: '12px',
-      padding: '1px 3px',
+      fontSize: `${lineH - 1}px`,
+      lineHeight: `${lineH}px`,
+      padding: '1px 4px',
       borderRadius: '3px',
       background: 'rgba(255, 255, 255, 0.85)',
       whiteSpace: 'nowrap',
@@ -254,7 +258,7 @@ export function drawIndex(doc, list, entries, username, isVisible = defaultVisib
     } else {
       for (const { label, n, color } of chip.lines) {
         const line = doc.createElement('div')
-        Object.assign(line.style, { display: 'flex', justifyContent: 'space-between', gap: '4px' })
+        Object.assign(line.style, { display: 'flex', justifyContent: 'space-between', gap: '6px' })
         const name = doc.createElement('span')
         name.textContent = label
         const count = doc.createElement('span')
