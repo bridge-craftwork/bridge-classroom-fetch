@@ -32,6 +32,7 @@ export const POPOUT_ID = 'bridge-classroom-dd-popout'
 const SUIT_BY_SYMBOL = { '♠': 'S', '♥': 'H', '♦': 'D', '♣': 'C' }
 const ERROR_BG = 'rgba(220, 0, 0, 0.22)'
 const ERROR_FG = 'rgb(200, 0, 0)'
+const ERROR_BG_TABLE = 'rgb(255, 205, 205)'
 // Partner in orange, not your red: whose error it was should read at a
 // glance. Darker than a pure orange so 13px type holds up on white.
 const PD_FG = 'rgb(205, 100, 0)'
@@ -139,13 +140,111 @@ export function drawDeal(hands, summary, doc) {
       })
       el.appendChild(badge)
       el.style.backgroundColor = ERROR_BG
-      el.title = `Trick ${info.trick}: double-dummy error, cost ${info.cost} trick${info.cost === 1 ? '' : 's'}`
+      el.style.cursor = 'pointer'
+      el.title = `Trick ${info.trick}: double-dummy error, cost ${info.cost} trick${info.cost === 1 ? '' : 's'}. Click to go to the trick.`
     }
   }
 }
 
+const SYMBOL_SUIT = { '♠': 'S', '♥': 'H', '♦': 'D', '♣': 'C' }
+
+/** Cards still in the four visible hands. 52 less this is how far the play
+ *  has got, which is the only reliable reading of BBO's position. */
+export function cardsInHands(viewer, isVisible = defaultVisible) {
+  let n = 0
+  for (const panel of viewer.querySelectorAll('hand-diagram-panel')) {
+    if (isVisible(panel)) n += panel.querySelectorAll('hand-diagram-card').length
+  }
+  return n
+}
+
+/** Mark the error card among the four on the table, while its trick is the one
+ *  showing. BBO keeps those four elements in place before the play starts too,
+ *  so the trick on screen is worked out from what has left the hands, not from
+ *  what the table appears to hold. */
+export function drawTable(viewer, summary, isVisible = defaultVisible) {
+  const played = 52 - cardsInHands(viewer, isVisible)
+  const showing = played > 0 ? Math.ceil(played / 4) : 0
+  for (const card of viewer.querySelectorAll('.handDiagramCurrentTrickClass')) {
+    const text = card.textContent.replace(/\s+/g, '')
+    const suit = SYMBOL_SUIT[text[0]]
+    const rank = rankOf(text.slice(1))
+    const info = suit && rank ? summary?.cards[suit + rank] : null
+    const mark = info && info.cost > 0 && info.trick === showing
+    const want = mark ? 'error' : ''
+    if ((card.dataset.bcDdTable ?? '') === want) continue
+    if (mark) {
+      card.dataset.bcDdTableBg ??= card.style.backgroundColor
+      card.dataset.bcDdTable = want
+      card.style.backgroundColor = ERROR_BG_TABLE
+      card.title = `Double-dummy error, cost ${info.cost} trick${info.cost === 1 ? '' : 's'}`
+    } else {
+      card.style.backgroundColor = card.dataset.bcDdTableBg ?? card.style.backgroundColor
+      delete card.dataset.bcDdTable
+      delete card.dataset.bcDdTableBg
+      card.removeAttribute('title')
+    }
+  }
+}
+
+/** BBO's own Previous trick / Next trick buttons, or null. */
+export function trickButtons(doc, isVisible = defaultVisible) {
+  const find = (label) =>
+    [...doc.querySelectorAll('button')].find(
+      (b) => isVisible(b) && b.textContent.trim() === label
+    ) ?? null
+  const prev = find('Previous trick')
+  const next = find('Next trick')
+  return prev && next ? { prev, next } : null
+}
+
+/** Step BBO's viewer to the end of trick `trick`, by pressing its own buttons.
+ *
+ *  From wherever it is now: Previous trick to go back (instant), Next trick to
+ *  go forward. Each Next animates its trick a card at a time, about a second
+ *  and a half, so starting from the current position rather than from the
+ *  beginning is what keeps a jump short. One press per trick, waiting for the
+ *  hands to show it finished: pressing again mid-animation does something, but
+ *  not reliably the same thing, so it is not relied on.
+ *
+ *  Position is read from the cards left in the hands, never inferred from the
+ *  clicks. `cards()` counts them; `sleep(ms)` waits. Resolves to the trick
+ *  reached. */
+export async function stepToTrick({ prev, next, cards, sleep, trick }) {
+  const waitFor = async (ok, ms) => {
+    for (let t = 0; t < ms; t += 50) {
+      if (ok()) return true
+      await sleep(50)
+    }
+    return ok()
+  }
+  const done = () => Math.floor((52 - cards()) / 4)
+
+  // Mid-trick (an animation still running): let it land first.
+  await waitFor(() => (52 - cards()) % 4 === 0 || next.disabled, 3000)
+
+  for (let guard = 0; done() > trick && guard < 14 && !prev.disabled; guard++) {
+    const before = cards()
+    prev.click()
+    await waitFor(() => cards() !== before, 1500)
+  }
+  for (let guard = 0; done() < trick && guard < 14 && !next.disabled; guard++) {
+    const target = 52 - 4 * (done() + 1)
+    next.click()
+    // A claimed board ends part-way through a trick; that is as far as it goes.
+    if (!(await waitFor(() => cards() <= target || next.disabled, 4000))) break
+  }
+  return done()
+}
+
 /** Remove every mark we made in the deal viewer. */
 export function clearDeal(doc) {
+  for (const card of doc.querySelectorAll('[data-bc-dd-table]')) {
+    card.style.backgroundColor = card.dataset.bcDdTableBg ?? card.style.backgroundColor
+    delete card.dataset.bcDdTable
+    delete card.dataset.bcDdTableBg
+    card.removeAttribute('title')
+  }
   for (const el of doc.querySelectorAll('[data-bc-dd]')) {
     el.querySelector(`.${BADGE_CLASS}`)?.remove()
     if (el.dataset.bcDdBg !== undefined) el.style.backgroundColor = el.dataset.bcDdBg
@@ -466,8 +565,38 @@ export function startDdOverlay({ doc = document, win = window, sendMessage, onEr
         })
       : null
     drawDeal(matched.hands, summary, doc)
+    drawTable(matched.viewer, summary)
     syncPopout(doc, matched.viewer, () => popOut(cur.lin))
   }
+
+  // A click on an error card steps BBO's viewer to that card's trick. BBO
+  // itself does nothing on a card click (checked), so nothing is overridden.
+  let jumping = false
+  doc.addEventListener(
+    'click',
+    (e) => {
+      const card = e.target?.closest?.('[data-bc-dd]')
+      if (!card || !card.closest('hand-diagram-panel')) return
+      const trick = Number.parseInt(card.dataset.bcDd, 10)
+      const buttons = trickButtons(doc)
+      const viewer = card.closest('deal-viewer')
+      if (!Number.isInteger(trick) || !buttons || !viewer || jumping) return
+      e.stopPropagation()
+      jumping = true
+      stepToTrick({
+        ...buttons,
+        cards: () => cardsInHands(viewer),
+        sleep: (ms) => new Promise((r) => win.setTimeout(r, ms)),
+        trick,
+      })
+        .catch((err) => console.warn('[bc] could not step to the trick:', err?.message ?? err))
+        .finally(() => {
+          jumping = false
+          schedule()
+        })
+    },
+    true
+  )
 
   async function popOut(lin) {
     const url = `https://www.bridgebase.com/tools/handviewer.html?lin=${encodeURIComponent(lin)}`

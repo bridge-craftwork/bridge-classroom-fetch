@@ -8,6 +8,9 @@ import {
   clearDeal,
   drawIndex,
   drawTotals,
+  drawTable,
+  cardsInHands,
+  stepToTrick,
   chipFor,
   syncPopout,
   rankOf,
@@ -93,7 +96,7 @@ describe('drawing the deal', () => {
     expect(badges).toHaveLength(1)
     const sj = hands.flatMap((h) => h.cards).find((c) => c.code === 'SJ').el
     expect(sj.querySelector('.bc-dd-trick').textContent).toBe('10')
-    expect(sj.title).toMatch(/cost 1 trick$/)
+    expect(sj.title).toMatch(/cost 1 trick\. Click to go to the trick\.$/)
     expect(sj.style.backgroundColor).not.toBe('')
 
     // Redrawing changes nothing — what keeps the mutation observer quiet.
@@ -178,5 +181,94 @@ describe('event totals', () => {
 
     drawTotals(doc, list, new Map(), 'kemistry', visible)
     expect(doc.querySelector('.bc-dd-totals')).toBeNull()
+  })
+})
+
+// A stand-in for BBO's viewer, behaving as measured on #33879: Next trick
+// animates its trick a card per tick; Previous trick goes back a whole trick
+// at once and is disabled at the start. A press mid-animation is ignored here;
+// stepToTrick never makes one.
+function fakeViewer({ lastCard = 52, played: start = 0 } = {}) {
+  let played = start
+  let animatingTo = null
+  const tick = () => {
+    if (animatingTo != null && played < animatingTo) played++
+    if (played === animatingTo) animatingTo = null
+  }
+  const prev = {
+    clicks: 0,
+    get disabled() {
+      return played === 0 && animatingTo == null
+    },
+    click() {
+      prev.clicks++
+      animatingTo = null
+      played = Math.max(0, Math.ceil(played / 4) * 4 - 4)
+    },
+  }
+  const next = {
+    clicks: 0,
+    get disabled() {
+      return played >= lastCard
+    },
+    click() {
+      next.clicks++
+      if (animatingTo != null) return
+      animatingTo = Math.min(lastCard, (Math.floor(played / 4) + 1) * 4)
+      tick()
+    },
+  }
+  return {
+    prev,
+    next,
+    cards: () => 52 - played,
+    sleep: async () => tick(),
+    get played() {
+      return played
+    },
+  }
+}
+
+describe('stepToTrick', () => {
+  it('goes forward from where the viewer is, one press per trick', async () => {
+    const v = fakeViewer({ played: 8 })
+    expect(await stepToTrick({ ...v, trick: 7 })).toBe(7)
+    expect(v.played).toBe(28)
+    expect(v.next.clicks).toBe(5)
+    expect(v.prev.clicks).toBe(0)
+  })
+
+  it('goes back with Previous, without replaying from the start', async () => {
+    const v = fakeViewer({ played: 40 })
+    expect(await stepToTrick({ ...v, trick: 4 })).toBe(4)
+    expect(v.played).toBe(16)
+    expect(v.next.clicks).toBe(0)
+  })
+
+  it('lets a trick still animating land before counting from it', async () => {
+    const v = fakeViewer({ played: 12 })
+    v.next.click() // trick 4 under way
+    expect(await stepToTrick({ ...v, trick: 6 })).toBe(6)
+    expect(v.played).toBe(24)
+  })
+
+  it('stops where a claimed board stops', async () => {
+    const v = fakeViewer({ lastCard: 18 }) // claimed during trick 5
+    await stepToTrick({ ...v, trick: 9 })
+    expect(v.played).toBe(18)
+  })
+})
+
+describe('the trick on the table', () => {
+  it('marks nothing before any card is played, though BBO keeps cards there', () => {
+    const { viewer } = matchPanels(doc, deal1, visible)
+    const summary = summarizeTrace(entry1.trace, { declarer: 'S', mySeat: 'N' })
+    drawTable(viewer, summary, visible)
+    expect(viewer.querySelectorAll('[data-bc-dd-table]')).toHaveLength(0)
+  })
+
+  it('counts the cards still in the hands', () => {
+    const { viewer } = matchPanels(doc, deal1, visible)
+    expect(cardsInHands(viewer, visible)).toBe(52)
   })
 })
