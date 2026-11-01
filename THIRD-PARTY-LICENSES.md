@@ -3,7 +3,7 @@
 Bridge Classroom Fetch is released under [The Unlicense](LICENSE). It
 bundles the following third-party code into its published builds.
 
-Both are compiled into the extension bundle by Vite, so their licence terms
+All three are compiled into the extension bundle by Vite, so their licence terms
 travel with every store submission.
 
 ---
@@ -54,6 +54,43 @@ under different terms — which is what a bundled extension is.
 
 The full licence text ships in `node_modules/webextension-polyfill/LICENSE` and
 is available at the URL above.
+
+---
+
+## bridge-solver — MIT OR Apache-2.0
+
+The double-dummy solver behind the per-card analysis in BBO's History panel,
+compiled to WebAssembly. Fetched at build time from a pinned release
+(`scripts/solver-wasm.release.json`), not vendored. Used under its MIT option.
+
+- Version: 2.1.0
+- Source: https://github.com/bridge-craftwork/bridge-solver
+- Licence: MIT OR Apache-2.0
+
+```
+MIT License
+
+Copyright (c) 2013-2026 Hanhong Xue (original C++ implementation)
+Copyright (c) 2026 Rick Wilson (Rust implementation)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
 
 ---
 

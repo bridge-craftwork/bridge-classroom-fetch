@@ -1,6 +1,18 @@
 import { defineConfig } from 'vite'
 import { crx } from '@crxjs/vite-plugin'
+import { execFileSync } from 'node:child_process'
 import baseManifest from './manifest.json' with { type: 'json' }
+
+// bridge-solver's WASM package is fetched, not committed (src/vendor/ is
+// gitignored). A plugin rather than an npm `prebuild` hook so that every build
+// variant gets it — build:chrome, build:test, package-stores.sh — not only
+// `npm run build`. The script is a no-op when the pinned release is in place.
+const fetchSolverWasm = {
+  name: 'fetch-solver-wasm',
+  buildStart() {
+    execFileSync(process.execPath, ['scripts/fetch-solver-wasm.mjs'], { stdio: 'inherit' })
+  },
+}
 
 // Cross-browser builds. Today only Chrome is published, but the structure
 // supports Edge / Firefox / Safari without source changes — see
@@ -119,7 +131,7 @@ if (SHOT_MODE) {
 }
 
 export default defineConfig({
-  plugins: [crx({ manifest, browser: BROWSER === 'firefox' ? 'firefox' : 'chrome' })],
+  plugins: [fetchSolverWasm, crx({ manifest, browser: BROWSER === 'firefox' ? 'firefox' : 'chrome' })],
   define: {
     // Off unless SHOT_HIDE_LOGO=1. The club logo is a photograph rather than
     // identity; hiding it is a framing choice, not a redaction.

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sc_boards request_id="" style="user_tourney" merge="n" username="kemistry" tkey="33873-1793548800" in_format="pairs" in_teamname="kemistry+aam135">
+  <sc_board_group>
+    <sc_board number="1" tbn="1">
+      <sc_result resultkey="h/4748677413/33873-1793548800-50407802/2026-11-01 16:04:55" table="home" scoring="mp" scorens="93.8" scoreew="6.2" result="3NS+2" rawscorens="460" rawscoreew="-460" whenplayed="2026-11-01 16:04:55" north="kemistry" south="aam135" east="missy2727" west="ARFBridge"/>
+    </sc_board>
+    <sc_board number="2" tbn="2">
+      <sc_result resultkey="h/4748677478/33873-1793548800-50407803/2026-11-01 16:08:40" table="home" scoring="mp" scorens="30.5" scoreew="69.5" result="2SE-1" rawscorens="50" rawscoreew="-50" whenplayed="2026-11-01 16:08:40" north="kemistry" south="aam135" east="missy2727" west="ARFBridge"/>
+    </sc_board>
+    <sc_board number="3" tbn="3">
+      <sc_result resultkey="h/4748677543/33873-1793548800-50407804/2026-11-01 16:13:02" table="home" scoring="mp" scorens="96.1" scoreew="3.9" result="3HS-3" rawscorens="-150" rawscoreew="150" whenplayed="2026-11-01 16:13:02" north="kemistry" south="aam135" east="missy2727" west="ARFBridge"/>
+    </sc_board>
+    <sc_board number="4" tbn="4">
+      <sc_result resultkey="h/4748677608/33873-1793548800-50407805/2026-11-01 16:18:18" table="home" scoring="mp" scorens="18.0" scoreew="82.0" result="4HW=" rawscorens="-620" rawscoreew="620" whenplayed="2026-11-01 16:18:18" north="kemistry" south="aam135" east="Nea1950" west="shipk"/>
+    </sc_board>
+    <sc_board number="5" tbn="5">
+      <sc_result resultkey="h/4748677674/33873-1793548800-50407806/2026-11-01 16:21:16" table="home" scoring="mp" scorens="92.2" scoreew="7.8" result="6SN=" rawscorens="1430" rawscoreew="-1430" whenplayed="2026-11-01 16:21:16" north="kemistry" south="aam135" east="Nea1950" west="shipk"/>
+    </sc_board>
+    <sc_board number="6" tbn="6">
+      <sc_result resultkey="h/4748677737/33873-1793548800-50407807/2026-11-01 16:24:50" table="home" scoring="mp" scorens="49.2" scoreew="50.8" result="4SW+1" rawscorens="-650" rawscoreew="650" whenplayed="2026-11-01 16:24:50" north="kemistry" south="aam135" east="Nea1950" west="shipk"/>
+    </sc_board>
+    <sc_board number="7" tbn="7">
+      <sc_result resultkey="h/4748677803/33873-1793548800-50407808/2026-11-01 16:31:57" table="home" scoring="mp" scorens="40.6" scoreew="59.4" result="2SN+2" rawscorens="170" rawscoreew="-170" whenplayed="2026-11-01 16:31:57" north="kemistry" south="aam135" east="arleenwg" west="vaishalij"/>
+    </sc_board>
+    <sc_board number="8" tbn="8">
+      <sc_result resultkey="h/4748677868/33873-1793548800-50407809/2026-11-01 16:35:32" table="home" scoring="mp" scorens="36.7" scoreew="63.3" result="2HS-1" rawscorens="-50" rawscoreew="50" whenplayed="2026-11-01 16:35:32" north="kemistry" south="aam135" east="arleenwg" west="vaishalij"/>
+    </sc_board>
+    <sc_board number="9" tbn="9">
+      <sc_result resultkey="h/4748677933/33873-1793548800-50407810/2026-11-01 16:38:21" table="home" scoring="mp" scorens="84.4" scoreew="15.6" result="4HN+2" rawscorens="480" rawscoreew="-480" whenplayed="2026-11-01 16:38:21" north="kemistry" south="aam135" east="arleenwg" west="vaishalij"/>
+    </sc_board>
+    <sc_board number="10" tbn="10">
+      <sc_result resultkey="h/4748677998/33873-1793548800-50407811/2026-11-01 16:47:47" table="home" scoring="mp" scorens="34.4" scoreew="65.6" result="2NW+1" rawscorens="-150" rawscoreew="150" whenplayed="2026-11-01 16:47:47" north="kemistry" south="aam135" east="nwken" west="bridgeclar"/>
+    </sc_board>
+    <sc_board number="11" tbn="11">
+      <sc_result resultkey="h/4748678063/33873-1793548800-50407812/2026-11-01 16:51:20" table="home" scoring="mp" scorens="88.3" scoreew="11.7" result="4SS=" rawscorens="420" rawscoreew="-420" whenplayed="2026-11-01 16:51:20" north="kemistry" south="aam135" east="nwken" west="bridgeclar"/>
+    </sc_board>
+    <sc_board number="12" tbn="12">
+      <sc_result resultkey="h/4748678128/33873-1793548800-50407813/2026-11-01 16:55:19" table="home" scoring="mp" scorens="58.7" scoreew="41.3" result="2SW=" rawscorens="-110" rawscoreew="110" whenplayed="2026-11-01 16:55:19" north="kemistry" south="aam135" east="nwken" west="bridgeclar"/>
+    </sc_board>
+  </sc_board_group>
+</sc_boards>
