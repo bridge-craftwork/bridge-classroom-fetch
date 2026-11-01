@@ -32,6 +32,9 @@ export const POPOUT_ID = 'bridge-classroom-dd-popout'
 const SUIT_BY_SYMBOL = { '♠': 'S', '♥': 'H', '♦': 'D', '♣': 'C' }
 const ERROR_BG = 'rgba(220, 0, 0, 0.22)'
 const ERROR_FG = 'rgb(200, 0, 0)'
+// Partner in orange, not your red: whose error it was should read at a
+// glance. Darker than a pure orange so 13px type holds up on white.
+const PD_FG = 'rgb(205, 100, 0)'
 const OPP_FG = 'rgb(0, 130, 40)'
 const MUTED_FG = 'rgb(110, 110, 110)'
 
@@ -156,8 +159,8 @@ export function clearDeal(doc) {
  *
  *  { clean: true, title } when nobody erred — distinct from a board not yet
  *  analysed, which shows nothing — or { lines: [{ label, n, color }], title }:
- *  a line each for me / pd / opp, only for those who erred, opponents in
- *  green since their errors are your gain. A
+ *  a line each for me / pd / opp, only for those who erred: me red, partner
+ *  orange, opponents green since their errors are your gain. A
  *  board the user only watched has no "me", so it gets one line. */
 export function chipFor(counts, totalErrors) {
   const tricks = (n) => `${n} trick${n === 1 ? '' : 's'}`
@@ -179,7 +182,7 @@ export function chipFor(counts, totalErrors) {
     // dummy needs no special case — dummy's cards are charged to declarer.
     lines: [
       { label: 'me', n: me.errors, color: ERROR_FG },
-      { label: 'pd', n: partner.errors, color: ERROR_FG },
+      { label: 'pd', n: partner.errors, color: PD_FG },
       { label: 'opp', n: opps.errors, color: OPP_FG },
     ].filter((l) => l.n > 0),
     title: `Double-dummy errors — ${long('you', me)}, ${long('partner', partner)}, ${long('opponents', opps)}`,
@@ -313,7 +316,7 @@ export function drawTotals(doc, list, entries, username, isVisible = defaultVisi
   const parts = any
     ? [
         { label: 'me', n: sum.me, color: ERROR_FG },
-        { label: 'pd', n: sum.partner, color: ERROR_FG },
+        { label: 'pd', n: sum.partner, color: PD_FG },
         { label: 'opp', n: sum.opps, color: OPP_FG },
       ]
     : [{ label: 'DD', n: sum.all, color: ERROR_FG }]
