@@ -145,10 +145,10 @@ export function drawDeal(hands, summary, doc) {
       trick.className = BADGE_CLASS
       trick.textContent = String(info.trick)
       Object.assign(trick.style, {
-        fontSize: '0.45em',
-        verticalAlign: 'sub',
-        marginLeft: '1px',
-        color: MUTED_FG,
+        fontSize: '0.7em',
+        margin: '0 1px 0 3px',
+        fontWeight: '600',
+        color: 'rgb(85, 85, 85)',
       })
       el.append(trick, costPill(doc, info.signed))
       Object.assign(el.style, {
