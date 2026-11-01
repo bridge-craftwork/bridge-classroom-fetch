@@ -599,6 +599,28 @@ Chrome requires a written justification per permission. Current manifest:
 
 **Paste-ready wording for every field is in [submission-answers.md](submission-answers.md)**, kept in step with this table.
 
+### What 1.2.0 adds to review (BBO double-dummy overlay)
+
+No new permission and no new host — but three things a reviewer will see, and
+the justification text and [submission-answers.md](submission-answers.md) must
+be updated for them before 1.2.0 is submitted. **Not done yet.**
+
+- **`content_security_policy.extension_pages` gains `'wasm-unsafe-eval'`.** The
+  background compiles bridge-solver's WASM to score each card double-dummy on
+  the user's device. MV3 permits this directive; it is the narrow one, and allows
+  WebAssembly only, not `eval`.
+- **`scripting` gains a second use**: `registerContentScripts` with
+  `world: 'MAIN'` for `public/bbo-page-hook.js` on `bridgebase.com/v3/*`. It reads
+  copies of two responses BBO's own History panel loads and requests nothing.
+  [data-sources.md](data-sources.md) § 3.9 says why it is registered at runtime.
+- **`storage` now holds a 14-day cache** of analysed BBO boards, which include
+  other players' BBO usernames. Local only, never transmitted — but the Chrome
+  data-use disclosure and Firefox's `data_collection_permissions` should be
+  re-read against it. [PRIVACY.md](../PRIVACY.md) is updated; the published
+  policy at bridge-classroom.org is not.
+
+Safari's support for `world: 'MAIN'` in `registerContentScripts` is unverified.
+
 ### Tightening candidates — deferred again, to 1.2.0
 
 Audited after submitting 1.0.0. **None of these were changed at the time**:

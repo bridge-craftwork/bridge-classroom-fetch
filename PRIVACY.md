@@ -1,6 +1,6 @@
 # Privacy Policy — Bridge Classroom Fetch
 
-**Last updated:** 8 August 2026
+**Last updated:** 1 November 2026
 
 > The published policy is
 > **<https://bridge-classroom.org/privacy#extension>**, and that is the URL the
@@ -12,8 +12,13 @@
 
 Bridge Classroom Fetch is a browser extension that reads bridge results
 from pages you are already looking at, and hands them to Bridge Classroom for
-analysis. It runs only on the sites listed below, and only when you click its
-button.
+analysis. It runs only on the sites listed below. It sends results anywhere
+only when you click its button.
+
+One feature works without a click: in Bridge Base Online's **History** panel it
+marks each card with the trick it was played to and flags the double-dummy
+errors. It works from the boards Bridge Base's own panel has already loaded,
+computes the analysis on your device, and sends nothing anywhere.
 
 ## What it reads
 
@@ -44,8 +49,14 @@ The only thing kept indefinitely is which Bridge Classroom domain you prefer
 (`.org` or `.com`), so the extension opens the one you use. This identifies
 nobody.
 
-Nothing else is retained. There is no history, no profile, and no accumulation
-of past games inside the extension.
+The double-dummy analysis of Bridge Base boards you open in the History panel
+is kept for **14 days**, so that going back to an earlier event does not repeat
+the work. Each entry holds the deal, the cards played, the four players' Bridge
+Base usernames and the result of the analysis. It stays in extension storage on
+your device, is never sent anywhere, and is deleted automatically after 14 days.
+Removing the extension deletes it at once.
+
+Nothing else is retained. There is no profile, and no record of what you do.
 
 ## Where results go
 
@@ -93,9 +104,9 @@ the names are the point of the analysis.
 
 | Permission | Why |
 |---|---|
-| `storage` | Holding results for up to an hour between reading them and handing them over |
+| `storage` | Holding results for up to an hour between reading them and handing them over, and the 14-day double-dummy cache described above |
 | `tabs` | Opening the Bridge Classroom page with your results, and finding an already-open results tab to read from |
-| `scripting` | The ACBL sites reject requests made from the extension's background; the read is performed inside your own tab on that site instead |
+| `scripting` | The ACBL sites reject requests made from the extension's background; the read is performed inside your own tab on that site instead. On Bridge Base Online it also adds a small script that passes the History panel's boards to the extension as Bridge Base loads them, without making any request of its own |
 | Site access to the sites listed above | Reading the results you asked for |
 
 ## Source code
