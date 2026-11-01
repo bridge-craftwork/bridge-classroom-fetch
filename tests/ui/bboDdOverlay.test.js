@@ -7,6 +7,7 @@ import {
   drawDeal,
   clearDeal,
   drawIndex,
+  drawTotals,
   chipFor,
   syncPopout,
   rankOf,
@@ -153,5 +154,23 @@ describe('the pop-out', () => {
     expect(clicks).toBe(1)
     syncPopout(doc, null)
     expect(doc.getElementById(POPOUT_ID)).toBeNull()
+  })
+})
+
+describe('event totals', () => {
+  it("sit in the footer, left of BBO's own totals, and say how much they cover", () => {
+    const clean = { ...entry1, trace: entry1.trace.map((t) => ({ ...t, cost: 0 })) }
+    const entries = new Map([
+      [list.boards[0].resultkey, entry1],
+      [list.boards[1].resultkey, clean],
+    ])
+    drawTotals(doc, list, entries, 'kemistry', visible)
+    const el = doc.querySelector('.bc-dd-totals')
+    expect(el.textContent).toBe('DD errors · 2/12 boardsme 0pd 0opp 1')
+    // In the same row as BBO's 60.2%.
+    expect(el.parentElement.textContent).toContain('60.2%')
+
+    drawTotals(doc, list, new Map(), 'kemistry', visible)
+    expect(doc.querySelector('.bc-dd-totals')).toBeNull()
   })
 })

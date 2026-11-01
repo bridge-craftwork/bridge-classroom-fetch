@@ -26,12 +26,14 @@ import { summarizeTrace, seatOf, solverCard } from '../lib/ddPlay.js'
 const TAG = 'bridge-classroom-bbo'
 const BADGE_CLASS = 'bc-dd-trick'
 const CHIP_CLASS = 'bc-dd-chip'
+const TOTALS_CLASS = 'bc-dd-totals'
 export const POPOUT_ID = 'bridge-classroom-dd-popout'
 
 const SUIT_BY_SYMBOL = { '♠': 'S', '♥': 'H', '♦': 'D', '♣': 'C' }
 const ERROR_BG = 'rgba(220, 0, 0, 0.22)'
 const ERROR_FG = 'rgb(200, 0, 0)'
 const OPP_FG = 'rgb(0, 130, 40)'
+const MUTED_FG = 'rgb(110, 110, 110)'
 
 const defaultVisible = (el) => !!el && el.getClientRects().length > 0
 
@@ -260,6 +262,94 @@ export function drawIndex(doc, list, entries, username, isVisible = defaultVisib
   }
 }
 
+/** Totals for the event, in the board list's footer, left of BBO's own score
+ *  totals. Sums only the boards analysed so far, and says how many that is:
+ *  BBO loads a board when it is opened, so a past event fills in as you look. */
+export function drawTotals(doc, list, entries, username, isVisible = defaultVisible) {
+  const panel = [...doc.querySelectorAll('result-list')].find(isVisible)
+  const existing = doc.querySelector(`.${TOTALS_CLASS}`)
+  // The footer is the last row-shaped rectangle outside the board rows; the
+  // header is the first. Its class ("mokmap") says nothing, so it isn't used.
+  const rects = panel
+    ? [...panel.querySelectorAll('celled-rectangle')].filter((r) => !r.closest('result-list-item'))
+    : []
+  const footer = rects.length >= 2 ? rects[rects.length - 1].querySelector('.rectangleClass') : null
+
+  let checked = 0
+  let any = false
+  const sum = { me: 0, partner: 0, opps: 0, all: 0 }
+  for (const board of list.boards) {
+    const entry = entries.get(board.resultkey)
+    if (!entry) continue
+    checked++
+    if (!entry.contract) continue
+    sum.all += entry.trace.filter((t) => t.cost > 0).length
+    const { counts } = summarizeTrace(entry.trace, {
+      declarer: entry.declarer,
+      mySeat: seatOf(entry.players, username),
+    })
+    if (!counts) continue
+    any = true
+    sum.me += counts.me.errors
+    sum.partner += counts.partner.errors
+    sum.opps += counts.opps.errors
+  }
+  if (!footer || checked === 0) {
+    existing?.remove()
+    return
+  }
+  const parts = any
+    ? [
+        { label: 'me', n: sum.me, color: ERROR_FG },
+        { label: 'pd', n: sum.partner, color: ERROR_FG },
+        { label: 'opp', n: sum.opps, color: OPP_FG },
+      ]
+    : [{ label: 'DD', n: sum.all, color: ERROR_FG }]
+  const key = `${checked}/${list.boards.length} ` + parts.map((p) => `${p.label}${p.n}`).join(' ')
+  if (existing?.dataset.bcDdTotals === key && existing.parentElement === footer) return
+  existing?.remove()
+
+  const el = doc.createElement('div')
+  el.className = TOTALS_CLASS
+  el.dataset.bcDdTotals = key
+  el.title =
+    `Double-dummy errors on the ${checked} of ${list.boards.length} boards analysed so far. ` +
+    'A board is analysed when it is opened.'
+  Object.assign(el.style, {
+    // Over BBO's four hidden cells (Board, Result, We, They: 70% of the row).
+    position: 'absolute',
+    left: '0',
+    top: '0',
+    bottom: '0',
+    width: '70%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: '10px',
+    paddingRight: '10px',
+    boxSizing: 'border-box',
+    fontSize: '14px',
+    whiteSpace: 'nowrap',
+    pointerEvents: 'auto',
+  })
+  const label = doc.createElement('span')
+  label.textContent = `DD errors · ${checked}/${list.boards.length} boards`
+  label.style.color = MUTED_FG
+  el.appendChild(label)
+  for (const { label: name, n, color } of parts) {
+    const part = doc.createElement('span')
+    const count = doc.createElement('b')
+    count.textContent = String(n)
+    part.append(`${name} `, count)
+    // Here a zero is news worth showing — a clean event for you — so it stays,
+    // muted, where a board row would leave it out.
+    part.style.color = n > 0 ? color : MUTED_FG
+    el.appendChild(part)
+  }
+  if (!footer.style.position) footer.style.position = 'relative'
+  footer.appendChild(el)
+}
+
 /** A button under BBO's deal menu, styled to sit beside it. */
 export function syncPopout(doc, viewer, onClick) {
   const existing = doc.getElementById(POPOUT_ID)
@@ -337,7 +427,10 @@ export function startDdOverlay({ doc = document, win = window, sendMessage, onEr
   }
 
   function render() {
-    if (state.list) drawIndex(doc, state.list, state.entries, state.username)
+    if (state.list) {
+      drawIndex(doc, state.list, state.entries, state.username)
+      drawTotals(doc, state.list, state.entries, state.username)
+    }
     const shown = onScreen()
     if (!shown) {
       clearDeal(doc)
