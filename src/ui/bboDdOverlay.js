@@ -190,6 +190,13 @@ function chipKey(chip) {
   return chip.clean ? 'clean' : chip.lines.map((l) => `${l.label}${l.n}`).join(' ')
 }
 
+// The visible height of a board row: BBO sets it inline on the row's
+// rectangle. Falls back to the cell's own height if that ever goes.
+function rowHeight(row, cell) {
+  const h = Number.parseFloat(row.querySelector('celled-rectangle')?.style.height)
+  return Number.isFinite(h) && h > 0 ? h : cell.clientHeight || 46
+}
+
 /** One tag per analysed board in the visible board list, at the right of the
  *  Result cell. */
 export function drawIndex(doc, list, entries, username, isVisible = defaultVisible) {
@@ -222,12 +229,13 @@ export function drawIndex(doc, list, entries, username, isVisible = defaultVisib
     el.dataset.bcDdChip = key
     el.title = chip.title
     Object.assign(el.style, {
-      // Anchored to the top: BBO's cells are taller than the rows that clip
-      // them (53.7px in a 46px row), so anything measured from the bottom is
-      // out of sight.
+      // Centred on the row, not the cell: BBO's cells are taller than the
+      // rows that clip them (53.7px in a 46px row), so the cell's own middle
+      // sits low.
       position: 'absolute',
       right: '3px',
-      top: '3px',
+      top: `${rowHeight(row, cell) / 2}px`,
+      transform: 'translateY(-50%)',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'stretch',
@@ -305,7 +313,10 @@ export function drawTotals(doc, list, entries, username, isVisible = defaultVisi
         { label: 'opp', n: sum.opps, color: OPP_FG },
       ]
     : [{ label: 'DD', n: sum.all, color: ERROR_FG }]
-  const key = `${checked}/${list.boards.length} ` + parts.map((p) => `${p.label}${p.n}`).join(' ')
+  // Match BBO's own totals beside it.
+  const cells = footer.querySelectorAll('.cellClass')
+  const fontSize = cells[cells.length - 1]?.style.fontSize || '22px'
+  const key = `${checked} ${fontSize} ` + parts.map((p) => `${p.label}${p.n}`).join(' ')
   if (existing?.dataset.bcDdTotals === key && existing.parentElement === footer) return
   existing?.remove()
 
@@ -325,15 +336,17 @@ export function drawTotals(doc, list, entries, username, isVisible = defaultVisi
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'flex-end',
-    gap: '10px',
-    paddingRight: '10px',
+    gap: '0.6em',
+    paddingRight: '0.5em',
     boxSizing: 'border-box',
-    fontSize: '14px',
+    fontSize,
     whiteSpace: 'nowrap',
     pointerEvents: 'auto',
   })
   const label = doc.createElement('span')
-  label.textContent = `DD errors · ${checked}/${list.boards.length} boards`
+  // No board count: the tags above show which boards are in it. The tooltip
+  // still says.
+  label.textContent = 'DD errors'
   label.style.color = MUTED_FG
   el.appendChild(label)
   for (const { label: name, n, color } of parts) {
