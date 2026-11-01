@@ -97,10 +97,11 @@ describe('drawing the deal', () => {
     const badges = doc.querySelectorAll('.bc-dd-trick')
     expect(badges).toHaveLength(1)
     const sj = hands.flatMap((h) => h.cards).find((c) => c.code === 'SJ').el
-    expect(sj.querySelector('.bc-dd-trick').textContent).toBe('10')
+    expect(sj.querySelector('.bc-dd-trick').textContent).toBe('T10')
     // West defends, so the badge reads +1: the defence gave a trick back.
     expect(sj.title).toBe('Defence gave back 1 trick — trick 10. Click to go to the trick.')
-    expect(sj.querySelector('.bc-dd-cost').textContent).toBe('+1')
+    // A one-trick error, the usual case, has no badge; the chip says it.
+    expect(sj.querySelector('.bc-dd-cost')).toBeNull()
     expect(sj.style.backgroundColor).not.toBe('')
 
     // Redrawing changes nothing — what keeps the mutation observer quiet.
@@ -311,8 +312,9 @@ describe('the trick on the table, once played', () => {
     expect(marks).toEqual({ '♠4': 'lead', '♠8': 'error', '♠Q': '', '♠A': 'won' })
     expect(table[0].style.boxShadow).toMatch(/inset 3px/)
     expect(table[0].querySelector('.bc-dd-lead')).not.toBeNull()
-    // North is dummy to South's 3NT: the declaring side lost it.
-    expect(table[1].querySelector('.bc-dd-cost').textContent).toBe('−1')
+    // One trick: no badge, and the rank stays where BBO put it.
+    expect(table[1].querySelector('.bc-dd-cost')).toBeNull()
+    expect(table[1].querySelector('.innerDivClass').style.marginLeft).toBe('')
 
     // Redrawing reads the cards back through our own badge and changes nothing.
     const before = viewer.innerHTML
@@ -336,5 +338,21 @@ describe('Restart', () => {
     expect(n).toBe(1)
     syncRestart(doc, viewer, null)
     expect(doc.getElementById(RESTART_ID)).toBeNull()
+  })
+})
+
+describe('the cost badge', () => {
+  it('appears only when an error cost more than one trick, signed by its effect on declarer', () => {
+    const { viewer } = matchPanels(doc, deal1, visible)
+    const table = playTrick1(doc, viewer)
+    // North is dummy to South's 3NT: the declaring side gave two away.
+    const trace = entry1.trace.map((t) =>
+      t.card === 'S8' ? { ...t, seat: 'N', cost: 2 } : { ...t, cost: 0 }
+    )
+    drawTable(viewer, summarizeTrace(trace, { declarer: 'S', mySeat: 'N', trump: 'N' }), visible)
+    expect(table[1].querySelector('.bc-dd-cost').textContent).toBe('−2')
+    clearDeal(doc)
+    expect(viewer.querySelectorAll('.bc-dd-cost')).toHaveLength(0)
+    expect(table[1].querySelector('.innerDivClass').style.marginLeft).toBe('')
   })
 })

@@ -139,18 +139,21 @@ export function drawDeal(hands, summary, doc) {
       if (!info) continue
       el.dataset.bcDdStyle = el.style.cssText
       el.dataset.bcDd = want
-      // Which trick, small and quiet: here, unlike the site's trick table, no
-      // row says it.
+      // Which trick, as "T4": here, unlike the site's trick table, no row says
+      // it, and a bare number beside a card reads as part of the card. The
+      // signed badge is kept for errors that cost more than one trick; one is
+      // the usual case, and the chip alone says it.
       const trick = doc.createElement('span')
       trick.className = BADGE_CLASS
-      trick.textContent = String(info.trick)
+      trick.textContent = `T${info.trick}`
       Object.assign(trick.style, {
         fontSize: '0.7em',
         margin: '0 1px 0 3px',
         fontWeight: '600',
         color: 'rgb(85, 85, 85)',
       })
-      el.append(trick, costPill(doc, info.signed))
+      el.append(trick)
+      if (Math.abs(info.signed) > 1) el.append(costPill(doc, info.signed))
       Object.assign(el.style, {
         backgroundColor: COST_CHIP,
         borderRadius: '4px',
@@ -263,13 +266,9 @@ export function drawTable(viewer, summary, isVisible = defaultVisible) {
     if (flags.error) {
       const face = card.querySelector('.innerDivClass') ?? card
       face.dataset.bcDdTableFace = face.style.cssText
-      Object.assign(face.style, {
-        backgroundColor: COST_CHIP,
-        borderRadius: '4px',
-        // BBO positions the rank absolutely in the card, so a margin on the
-        // right does nothing; one on the left moves it over to clear the badge.
-        marginLeft: '-10px',
-      })
+      Object.assign(face.style, { backgroundColor: COST_CHIP, borderRadius: '4px' })
+    }
+    if (flags.error && Math.abs(info.signed) > 1) {
       // On the table the badge is pinned inside the card's right edge, not laid
       // out beside the rank: BBO's table cards are a fixed height that clips
       // overflow, so anything in the flow wraps out of sight, and anything
@@ -286,6 +285,9 @@ export function drawTable(viewer, summary, isVisible = defaultVisible) {
         zIndex: '1',
       })
       card.appendChild(pill)
+      // BBO positions the rank absolutely in the card, so a margin on the right
+      // does nothing; one on the left moves it over to clear the badge.
+      ;(card.querySelector('.innerDivClass') ?? card).style.marginLeft = '-10px'
     }
     card.title = [
       flags.lead && 'Led',
