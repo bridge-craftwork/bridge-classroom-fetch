@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { parseLin, extractLinFromOnclick } from '../../../src/adapters/bbo/parsers/lin.js'
+import { parseLin, extractLinFromOnclick, deriveContract } from '../../../src/adapters/bbo/parsers/lin.js'
 
 // Board 1 LIN from the tournament fixture (URL-decoded).
 const BOARD1_LIN =
@@ -121,5 +121,32 @@ describe('parseLin — error cases', () => {
 
   it('throws on unknown dealer digit', () => {
     expect(() => parseLin('md|9SAS,')).toThrow("Unknown dealer digit '9'")
+  })
+})
+
+// BBO marks an alerted call with a trailing '!'. Board 5 of #33873, from
+// mh_hand.php: 1S 3H 4H X 5H!(exclusion) X 5S P 6S P P P.
+describe('parseLin — alerted calls and doubles', () => {
+  const ALERTED =
+    'md|3S49QH8TD34TJAC56K,S36H347KD567C29JQ,S278TJAHD89QKC38A,|sv|n|mb|1S|mb|3H|mb|4H|mb|d|mb|5H!|an|exclusion|mb|d|mb|5S|mb|p|mb|6S|mb|p|mb|p|mb|p|'
+
+  it('drops the alert marker from the call', () => {
+    expect(parseLin(ALERTED).auction).toEqual([
+      '1S', '3H', '4H', 'X', '5H', 'X', '5S', 'PASS', '6S', 'PASS', 'PASS', 'PASS',
+    ])
+  })
+
+  it('still finds the declarer when the final contract was alerted', () => {
+    // N deals: N 1N!, E P, S 3N!, all pass. Left in, the '!' hid both bids.
+    const { dealer, auction } = parseLin('md|3S2,S3,S4,|mb|1N!|mb|p|mb|3N!|mb|p|mb|p|mb|p|')
+    expect(deriveContract(auction, dealer)).toEqual({ contract: '3NT', declarer: 'N' })
+  })
+
+  // BBO writes a double as 'd', not 'x'. Read as 'D', it was neither a call
+  // deriveContract knew nor a double, so doubled contracts came out undoubled.
+  it("reads BBO's 'd' as a double and 'r' as a redouble", () => {
+    const { dealer, auction } = parseLin('md|3S2,S3,S4,|mb|1S|mb|d|mb|r|mb|p|mb|p|mb|p|')
+    expect(auction).toEqual(['1S', 'X', 'XX', 'PASS', 'PASS', 'PASS'])
+    expect(deriveContract(auction, dealer)).toEqual({ contract: '1SXX', declarer: 'N' })
   })
 })
