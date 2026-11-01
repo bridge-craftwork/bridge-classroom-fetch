@@ -83,12 +83,13 @@ describe('reading the hand diagram', () => {
 })
 
 describe('drawing the deal', () => {
-  it('numbers every card and marks the error, and does it only once', () => {
+  it('numbers and marks only the error card, and does it only once', () => {
     const { hands } = matchPanels(doc, deal1, visible)
     const summary = summarizeTrace(entry1.trace, { declarer: 'S', mySeat: 'N' })
     drawDeal(hands, summary, doc)
+    // Only the error is numbered.
     const badges = doc.querySelectorAll('.bc-dd-trick')
-    expect(badges).toHaveLength(52)
+    expect(badges).toHaveLength(1)
     const sj = hands.flatMap((h) => h.cards).find((c) => c.code === 'SJ').el
     expect(sj.querySelector('.bc-dd-trick').textContent).toBe('10')
     expect(sj.title).toMatch(/cost 1 trick$/)
@@ -114,20 +115,29 @@ describe('the board list', () => {
     drawIndex(doc, list, entries, 'kemistry', visible)
     const chips = doc.querySelectorAll('.bc-dd-chip')
     expect(chips).toHaveLength(1)
-    expect(chips[0].textContent).toBe('me 0 · pd 0 · opp 1')
+    // kemistry was dummy; only the side that erred gets a line.
+    const lines = [...chips[0].children].map((l) =>
+      [...l.children].map((c) => c.textContent).join(' ')
+    )
+    expect(lines).toEqual(['opp 1'])
     expect(
       chips[0].closest('result-list-item').querySelector('.cellClass').textContent.trim()
     ).toBe('1')
   })
 
-  it('says nothing about a board with no errors', () => {
-    expect(
-      chipFor({
-        me: { errors: 0, tricks: 0 },
-        partner: { errors: 0, tricks: 0 },
-        opps: { errors: 0, tricks: 0 },
-      })
-    ).toBeNull()
+  it('tags a checked board with no errors as clean, so it reads differently from an unchecked one', () => {
+    const none = { errors: 0, tricks: 0 }
+    expect(chipFor({ me: none, partner: none, opps: none }, 0)).toMatchObject({ clean: true })
+    expect(chipFor(null, 0)).toMatchObject({ clean: true })
+    const doc2 = doc
+    const clean = { ...entry1, trace: entry1.trace.map((t) => ({ ...t, cost: 0 })) }
+    drawIndex(doc2, list, new Map([[list.boards[0].resultkey, clean]]), 'kemistry', visible)
+    expect(doc2.querySelector('.bc-dd-chip').textContent).toBe('clean')
+  })
+
+  it('shows nothing for a board not yet analysed', () => {
+    drawIndex(doc, list, new Map(), 'kemistry', visible)
+    expect(doc.querySelectorAll('.bc-dd-chip')).toHaveLength(0)
   })
 })
 

@@ -63,7 +63,8 @@ export function seatOf(players, username) {
  *
  *  `trace` is dd_play's [{ index, seat, card, cost }]. Returns:
  *    cards:  { [solverCard]: { trick, cost, seat } } — every card played
- *    counts: { me, partner, opps } — each { errors, tricks } — or null when
+ *    counts: { me, partner, opps } — each { errors, tricks }, me and partner
+ *            with `dummy` too — or null when
  *            `mySeat` is null (a board the user only watched)
  *
  *  Dummy's cards are declarer's decisions, so they count against declarer:
@@ -85,8 +86,10 @@ export function summarizeTrace(trace, { declarer, mySeat }) {
   return {
     cards,
     counts: {
-      me: bySeat[mySeat],
-      partner: bySeat[PARTNER[mySeat]],
+      // `dummy` marks the one of you who played no card of their own, so a
+      // display can say so rather than credit them with a clean board.
+      me: { ...bySeat[mySeat], dummy: mySeat === dummy },
+      partner: { ...bySeat[PARTNER[mySeat]], dummy: PARTNER[mySeat] === dummy },
       opps: {
         errors: bySeat[opps[0]].errors + bySeat[opps[1]].errors,
         tricks: bySeat[opps[0]].tricks + bySeat[opps[1]].tricks,

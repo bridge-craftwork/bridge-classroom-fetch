@@ -74,8 +74,8 @@ describe('summarizeTrace', () => {
 
   it("charges dummy's cards to declarer, so dummy's own count stays clean", () => {
     const { counts } = summarizeTrace(trace, { declarer: 'S', mySeat: 'N' })
-    expect(counts.me).toEqual({ errors: 0, tricks: 0 })
-    expect(counts.partner).toEqual({ errors: 2, tricks: 2 })
+    expect(counts.me).toEqual({ errors: 0, tricks: 0, dummy: true })
+    expect(counts.partner).toEqual({ errors: 2, tricks: 2, dummy: false })
     expect(counts.opps).toEqual({ errors: 1, tricks: 2 })
   })
 

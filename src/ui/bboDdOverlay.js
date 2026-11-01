@@ -31,7 +31,7 @@ export const POPOUT_ID = 'bridge-classroom-dd-popout'
 const SUIT_BY_SYMBOL = { '♠': 'S', '♥': 'H', '♦': 'D', '♣': 'C' }
 const ERROR_BG = 'rgba(220, 0, 0, 0.22)'
 const ERROR_FG = 'rgb(200, 0, 0)'
-const TRICK_FG = 'rgb(110, 110, 110)'
+const OPP_FG = 'rgb(0, 130, 40)'
 
 const defaultVisible = (el) => !!el && el.getClientRects().length > 0
 
@@ -110,7 +110,10 @@ export function matchPanels(doc, deal, isVisible = defaultVisible) {
 export function drawDeal(hands, summary, doc) {
   for (const { cards } of hands) {
     for (const { el, code } of cards) {
-      const info = summary?.cards[code]
+      // Errors only. Every card's trick is known, but numbering all 52 makes a
+      // diagram nobody can read at a glance; the errors are what to look at.
+      const played = summary?.cards[code]
+      const info = played?.cost > 0 ? played : null
       const want = info ? `${info.trick}:${info.cost}` : ''
       if ((el.dataset.bcDd ?? '') === want) continue
       el.querySelector(`.${BADGE_CLASS}`)?.remove()
@@ -126,15 +129,12 @@ export function drawDeal(hands, summary, doc) {
         fontSize: '0.55em',
         verticalAlign: 'sub',
         marginLeft: '1px',
-        fontWeight: info.cost > 0 ? '700' : '400',
-        color: info.cost > 0 ? ERROR_FG : TRICK_FG,
+        fontWeight: '700',
+        color: ERROR_FG,
       })
       el.appendChild(badge)
-      if (info.cost > 0) el.style.backgroundColor = ERROR_BG
-      el.title =
-        info.cost > 0
-          ? `Trick ${info.trick}: double-dummy error, cost ${info.cost} trick${info.cost === 1 ? '' : 's'}`
-          : `Trick ${info.trick}`
+      el.style.backgroundColor = ERROR_BG
+      el.title = `Trick ${info.trick}: double-dummy error, cost ${info.cost} trick${info.cost === 1 ? '' : 's'}`
     }
   }
 }
@@ -150,29 +150,46 @@ export function clearDeal(doc) {
   }
 }
 
-/** The chip's text and tooltip for one board, or null when there is nothing
- *  to say (no errors, or not analysed yet). */
+/** What the board list shows for one analysed board.
+ *
+ *  { clean: true, title } when nobody erred — distinct from a board not yet
+ *  analysed, which shows nothing — or { lines: [{ label, n, color }], title }:
+ *  a line each for me / pd / opp, only for those who erred, opponents in
+ *  green since their errors are your gain. A
+ *  board the user only watched has no "me", so it gets one line. */
 export function chipFor(counts, totalErrors) {
+  const tricks = (n) => `${n} trick${n === 1 ? '' : 's'}`
   if (!counts) {
-    return totalErrors > 0
-      ? {
-          text: `DD ${totalErrors}`,
-          title: `${totalErrors} double-dummy error${totalErrors === 1 ? '' : 's'}`,
-        }
-      : null
+    if (totalErrors === 0) return { clean: true, title: 'Double-dummy: no errors' }
+    return {
+      lines: [{ label: 'DD', n: totalErrors, color: ERROR_FG }],
+      title: `${totalErrors} double-dummy error${totalErrors === 1 ? '' : 's'}`,
+    }
   }
   const { me, partner, opps } = counts
-  if (me.errors + partner.errors + opps.errors === 0) return null
-  const part = (label, c) => `${label} ${c.errors}`
+  if (me.errors + partner.errors + opps.errors === 0) {
+    return { clean: true, title: 'Double-dummy: no errors by anyone' }
+  }
   const long = (label, c) =>
-    `${label}: ${c.errors}${c.errors ? ` (${c.tricks} trick${c.tricks === 1 ? '' : 's'})` : ''}`
+    c.dummy ? `${label}: dummy` : `${label}: ${c.errors}${c.errors ? ` (${tricks(c.tricks)})` : ''}`
   return {
-    text: [part('me', me), part('pd', partner), part('opp', opps)].join(' · '),
+    // Only who erred: a zero line is noise, and leaving zeros out also means
+    // dummy needs no special case — dummy's cards are charged to declarer.
+    lines: [
+      { label: 'me', n: me.errors, color: ERROR_FG },
+      { label: 'pd', n: partner.errors, color: ERROR_FG },
+      { label: 'opp', n: opps.errors, color: OPP_FG },
+    ].filter((l) => l.n > 0),
     title: `Double-dummy errors — ${long('you', me)}, ${long('partner', partner)}, ${long('opponents', opps)}`,
   }
 }
 
-/** One chip per analysed board in the visible board list. */
+function chipKey(chip) {
+  return chip.clean ? 'clean' : chip.lines.map((l) => `${l.label}${l.n}`).join(' ')
+}
+
+/** One tag per analysed board in the visible board list, at the right of the
+ *  Result cell. */
 export function drawIndex(doc, list, entries, username, isVisible = defaultVisible) {
   const byNumber = new Map(list.boards.map((b) => [b.number, b]))
   for (const row of doc.querySelectorAll('result-list-item')) {
@@ -194,27 +211,50 @@ export function drawIndex(doc, list, entries, username, isVisible = defaultVisib
       existing?.remove()
       continue
     }
-    if (existing?.textContent === chip.text) continue
+    const key = chipKey(chip)
+    if (existing?.dataset.bcDdChip === key) continue
     existing?.remove()
-    const el = doc.createElement('span')
+
+    const el = doc.createElement('div')
     el.className = CHIP_CLASS
-    el.textContent = chip.text
+    el.dataset.bcDdChip = key
     el.title = chip.title
     Object.assign(el.style, {
-      // Top, not bottom: BBO's cells are taller than the rows that clip them
-      // (53.7px in a 46px row), so the bottom edge is out of sight.
+      // Anchored to the top: BBO's cells are taller than the rows that clip
+      // them (53.7px in a 46px row), so anything measured from the bottom is
+      // out of sight.
       position: 'absolute',
       right: '3px',
-      top: '2px',
-      fontSize: '11px',
-      lineHeight: '13px',
-      padding: '0 3px',
+      top: '3px',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'stretch',
+      fontSize: '10px',
+      lineHeight: '12px',
+      padding: '1px 3px',
       borderRadius: '3px',
       background: 'rgba(255, 255, 255, 0.85)',
-      color: ERROR_FG,
-      pointerEvents: 'auto',
       whiteSpace: 'nowrap',
+      pointerEvents: 'auto',
     })
+    if (chip.clean) {
+      el.textContent = 'clean'
+      el.style.color = OPP_FG
+      el.style.fontWeight = '600'
+    } else {
+      for (const { label, n, color } of chip.lines) {
+        const line = doc.createElement('div')
+        Object.assign(line.style, { display: 'flex', justifyContent: 'space-between', gap: '4px' })
+        const name = doc.createElement('span')
+        name.textContent = label
+        const count = doc.createElement('span')
+        count.textContent = String(n)
+        Object.assign(count.style, { fontWeight: '700' })
+        line.style.color = color
+        line.append(name, count)
+        el.appendChild(line)
+      }
+    }
     if (!cell.style.position) cell.style.position = 'relative'
     cell.appendChild(el)
   }
