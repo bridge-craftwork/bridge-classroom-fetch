@@ -174,7 +174,7 @@ First release: double-dummy review in Bridge Base Online's History panel. Error 
 | Icon | `icons-dd/icon-128.png`; Edge's 300×300 store logo is `icons-dd/icon-300.png` |
 | Mac app icon | rendered into the Xcode project's asset catalog by `node scripts/render-icons.mjs --ext dd` |
 | Screenshots | `store/dd/screenshots/`, 1280×800 (Chrome, Edge, Firefox); see that folder's README |
-| Privacy page | `store/dd/privacy-page.html` → `bridge-craftwork-site/site/dd/privacy/index.html` |
+| Privacy page | live at https://bridge-craftwork.com/dd/privacy/, from `bridge-craftwork-site/site/dd/privacy/index.html` (copy of `store/dd/privacy-page.html`) |
 
 ---
 
@@ -183,8 +183,9 @@ First release: double-dummy review in Bridge Base Online's History panel. Error 
 Things only Rick can do, in the order they block:
 
 1. **Approve the icon** (`icons-dd/`: Fetch's mortarboard with a red DD badge).
-2. **Publish the privacy page** at `https://bridge-craftwork.com/dd/privacy/`.
-   Every store refuses a listing without a live policy URL.
+2. ~~Publish the privacy page~~ — **done**, live at
+   <https://bridge-craftwork.com/dd/privacy/> (bridge-craftwork-site#12,
+   2 Nov 2026).
 3. **Test in Safari on a Mac.** Two things DD needs have not been seen working
    there: `scripting.registerContentScripts` with `world: 'MAIN'` (the page
    hook) and WebAssembly in the background. If either fails, Mac drops out of

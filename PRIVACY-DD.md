@@ -2,10 +2,10 @@
 
 **Last updated:** 1 November 2026
 
-> The published policy will be **<https://bridge-craftwork.com/dd/privacy/>**,
-> the URL the store listings point at. Its page is `store/dd/privacy-page.html`,
-> to be copied to `site/dd/privacy/index.html` in bridge-craftwork-site. This
-> file is the source; keep the two in step. **Not yet published.**
+> The published policy is **<https://bridge-craftwork.com/dd/privacy/>**, the
+> URL the store listings point at, served from `site/dd/privacy/index.html` in
+> bridge-craftwork-site (a copy of `store/dd/privacy-page.html` here). This file
+> is the source; change all three together.
 
 ## Overview
 
