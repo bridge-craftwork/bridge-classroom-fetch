@@ -1,7 +1,7 @@
 # Bridge Craftwork DD — store screenshots
 
-2560×1600 (1280×800 at 2×), one set for Chrome, Edge, Firefox and the Mac App
-Store, as with Fetch. From event #33879 (ACBL Sun Noon ET Speedball, 1 Nov 2026).
+2560×1600 (1280×800 at 2×) here, for the Mac App Store. `listing-1280/` is the
+same set at 1280×800 for Chrome, Edge and Firefox, as with Fetch. From event #33879 (ACBL Sun Noon ET Speedball, 1 Nov 2026).
 
 | File | Shows |
 |---|---|
