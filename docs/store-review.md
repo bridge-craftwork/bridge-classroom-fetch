@@ -599,27 +599,28 @@ Chrome requires a written justification per permission. Current manifest:
 
 **Paste-ready wording for every field is in [submission-answers.md](submission-answers.md)**, kept in step with this table.
 
-### What 1.2.0 adds to review (BBO double-dummy overlay)
+### Bridge Craftwork DD — the second extension
 
-No new permission and no new host — but three things a reviewer will see, and
-the justification text and [submission-answers.md](submission-answers.md) must
-be updated for them before 1.2.0 is submitted. **Not done yet.**
+Built from this repo with `EXT=dd` (`manifest.dd.json`, output `dist/dd-<browser>`).
+Not yet listed anywhere. What its review will look at, none of which Fetch now
+carries:
 
-- **`content_security_policy.extension_pages` gains `'wasm-unsafe-eval'`.** The
-  background compiles bridge-solver's WASM to score each card double-dummy on
-  the user's device. MV3 permits this directive; it is the narrow one, and allows
-  WebAssembly only, not `eval`.
-- **`scripting` gains a second use**: `registerContentScripts` with
-  `world: 'MAIN'` for `public/bbo-page-hook.js` on `bridgebase.com/v3/*`. It reads
-  copies of two responses BBO's own History panel loads and requests nothing.
-  [data-sources.md](data-sources.md) § 3.9 says why it is registered at runtime.
-- **`storage` now holds a 14-day cache** of analysed BBO boards, which include
-  other players' BBO usernames. Local only, never transmitted — but the Chrome
-  data-use disclosure and Firefox's `data_collection_permissions` should be
-  re-read against it. [PRIVACY.md](../PRIVACY.md) is updated; the published
-  policy at bridge-classroom.org is not.
+- **`content_security_policy.extension_pages` with `'wasm-unsafe-eval'`**, so the
+  background can compile bridge-solver's WASM and solve on the user's device.
+  The narrow directive: WebAssembly only, not `eval`.
+- **`scripting`**, for `registerContentScripts` with `world: 'MAIN'`: the page
+  hook (`public-dd/bbo-page-hook.js`) that copies two responses BBO's own History
+  panel loads, and requests nothing. [data-sources.md](data-sources.md) § 3.9
+  says why it is registered at runtime.
+- **`storage`** for a 14-day cache of analysed boards, which include other
+  players' BBO usernames. Local only. Its policy draft is
+  [PRIVACY-DD.md](../PRIVACY-DD.md).
+- **One host**, `www.bridgebase.com/v3/*`; no `tabs` (the hand-off only creates
+  a tab).
 
-Safari's support for `world: 'MAIN'` in `registerContentScripts` is unverified.
+Desktop browsers only, for a start: iOS users of BBO are in its app, not the
+v3 web client this runs on. Safari's support for `world: 'MAIN'` in
+`registerContentScripts` is unverified.
 
 ### Tightening candidates — deferred again, to 1.2.0
 

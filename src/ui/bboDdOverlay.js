@@ -7,7 +7,7 @@
 //   • a button under BBO's own deal menu that sends the board to Bridge
 //     Classroom
 //
-// Nothing here fetches from BBO. The page hook (public/bbo-page-hook.js) passes
+// Nothing here fetches from BBO. The page hook (public-dd/bbo-page-hook.js) passes
 // on copies of what BBO's History panel itself loads — mh_list.php when an
 // event opens, mh_hand.php for each board shown — and the background solves
 // each board once, in WASM, caching the result for a fortnight. Going back to
@@ -435,6 +435,15 @@ export function clearDeal(doc) {
   for (const el of doc.querySelectorAll('[data-bc-dd-mark]')) unmarkCard(el)
 }
 
+/** Remove everything the overlay draws: deal, table, board tags, totals and
+ *  its buttons. */
+export function clearAll(doc) {
+  clearDeal(doc)
+  for (const el of doc.querySelectorAll(`.${CHIP_CLASS}, .${TOTALS_CLASS}`)) el.remove()
+  syncPopout(doc, null)
+  syncRestart(doc, null)
+}
+
 /** What the board list shows for one analysed board.
  *
  *  { clean: true, title } when nobody erred — distinct from a board not yet
@@ -762,7 +771,23 @@ export function startDdOverlay({
     })
   }
 
+  // Shown or hidden from BBO's deal menu (src/ui/ddMenu.js). Hidden, nothing is
+  // drawn and nothing is solved; boards BBO loads are still noted, which costs
+  // nothing and makes showing again immediate.
+  let enabled = true
+  function setEnabled(on) {
+    if (enabled === !!on) return
+    enabled = !!on
+    if (enabled)
+      catchUp().catch((err) => console.warn('[bc] double-dummy overlay:', err?.message ?? err))
+    schedule()
+  }
+
   function render() {
+    if (!enabled) {
+      clearAll(doc)
+      return
+    }
     if (state.list) {
       drawIndex(doc, state.list, state.entries, state.username)
       drawTotals(doc, state.list, state.entries, state.username)
@@ -867,6 +892,7 @@ export function startDdOverlay({
   doc.addEventListener(
     'click',
     (e) => {
+      if (!enabled) return
       const card = e.target?.closest?.('[data-bc-dd]')
       if (!card || !card.closest('hand-diagram-panel')) return
       const trick = Number.parseInt(card.dataset.bcDd, 10)
@@ -884,27 +910,42 @@ export function startDdOverlay({
     if (res?.type === 'extraction-error') onError(res.error?.message ?? 'extraction failed')
   }
 
+  async function lookupList() {
+    if (!state.list) return
+    const res = await sendMessage({
+      type: 'dd-lookup',
+      resultkeys: state.list.boards.map((b) => b.resultkey),
+    })
+    for (const [k, v] of Object.entries(res?.entries ?? {})) state.entries.set(k, v)
+    schedule()
+  }
+
+  async function solve(hand) {
+    if (state.entries.has(hand.hk)) return
+    const res = await sendMessage({ type: 'dd-trace', resultkey: hand.hk, lin: hand.lin })
+    if (res?.type !== 'dd-trace') throw new Error(res?.error ?? 'no analysis')
+    state.entries.set(hand.hk, res.entry)
+    schedule()
+  }
+
+  // Shown again after being hidden: pick up whatever BBO loaded meanwhile.
+  async function catchUp() {
+    await lookupList()
+    for (const hand of state.hands.values()) await solve(hand)
+  }
+
   async function handle(msg) {
     if (msg.kind === 'list') {
       const list = parseMhList(msg.body)
       state.list = list
       state.username = new URLSearchParams(msg.requestBody ?? '').get('username') || list.username
-      const res = await sendMessage({
-        type: 'dd-lookup',
-        resultkeys: list.boards.map((b) => b.resultkey),
-      })
-      for (const [k, v] of Object.entries(res?.entries ?? {})) state.entries.set(k, v)
-      schedule()
+      if (enabled) await lookupList()
     } else if (msg.kind === 'hand') {
       const { hk, lin } = parseMhHand(msg.body)
       state.current = { hk, lin, deal: parseLin(lin).deal }
       state.hands.set(hk, state.current)
       schedule()
-      if (state.entries.has(hk)) return
-      const res = await sendMessage({ type: 'dd-trace', resultkey: hk, lin })
-      if (res?.type !== 'dd-trace') throw new Error(res?.error ?? 'no analysis')
-      state.entries.set(hk, res.entry)
-      schedule()
+      if (enabled) await solve(state.current)
     }
   }
 
@@ -915,5 +956,5 @@ export function startDdOverlay({
   // In case BBO loaded something before this script started.
   win.postMessage({ source: `${TAG}:replay` }, win.location.origin)
 
-  return { render: schedule, state }
+  return { render: schedule, setEnabled, state }
 }

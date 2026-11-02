@@ -24,9 +24,6 @@ if (typeof globalThis.DOMParser === 'undefined') {
 import browser from 'webextension-polyfill'
 import { handleMessage, sweepExpired, batchItemDelayMs } from './background/handlers.js'
 import bboAdapter from './adapters/bbo/index.js'
-import { createDdSolver } from './background/ddSolver.js'
-import initSolver, { Analyzer } from './vendor/solver-wasm/bridge_solver_wasm.js'
-import solverWasmUrl from './vendor/solver-wasm/bridge_solver_wasm_bg.wasm?url'
 
 // Fetch via chrome.scripting.executeScript inside a same-origin tab so
 // SameSite=Lax cookies attach. As of May 2026, my.acbl.org rejects direct SW
@@ -383,63 +380,7 @@ const deps = () => ({
   pacer,
 })
 
-// Per-card double-dummy for the BBO History panel (src/ui/bboDdOverlay.js).
-// The loaded solver is a cache, not state: lose it with the worker and the next
-// board loads it again. Results live in storage.local, as everything else does.
-const ddSolver = createDdSolver({
-  loadSolver: async () => {
-    await initSolver({ module_or_path: browser.runtime.getURL(solverWasmUrl.replace(/^\//, '')) })
-    return { Analyzer }
-  },
-  storage: browser.storage.local,
-})
-
-// The page hook runs in BBO's own page, which a manifest content script can only
-// reach through crxjs's loader — a dynamic import() of an extension URL, made
-// from the page and so subject to BBO's CSP (`script-src *` admits no extension
-// scheme). Registered here instead, the browser injects the file directly.
-// Re-registered on every start: cheap, and it keeps the registration in step
-// with the installed version.
-const BBO_PAGE_HOOK = {
-  id: 'bbo-page-hook',
-  matches: ['https://www.bridgebase.com/v3/*'],
-  js: ['bbo-page-hook.js'],
-  runAt: 'document_start',
-  world: 'MAIN',
-}
-
-async function registerBboPageHook() {
-  const scripting = browser.scripting ?? globalThis.chrome?.scripting
-  if (!scripting?.registerContentScripts) return
-  const existing = await scripting.getRegisteredContentScripts({ ids: [BBO_PAGE_HOOK.id] })
-  if (existing.length) await scripting.updateContentScripts([BBO_PAGE_HOOK])
-  else await scripting.registerContentScripts([BBO_PAGE_HOOK])
-}
-registerBboPageHook().catch((err) => console.warn('[bc] BBO page hook not registered:', err?.message ?? err))
-
 browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message?.type === 'dd-trace') {
-    ddSolver
-      .trace(message.resultkey, message.lin)
-      .then((entry) => sendResponse({ type: 'dd-trace', entry }))
-      .catch((err) => sendResponse({ type: 'dd-error', error: err?.message ?? String(err) }))
-    return true
-  }
-  if (message?.type === 'dd-node') {
-    ddSolver
-      .alternatives(message.lin, message.node)
-      .then((node) => sendResponse({ type: 'dd-node', node }))
-      .catch((err) => sendResponse({ type: 'dd-error', error: err?.message ?? String(err) }))
-    return true
-  }
-  if (message?.type === 'dd-lookup') {
-    ddSolver
-      .lookup(message.resultkeys)
-      .then((entries) => sendResponse({ type: 'dd-lookup', entries }))
-      .catch((err) => sendResponse({ type: 'dd-error', error: err?.message ?? String(err) }))
-    return true
-  }
-
   // dev-bulk-extract: developer-only bulk extraction triggered via the
   // `#bcdev-mega` URL hash on the BBO lobby. Iterates a list of tournament
   // URLs, runs each through the BBO adapter (with credentialed fetches), and

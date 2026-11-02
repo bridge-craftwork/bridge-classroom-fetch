@@ -3,7 +3,7 @@
 Bridge Classroom Fetch is released under [The Unlicense](LICENSE). It
 bundles the following third-party code into its published builds.
 
-All three are compiled into the extension bundle by Vite, so their licence terms
+All are compiled into the extension bundles by Vite, so their licence terms
 travel with every store submission.
 
 ---
@@ -59,8 +59,9 @@ is available at the URL above.
 
 ## bridge-solver — MIT OR Apache-2.0
 
-The double-dummy solver behind the per-card analysis in BBO's History panel,
-compiled to WebAssembly. Fetched at build time from a pinned release
+The double-dummy solver behind Bridge Craftwork DD, the review in BBO's History
+panel, compiled to WebAssembly. Bundled into **Bridge Craftwork DD only**, not
+Bridge Classroom Fetch. Fetched at build time from a pinned release
 (`scripts/solver-wasm.release.json`), not vendored. Used under its MIT option.
 
 - Version: 2.1.0

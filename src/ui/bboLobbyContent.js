@@ -4,8 +4,6 @@
 // picker that sends an extract-batch message to the service worker using the
 // same hands.php listing URL that the tview-page picker uses.
 
-import { startDdOverlay } from './bboDdOverlay.js'
-
 const BUTTON_ID = 'bridge-classroom-history-btn'
 const CANCEL_ID = 'bridge-classroom-history-cancel'
 const PICKER_ID = 'bridge-classroom-history-picker'
@@ -608,22 +606,12 @@ if (typeof globalThis.chrome !== 'undefined' || typeof globalThis.browser !== 'u
 
     const tryInject = () => injectHistoryButton(sendMessage, storage)
 
-    // Per-card double-dummy in the History panel. It draws from what BBO's own
-    // panel loads, so it needs the page hook the background registers; without
-    // it (a page loaded before install) it simply draws nothing.
-    const ddOverlay = startDdOverlay({
-      sendMessage,
-      onError: (text) => showToast(document, `Bridge Classroom: ${text}`),
-      onNotice: (text) => showToast(document, text),
-    })
-
     // Watch for the history panel to mount or its content to change. The deal
     // menu rides the same observer: it is created and destroyed on every open,
     // so there is nothing to hook but the mutation itself.
     const observer = new MutationObserver(() => {
       if (!document.getElementById(BUTTON_ID)) tryInject()
       syncDealMenuItem(document, sendMessage)
-      ddOverlay.render()
     })
     observer.observe(document.body, { childList: true, subtree: true })
 

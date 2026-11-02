@@ -97,10 +97,12 @@ Injected UI and in-page parsing, not a fetch mechanism as such:
 | `sourceContent.js` | ACBL + BBO result pages | Injects the "Analyze" button |
 | `bboLobbyContent.js` | `bridgebase.com/v3/*` | Injects history UI; drives batch and dev bulk export |
 | `ingestContent.js` | `bridge-classroom.{org,com}/*` | Hands the envelope to `/ingest` (see [ingest-protocol.md](ingest-protocol.md)) |
-| `bbo-page-hook.js` | `bridgebase.com/v3/*`, **in the page's own world** | Copies BBO's `mh_list`/`mh_hand` responses to `bboLobbyContent.js` (§ 3.9) |
+| `bbo-page-hook.js` | `bridgebase.com/v3/*`, **in the page's own world** — Bridge Craftwork DD only | Copies BBO's `mh_list`/`mh_hand` responses to `ddContent.js` (§ 3.9) |
+| `ddContent.js` | `bridgebase.com/v3/*` — Bridge Craftwork DD only | The double-dummy review and its Show/Hide menu item |
 
-Three content scripts in `manifest.json`, and the page hook, which the
-background registers at runtime (§ 3.9 says why). A fourth,
+Three content scripts in Fetch's `manifest.json`. Bridge Craftwork DD
+(`manifest.dd.json`) has `ddContent.js` and `ingestContent.js`, plus the page
+hook, which its background registers at runtime (§ 3.9 says why). A fourth,
 `analyzerContent.js`, wrote the envelope into the analyzer page's
 `sessionStorage`; it was removed when `/ingest` became the only destination.
 
@@ -289,8 +291,9 @@ BBO hosts, **1 s** for ACBL hosts, which need more breathing room.
 
 **Mechanism:** none of our own. The v3 client's History panel loads both as the
 user opens an event and its boards; a page hook copies the responses to the
-content script. Used for the per-card double-dummy overlay
-(`src/ui/bboDdOverlay.js`).
+content script. Used by **Bridge Craftwork DD**, the second extension built
+from this repo (`EXT=dd`), for its double-dummy review
+(`src/ui/bboDdOverlay.js`). Fetch does not read them.
 
 Found by watching the panel's traffic, 1 Nov 2026:
 

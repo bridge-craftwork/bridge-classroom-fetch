@@ -4,7 +4,7 @@
 //   webutil.bridgebase.com/v2/mh_hand.php  — one board's LIN, play included
 //
 // Neither is fetched by us. BBO's own History panel requests them as the user
-// opens an event and its boards, and the page hook (public/bbo-page-hook.js)
+// opens an event and its boards, and the page hook (public-dd/bbo-page-hook.js)
 // hands us copies. See docs/data-sources.md § 3.9.
 //
 // The bodies arrive via window.postMessage from the page, so they are treated as
