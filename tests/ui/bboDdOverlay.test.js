@@ -155,7 +155,7 @@ describe('the board list', () => {
   })
 })
 
-describe('the pop-out', () => {
+describe('the DD Details button', () => {
   it('sits under BBO’s deal menu, once', () => {
     const { viewer } = matchPanels(doc, deal1, visible)
     let clicks = 0

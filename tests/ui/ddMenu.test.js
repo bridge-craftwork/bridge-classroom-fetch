@@ -12,7 +12,7 @@ let doc, menu
 const visible = () => true
 beforeEach(() => {
   doc = new DOMParser().parseFromString(
-    `<body><div class="menuClass" style="display: block">${TOP.map(ITEM).join('')}</div></body>`,
+    `<body><div class="moreClass"></div><div class="menuClass" style="display: block; font-size: 26px;">${TOP.map(ITEM).join('')}</div></body>`,
     'text/html'
   )
   menu = doc.querySelector('.menuClass')
@@ -48,7 +48,31 @@ describe('the Show/Hide Bridge Craftwork DD item', () => {
   })
 
   it('is not added to a menu that is closed', () => {
-    syncToggleItem(doc, true, () => {}, () => false)
+    syncToggleItem(
+      doc,
+      true,
+      () => {},
+      () => false
+    )
     expect(doc.getElementById(TOGGLE_ITEM_ID)).toBeNull()
+  })
+})
+
+describe('fitting and closing the menu', () => {
+  it("sets only our row smaller, leaving BBO's rows as they are", () => {
+    const item = syncToggleItem(doc, true, () => {}, visible)
+    expect(item.querySelector('div').style.fontSize).toBe('0.78em')
+    expect(menu.style.fontSize).toBe('26px')
+  })
+
+  it('closes the menu after toggling, by pressing the hamburger as BBO does', () => {
+    let pressed = 0
+    // jsdom has no layout, so the hamburger counts as visible here.
+    const hamburger = doc.querySelector('.moreClass')
+    Object.defineProperty(hamburger, 'offsetParent', { get: () => doc.body })
+    hamburger.addEventListener('click', () => pressed++)
+    syncToggleItem(doc, true, () => {}, visible)
+    doc.getElementById(TOGGLE_ITEM_ID).querySelector('div').click()
+    expect(pressed).toBe(1)
   })
 })

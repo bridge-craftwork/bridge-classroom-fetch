@@ -706,13 +706,13 @@ function syncMenuButton(doc, viewer, { id, row, label, title, onClick }) {
   return btn
 }
 
-/** "Classroom": send this board to Bridge Classroom. */
+/** "DD Details": the board in Bridge Classroom's detailed double-dummy view. */
 export function syncPopout(doc, viewer, onClick) {
   return syncMenuButton(doc, viewer, {
     id: POPOUT_ID,
     row: 0,
-    label: 'Classroom',
-    title: 'Open this board in Bridge Classroom',
+    label: 'DD Details',
+    title: "Open this board's double-dummy details in Bridge Classroom",
     onClick,
   })
 }

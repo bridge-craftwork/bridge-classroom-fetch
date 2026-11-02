@@ -53,6 +53,11 @@ export function syncToggleItem(doc, enabled, onToggle, isVisible) {
   item.id = TOGGLE_ITEM_ID
   const label = item.querySelector('div') ?? item
   label.textContent = toggleLabel(enabled)
+  // BBO's menu is clipped at the panel's edge, and at BBO's size this label is
+  // the one row that runs past it. Shrinking the whole menu doesn't help — every
+  // row shrinks with it — so only ours is set smaller: at this size it is no
+  // wider than "Advance card by card", the longest of BBO's own.
+  label.style.fontSize = '0.78em'
   const base = label.style.backgroundColor
   label.addEventListener('mouseenter', () => {
     label.style.backgroundColor = MENU_HOVER_COLOR
@@ -63,7 +68,15 @@ export function syncToggleItem(doc, enabled, onToggle, isVisible) {
   label.addEventListener('click', (event) => {
     event.stopPropagation()
     onToggle()
+    closeMenu(doc)
   })
   menu.appendChild(item)
   return item
+}
+
+// BBO's own items close the menu when chosen; a cloned row has none of their
+// handlers. Pressing the hamburger again is what closes it (checked).
+function closeMenu(doc) {
+  const hamburger = [...doc.querySelectorAll('.moreClass')].find((e) => e.offsetParent !== null)
+  hamburger?.click()
 }
