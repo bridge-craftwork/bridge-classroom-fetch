@@ -28,9 +28,21 @@ All shots: **2560×1600**, page content only, no browser chrome. Downscale to
 | 4 | BBO lobby (`/v3/`) | ⬜ | ⬜ | needs a BBO login |
 | 5 | ACBL club — event list | ✅ | ✅ | plus `-menu` and `-fetching` |
 | 6 | ACBL club — single game | ✅ | ✅ | |
-| 7 | ACBL Live tournament | ⬜ | ⬜ | needs an ACBL login, real Chrome |
+| 7 | ACBL Live tournament | ⬜ | ⬜ | needs an ACBL login, real Chrome; **four shots**, see § 7 |
 
-Seven shots outstanding.
+Seven shots outstanding, and #7 is the one that matters — see below.
+
+**#7 is the gap worth closing, and 1.1.0 widened it.** ACBL Live has never been
+photographed at all, and it is now where the newest and most visible work sits:
+one `Analyze in Bridge Classroom` link per row on `/my-results`,
+`/player-results/<id>` and `/events/<sanction>`, a searchable pair picker, and a
+percentage that climbs while an event is fetched. None of that appears in any
+image. The submitted five are ACBL *clubs* and BBO — accurate, and untouched by
+the ACBL Live work, but silent about it.
+
+Apple takes ten screenshots against Chrome's five, so the Mac App Store listing
+has room for the whole ACBL Live arc without displacing anything. That is why it
+is being captured before the Apple submission rather than after.
 
 ## The five submitted to the stores
 
@@ -50,6 +62,238 @@ the masters.
 1→2 and 4→5 are both complete stories; 3 shows breadth. Chrome caps at five, so
 the pairs earn their slots and the remaining sources sit in the record set
 above.
+
+**These five stay as they are for 1.1.0.** They were checked against the ACBL
+Live changes rather than assumed stale: every one is ACBL *clubs* or BBO, and
+shot 1's date-range picker is the club batch on `my.acbl.org`, which was
+deliberately kept. Nothing in them shows behaviour that was removed.
+
+### The Apple set — nine
+
+Apple takes ten, so the Mac App Store listing runs the five above **plus the
+four ACBL Live shots** from § 7, in the order a user meets them: the results
+list, the picker, the fetch, the analysis. Same masters, no downscale — Apple
+takes 2560×1600 as shot.
+
+That leaves Chrome, Edge and AMO on the five they already have. Edge's sixth
+slot and a later Chrome update can take 7a, the per-row links, which is the
+single most representative of the four.
+
+## Apple's screenshot specifications
+
+Read off [Apple's own screenshot specifications][spec] in August 2026, not from
+memory — two earlier guesses in this project about Apple's version matrices were
+wrong, and the same care applies here.
+
+[spec]: https://developer.apple.com/help/app-store-connect/reference/screenshot-specifications/
+
+### The three sets Apple wants
+
+| Platform | Size to supply | Pixels | Why this one |
+|---|---|---|---|
+| **Mac** | any 16:10 | **2560 × 1600** | One of four accepted 16:10 sizes; our masters already are this |
+| **iPad** | 13-inch | **2064 × 2752** portrait, **2752 × 2064** landscape | The single required iPad set; Apple scales it to the smaller iPad classes |
+| **iPhone** | 6.9-inch | **1320 × 2868** portrait (or 1290 × 2796, or 1260 × 2736) | Required *because the app claims iPhone support* — see below |
+
+**1–10 images per set**, `.png` / `.jpg` / `.jpeg`.
+
+**No alpha channel.** Apple rejects screenshots carrying one, and four of our
+five Mac masters had an opaque alpha channel — harmless everywhere else, fatal
+at App Store Connect. They were stripped with `magick -alpha off`, verified at
+zero pixel difference first, so the images are unchanged and now upload-safe.
+Anything captured from Chrome DevTools is likely to carry one; check before
+uploading:
+
+```bash
+for f in screenshots/listing/*.png; do
+  printf "%-46s " "$(basename "$f")"; sips -g hasAlpha "$f" | tail -1
+done
+```
+
+### The iPhone set — decided, and iPhone is in
+
+`TARGETED_DEVICE_FAMILY = "1,2"`: the app claims iPhone as well as iPad, so
+Apple requires a 6.9-inch iPhone set. **That was briefly an open question and is
+now closed — iPhone is supported.**
+
+It was worth asking, because the extension had never been run on a phone: the
+11 August testing was on an iPad, and two of the four supported sites are wide
+results tables. Shipping an untested phone layout is how a listing earns its
+first one-star review. So it was tested rather than assumed.
+
+**Confirmed on a real iPhone, iOS 26.6, 18 August 2026.** On a `my.acbl.org`
+club results page the button injects into the site's own navbar and the hand-off
+runs, at a 440 px viewport. Nothing needed redesigning, and the reason is
+structural rather than lucky: the extension adds one button to chrome the site
+already lays out responsively, so it inherits whatever the site does about
+narrow screens.
+
+The other paths are **untested on iPhone** — the BBO hand viewer and ACBL Live
+tournaments. Nothing suggests they differ; it is the same injection code against
+the same anchors. Say untested rather than claiming a sweep that did not happen.
+
+## iOS — what to actually shoot, on both devices
+
+Safari ships to the App Store as **two platforms on one record**, macOS and iOS,
+and the iOS half covers iPad *and* iPhone. Safari is the only browser engine on
+either, so this is the only route to those users at all.
+
+**Two sets, not one** — 2064 × 2752 for the 13-inch iPad, 1320 × 2868 for the
+6.9-inch iPhone. Apple scales within a device class but not across one, so an
+iPad set cannot stand in for iPhone.
+
+Shoot the same story on both, so the listing reads consistently.
+
+### Capturing — `tools/capture-ios.sh`
+
+```bash
+tools/capture-ios.sh iphone     # 1320x2868
+tools/capture-ios.sh ipad       # 2064x2752
+```
+
+Boots the simulator, sets a clean status bar, opens each page, waits for the
+redactor, captures, strips the alpha, and checks the dimensions. Output lands in
+`screenshots/ios/<device>/`.
+
+**Two setup steps per simulator cannot be scripted** — there is no `simctl` verb
+for either, and both persist in that device's data, so it is once per simulator
+rather than once per run:
+
+1. Settings ▸ Apps ▸ Safari ▸ Extensions → enable Bridge Classroom Fetch
+2. In Safari, open the page menu → allow it on every website
+
+Skip them and every shot is a page with no button on it.
+
+**The status bar is set, not masked.** Masking would mean either cropping —
+which breaks the exact pixel size Apple requires — or painting over it, which
+looks worse than what it hides. `simctl status_bar override` just makes it
+right at capture time:
+
+```
+--time "9:41" --dataNetwork wifi --wifiMode active --wifiBars 3
+--cellularMode active --cellularBars 4 --operatorName ""
+--batteryState discharging --batteryLevel 100
+```
+
+`--batteryState` must be **`discharging`**. `charged` still draws the charging
+bolt, which is what makes a shot read as someone's phone rather than a product
+image.
+
+**Simulator captures carry an alpha channel** and Apple rejects those, so the
+script strips it. Same trap as the Mac masters, different source.
+
+### Capturing from a real device instead
+
+Two routes, both confirmed to emit the native device resolution — **1320 × 2868
+on a 6.9-inch iPhone, which is exactly Apple's required size**. No scaling, no
+cropping, no aspect maths:
+
+- **Xcode ▸ Window ▸ Devices and Simulators ▸ Take Screenshot** (saves to the
+  Desktop).
+- **xtools**, which writes to a file rather than the clipboard.
+
+Take the shot *before* worrying about the frame: the device screenshot is
+already the deliverable size, and anything that resamples it can only make it
+worse.
+
+**Check the alpha channel on whatever the tool produces.** Apple rejects
+screenshots carrying one, and four of the five Mac masters had an opaque alpha
+channel that nothing else in the pipeline minded:
+
+```bash
+sips -g pixelWidth -g pixelHeight -g hasAlpha shot.png
+magick shot.png -alpha off -strip PNG24:shot-flat.png   # if hasAlpha: yes
+```
+
+### The iPhone layout works, and here is why
+
+Confirmed 18 August 2026 on `my.acbl.org/club-results/<id>` at 440 pt. ACBL's
+own navbar **wraps to two rows** — logo above, `Login` and
+`Analyze in Bridge Classroom` below — and our button renders full-width and
+legible with nothing clipped or pushed off-screen.
+
+That is structural rather than lucky. The extension appends one `<li>` to the
+site's existing `ul.navbar-nav`, so it inherits whatever the site already does
+about narrow viewports. There is no extension-side responsive CSS to maintain,
+and there should not be: the moment we position anything ourselves we own the
+phone layout of four third-party sites forever.
+
+### Redaction is a build, not a habit — `SHOT_MODE=1`
+
+A club-results page carries **a real person's name and email address** — the
+first iPhone capture showed `Manager: Don Garka, dgarka@comcast.net` — plus the
+club's name and street address. None of that can go in a store listing.
+
+That capture is exactly why this is now a build flag rather than a snippet. The
+redaction existed and was correct; it simply had to be remembered before every
+shot, and once it wasn't.
+
+```bash
+npm run build:shots      # SHOT_MODE=1 → dist/shots
+```
+
+`dist/shots` is an ordinary extension build **plus** a content script
+(`src/ui/redactContent.js`) that runs [`src/lib/redact.js`](../src/lib/redact.js)
+on every load, and again on DOM changes — `my.acbl.org` is a Vue SPA and
+`live.acbl.org` rewrites its tables, so rows can arrive after the first pass, and
+a late row is a real name in a screenshot. It logs what it changed:
+
+```
+[shot-mode] redacted: { host: "my.acbl.org", club: 2, address: 1, manager: 1, email: 1, … }
+```
+
+| Page | Treatment |
+|---|---|
+| `my.acbl.org` | Replaces club name (from `document.title`), street address, `Manager:` line, any email |
+| `live.acbl.org` | Blurs the Player columns — those cells carry hometowns as well as names |
+| `tview.php` | Blurs Username / Player Names, and avatars under 80px |
+
+**It never ships.** `scripts/package-stores.sh` refuses to package any build
+containing it, the same way it refuses one carrying test origins — a redactor
+rewrites what the user is reading, which is catastrophic outside a capture
+session. Load `dist/shots` unpacked, or install it to a simulator; never
+`dist/chrome`.
+
+`SHOT_HIDE_LOGO=1` additionally hides the club logo. Framing, not redaction —
+see below.
+
+**Club identity is replaced, not blurred.** A blurred block reads as something
+hidden; `Your Bridge Club` reads as an example. `example.com` and ZIP `00000`
+are reserved, so neither can land on a real address.
+
+Nothing it does survives a reload, so re-run it before each shot — deliberately,
+since a redaction that persisted is one you could forget you were relying on.
+Covered by `tests/tools/redactPage.test.js`, which asserts the specific strings
+from that first capture are gone and that our button and the game rows are not.
+
+Also worth tidying before the shot: the status bar. A charging-battery icon and
+an arbitrary clock read as a snapshot of someone's phone rather than a product
+image.
+
+- Capture on the **real iPad** or in the Simulator, at 2064 × 2752 (or the
+  landscape transpose). The 2560×1600 Mac masters do not qualify — wrong
+  aspect, wrong class.
+- **Shoot the club game first.** No account, most representative, and the one an
+  Apple reviewer can reproduce.
+- **Never scroll to improve the framing.** On these pages the injected button
+  *is* the work, and it lives in the site's header — scrolling to bring the
+  results table into frame takes our own contribution out of it. A shot of a
+  results table with no button in it is a screenshot of somebody else's website.
+- **Prefer the menu open to the button idle.** A button only proves something
+  was injected. The date-range menu — most recent, a month, three, six, a year,
+  all time — shows what it *does*, in one frame, without a second shot. Capture
+  it by appending `#bc-shot-menu` to the URL: the SHOT_MODE build clicks the
+  button for you once the SPA has mounted. It opens the menu only; nothing is
+  fetched until an option is chosen and nothing chooses one. Deliberately not
+  `#bc-analyze`, which the extension already uses to trigger a real extraction.
+- The extension behaves the same there as in Chrome — that was the 11 August
+  finding — so nothing needs designing, only photographing.
+- **`openTempTab`'s off-screen window never runs on iPad**, so do not go looking
+  for it. `fetchViaTab` prefers an already-open same-origin tab, and on iPad the
+  user is standing on it.
+- Worth shooting: BBO hand viewer, ACBL Live for Clubs, ACBL Live tournaments
+  (pair events). Not worth shooting: the BBO hands list and lobby — those users
+  are in the BBO app, whose web page has a different DOM entirely.
 
 ## What to capture, and how
 
@@ -106,15 +350,67 @@ BBO login, and BBO allows one session per account** — signing in signs you out
 elsewhere, so do this when that does not matter. The lobby shows tournament
 titles and your own handle, no opponents.
 
-### 7. ACBL Live — `acbl-live-before` / `-after`
+### 7. ACBL Live — four shots, not one
 
 Needs an ACBL login, and **real Chrome** — Cloudflare blocks the Playwright
 session there. Use a sized window rather than device mode, so the tab the
 hand-off opens matches (device mode is per-tab; the new tab would come out
 larger).
 
-Blur Player 1 and Player 2 before shooting — on ACBL Live those cells carry
-hometowns as well as names:
+**Budget the sign-in before starting.** `live.acbl.org` allows roughly 110
+requests under `/event/*` per sign-in and an event costs 27–55, so there are two
+or three extractions in a session — see [acbl-rate-limit.md](acbl-rate-limit.md).
+Two of the four shots below fetch nothing at all, so shoot in this order and the
+allowance is never the reason a shot is missed. If a `Fetching…` link stops and
+a red band appears under the row, that is the allowance, not a bug: sign out,
+sign back in, resume.
+
+| | Shot | Page | Fetches? |
+|---|---|---|---|
+| 7a | `acbl-live-results-list-before` | `/my-results` | no |
+| 7b | `acbl-live-pair-picker` | `/events/<sanction>` | one summary page |
+| 7c | `acbl-live-results-list-fetching` | `/my-results` | **yes — a whole event** |
+| 7d | `acbl-live-after` | the analyzer tab 7c opened | no |
+
+**7a — the per-row links.** `https://live.acbl.org/my-results`, signed in. Every
+row's Links column ends `… | Analyze in Bridge Classroom`. This is the shot the
+set has never had: it is where the extension actually starts for a tournament
+player, and it replaced the date-range batch that shot 1 still shows for clubs.
+Team-event rows deliberately have no link — if the visible rows are all teams,
+scroll to a pairs event rather than shooting a screen of rows with nothing on
+them.
+
+**7b — the picker.** Must be a tournament's event list,
+`https://live.acbl.org/events/<sanction>` — **not** `/my-results`. The picker
+appears only when the page names nobody: `/my-results` and
+`/player-results/<id>` head themselves "Rick Wilson's Results", the extension
+reads the name out of the `h1` and goes straight to fetching, so no picker is
+ever drawn there. An event list is headed by the host city instead, so it has to
+ask. Click a row's link, wait for `Loading pairs…` to resolve, and shoot with
+the picker open under the row. Type two or three letters into "Type any part of
+a name…" first — a filtered list of three shows what the box is *for*, where a
+full list of thirty just looks long, and it also cuts how many real names are on
+screen to blur.
+
+**7c — mid-fetch.** Back on `/my-results`, click a row and shoot while the link
+reads `Fetching… 41%`. Wait for a two-digit percentage: the label starts at
+`Fetching…` with no number and a shot of that says nothing a static page could
+not. This is the one shot that spends the allowance.
+
+**7d — the payoff.** The analyzer tab 7c opens. Relabel the player and partner
+if they are not Rick and a partner who has agreed (see *Anonymising* below).
+
+Blur Player 1 and Player 2 before shooting each of 7a–7c — on ACBL Live those
+cells carry hometowns as well as names, and the picker rows carry pair names
+too. The snippet below covers the tables; for the picker, blur its rows as well:
+
+```js
+document.querySelectorAll('#bridge-classroom-pair-picker button span:first-child')
+  .forEach((s) => (s.style.filter = 'blur(6px)'))
+```
+
+Leave the section-and-direction column (`A-EW4`) sharp — it is the whole point
+of that line, and it identifies nobody.
 
 ```js
 document.querySelectorAll('table').forEach((t) => {

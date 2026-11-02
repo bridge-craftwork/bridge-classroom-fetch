@@ -18,9 +18,13 @@ import { chromium } from 'playwright'
 import fs from 'node:fs'
 import path from 'node:path'
 
-const SRC = 'icons/icon.svg'
-const OUT = 'icons'
-const SAFARI = 'safari/Bridge Classroom Fetch/Shared (App)/Assets.xcassets/AppIcon.appiconset'
+// --ext dd renders Bridge Craftwork DD's icon instead (icons-dd/).
+const DD = process.argv.includes('--ext') && process.argv[process.argv.indexOf('--ext') + 1] === 'dd'
+const SRC = DD ? 'icons-dd/icon.svg' : 'icons/icon.svg'
+const OUT = DD ? 'icons-dd' : 'icons'
+const SAFARI = DD
+  ? 'safari-dd/Bridge Craftwork DD/Bridge Craftwork DD/Assets.xcassets/AppIcon.appiconset'
+  : 'safari/Bridge Classroom Fetch/Shared (App)/Assets.xcassets/AppIcon.appiconset'
 
 // 16/32/48/128 are the manifest set; 24 is for the toolbar action on some
 // display scales; 300 is Edge's store logo.
@@ -68,7 +72,11 @@ async function render(page, size, outPath, source = svg, grid = GLYPH_GRID) {
   await page.locator('svg').screenshot({ path: outPath, omitBackground: true })
 }
 
-const browser = await chromium.launch()
+// PW_CHROMIUM points at a Chromium build when the one Playwright expects isn't
+// installed.
+const browser = await chromium.launch(
+  process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {}
+)
 const page = await browser.newPage()
 
 fs.mkdirSync(OUT, { recursive: true })
@@ -81,16 +89,25 @@ for (const size of EXTENSION_SIZES) {
 const macos = macosSvg()
 fs.writeFileSync(path.join(OUT, 'icon-macos.svg'), macos)
 
-fs.mkdirSync(SAFARI, { recursive: true })
-for (const size of SAFARI_SIZES) {
-  await render(page, size, path.join(SAFARI, `icon-${size}.png`), macos, MACOS_CANVAS)
+// The Mac app's icon catalog lives in its Xcode project, which has to exist
+// first (safari-web-extension-converter makes it). Until then, skip it.
+const contentsPath = path.join(SAFARI, 'Contents.json')
+const haveCatalog = fs.existsSync(contentsPath)
+if (haveCatalog) {
+  for (const size of SAFARI_SIZES) {
+    await render(page, size, path.join(SAFARI, `icon-${size}.png`), macos, MACOS_CANVAS)
+  }
 }
 
 await browser.close()
 
+if (!haveCatalog) {
+  console.log(`icons: ${EXTENSION_SIZES.length} extension; no Xcode project at ${SAFARI} yet, Mac icon skipped`)
+  process.exit(0)
+}
+
 // Point the asset catalog at what we just wrote. Xcode resolves a slot by
 // size × scale, so a 32x32 @2x slot needs the 64px file.
-const contentsPath = path.join(SAFARI, 'Contents.json')
 const contents = JSON.parse(fs.readFileSync(contentsPath, 'utf8'))
 let filled = 0
 for (const image of contents.images) {

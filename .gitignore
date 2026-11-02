@@ -5,3 +5,15 @@ dist/
 test-results/
 playwright-report/
 .screenshot-profile/
+
+# Xcode per-user state: window layout, breakpoints, scheme ordering.
+# Machine-local, binary, and rewritten every time the project is opened.
+xcuserdata/
+
+# bridge-solver WASM package: fetched from a pinned release by
+# scripts/fetch-solver-wasm.mjs, never committed.
+src/vendor/
+
+# Playwright MCP captures: screenshots, traffic logs (which can hold a BBO
+# access token). Local only.
+.playwright-mcp/

@@ -34,7 +34,7 @@ Read `docs/architecture.md` for full detail. Key points:
 
 ## Current state (August 2026)
 
-Working and merged to `main`. 463 unit tests, 5 Playwright e2e tests, all passing.
+Working and merged to `main`. 470 unit tests, 5 Playwright e2e tests, all passing.
 
 **Four entry points**, each with an injected button. Five injection points, since
 BBO takes three:
@@ -71,16 +71,47 @@ journal; filters compose and are *nested*, so widening a run only adds work.
   *how* matters: three sites each broke a naive `fetch()` differently
 - `docs/normalized-schema.md` — the envelope, including `coverage` and the
   deliberate decision not to collect BBO opponents' real names
+- `docs/seat-order-contract.md` — which player sat where. Array order is the
+  only carrier, it has been wrong twice, and both times the reasoning looked
+  sound. Read it before touching a `players` array in either direction
 - `docs/adr/0001-*.md` — why the ingest route exists
 - `docs/store-review.md` — store submission, test procedures, blockers
 - `docs/acbl-rate-limit.md` — the ~110-request-per-sign-in allowance on
   live.acbl.org, how it was measured, and the four theories it killed
 - `docs/prior-art.md` — what three other bridge extensions do
 
-### Next up: store release
+### Next up: store release — 1.1.0
 
 Packaging is done — `scripts/package-stores.sh` builds Chrome, Edge, Firefox and
-refreshes the Safari resources. Submitted to three of four; Safari remains.
+refreshes the Safari resources. All four 1.1.0 packages are built and verified.
+
+**1.1.0, not 1.0.2, and the bump was forced.** 1.0.1 went to AMO on 11 August;
+PRs #5–#9 landed on the 12th and 13th. The working tree and the build in AMO's
+queue were both calling themselves 1.0.1 while differing by a removed feature.
+Minor rather than patch because the ACBL Live date-range batch was removed and
+replaced with per-row links, the pair picker is new, section coverage narrowed
+to the user's own, and the envelope went 1.1 → 1.4 — 1.2 for those
+changes, then 1.4 for the two ACBL E-W seat-order fixes, which a consumer must
+branch on to read anything a released build already produced. 1.3 is skipped
+deliberately: Bridge Classroom's ingest door already stamps it on envelopes
+whose players it corrected and whose double-dummy table it did not, so a
+producer must never publish it (seat-order-contract.md § Consumer rule).
+
+Four places carry the version; `docs/store-review.md` § 6a has the table.
+**Xcode's `MARKETING_VERSION` is edited in `project.pbxproj` directly** —
+`agvtool new-marketing-version` substitutes a key the Info.plists do not
+contain, leaves `MARKETING_VERSION` alone, and reports success anyway.
+`CURRENT_PROJECT_VERSION` stays at 1: nothing has ever reached App Store Connect.
+
+Verified for this release rather than assumed:
+
+- The Safari `.appex` bundles exactly what is on disk (`diff -rq`, no
+  differences) at 1.1.0 / build 1. The three UI modules added in 1.1.0 needed
+  no Xcode change — Vite folds them into the existing `assets/` folder
+  reference. New **entry points** are the thing that would need registering, not
+  new source files.
+- 470 unit tests, 5 e2e, `addons-linter` 0 errors / 2 warnings — the same two
+  linkedom `innerHTML` sites, now at line 2 col 8311 and line 7 col 443.
 
 Done: icons (a mortarboard — `icons/icon.svg`, rendered by
 `scripts/render-icons.mjs`; deliberately not a spade, see `docs/store-review.md`),
@@ -100,22 +131,66 @@ ACBL *clubs* and BBO, and the date-range picker in shot 1 is the club one on
 What is missing is not wrong, only absent: no shot has ever covered ACBL Live
 tournaments (`docs/screenshot-set.md` § Coverage has it outstanding), so the
 per-row links and the pair picker are unphotographed. Adding one is an
-opportunity, not a correction.
+opportunity, not a correction — and it is being taken for 1.1.0, as four shots
+rather than one. `docs/screenshot-set.md` § 7 has the recipe, ordered so the two
+shots that fetch nothing come first and the sign-in allowance is never what
+costs a shot.
+
+`demo/acbl-live-tournament.mp4` is the one asset that *is* a release behind: it
+predates the pair picker and the percentage. Being re-recorded in the same
+session as the shots.
 
 ### Submission log
 
 | Store | Submitted | Status |
 |---|---|---|
-| Chrome Web Store | 11 Aug 2026 | awaiting review |
-| Edge Add-ons | 11 Aug 2026 | **published** — first store live |
-| addons.mozilla.org | 11 Aug 2026 | awaiting review — **1.0.1** |
-| Mac App Store | — | ready, will be 1.0.1 |
+| Chrome Web Store | 11 Aug 2026 | **published** — 1.0.1, ~14 Aug. No approval email arrived; the dashboard said so first |
+| Edge Add-ons | 11 Aug 2026 | **published** — 1.0.1 |
+| addons.mozilla.org | 11 Aug 2026 | **published** — 1.0.1, approved 14 Aug |
+| Mac App Store | — | 1.1.0 build 1 ready; never submitted |
 
-### iPad is worth more than it looks
+**All three browser stores now ship 1.0.1, and that changes the order.** As of
+18 August, Chrome and AMO have both published — so every Chrome, Edge and
+Firefox user has the ACBL Live date-range batch that exhausts the sign-in
+allowance and can sign them out of ACBL Live for real. It is no longer one
+store's problem.
 
-Safari is the only browser engine on iPad, so a Safari extension is the *only*
-way to reach those users — there is no Chrome or Firefox to fall back on. That
-raises iPadOS above its apparent share.
+It also removes the reason to stagger them. While 1.0.1 was *pending*,
+resubmitting Chrome and AMO meant replacing a submission mid-review and
+restarting its clock, which was a real cost. Published versions stay live while
+an update is reviewed, so 1.1.0 now costs nothing to submit anywhere and none of
+the three waits on the others.
+
+**So: Chrome, Edge and AMO together, as soon as the branch is pushed.** None of
+them needs a new screenshot — all five are ACBL clubs and BBO, both untouched.
+Apple still follows the capture session, and Apple is the only store whose users
+are unaffected, because nothing has ever shipped there.
+
+Watch the Chrome dashboard rather than the inbox. Chrome published without
+sending an approval email; the status was only visible in the developer
+dashboard.
+
+**Permission tightening is deferred to 1.2.0.** `docs/store-review.md` § 5 has
+the two candidates — dropping `tabs`, path-scoping the BBO hosts. Both were
+considered for 1.1.0 and both were declined: neither is visible to a user, both
+rewrite justification text that has been through review once, and both want a
+four-browser QA pass that this release should not be carrying.
+
+### iOS is worth more than it looks, and iPhone is in
+
+Safari is the only browser engine on iOS, so a Safari extension is the *only*
+way to reach iPad and iPhone users — there is no Chrome or Firefox to fall back
+on. That raises iOS above its apparent share.
+
+**iPhone is supported.** `TARGETED_DEVICE_FAMILY` is `1,2` and stays that way.
+Confirmed working on a real iPhone, iOS 26.6, 18 Aug 2026, against a club
+results page: the button injects into `my.acbl.org`'s own navbar and the
+hand-off runs. The injected UI is one button in the page's existing chrome, so
+there was nothing to redesign for a 440px viewport.
+
+That decision has a cost worth knowing: claiming iPhone obliges a **6.9-inch
+iPhone screenshot set** (1320 × 2868) on top of the iPad and Mac sets. See
+`docs/screenshot-set.md`.
 
 Tested on a real iPad, 11 Aug 2026. **It behaves the same as Chrome does** —
 and that is the point worth remembering: *both* failures found during iPad
@@ -131,17 +206,30 @@ The lesson is not about the iPad. It is that testing on an unfamiliar platform
 exercises paths nobody had exercised before, and the platform gets the blame for
 what those paths turn up.
 
-| Path | iPad |
-|---|---|
-| BBO hand viewer | ✅ works |
-| ACBL Live for Clubs | ✅ works |
-| ACBL Live tournaments | ✅ for pair events; team events fail everywhere, not just here |
-| ACBL Live batch | removed — exceeded the per-sign-in allowance on every platform, not just here |
-| BBO hands list / lobby | n/a — iPad users are in the BBO app, and its web page has a different DOM entirely |
+| Path | iPad | iPhone |
+|---|---|---|
+| ACBL Live for Clubs | ✅ works | ✅ works — the path confirmed on 18 Aug |
+| BBO hand viewer | ✅ works | ⬜ untested |
+| ACBL Live tournaments | ✅ for pair events; team events fail everywhere, not just here | ⬜ untested |
+| ACBL Live batch | removed — exceeded the per-sign-in allowance on every platform, not just here | — |
+| BBO hands list / lobby | n/a — those users are in the BBO app, whose web page has a different DOM entirely | n/a, same reason |
 
-`openTempTab`'s off-screen window never runs on iPad: `fetchViaTab` prefers an
+**Untested is not the same as broken**, and nothing suggests the untested rows
+differ — the injection is the same code and the anchors are the same elements.
+But say which is which rather than claiming a platform sweep that did not happen.
+
+`openTempTab`'s off-screen window never runs on iOS: `fetchViaTab` prefers an
 already-open same-origin tab, and there the user is standing on it. The
 desktop-only path is only the fallback, which is why everything works.
+
+**Enabling the extension in Settings does not make it run.** Safari grants page
+access per site, separately, and until that is granted no content script
+injects — no button, no error, no prompt, indistinguishable from a broken build.
+It cost an hour on a device we own. iPad shows a puzzle-piece in the toolbar;
+iPhone has no room for one and folds the same controls into the page menu, which
+on iPhone sits at the *bottom* of the screen. `docs/store-review.md` § 7 has the
+table, and the Apple reviewer notes walk through it — a reviewer who misses this
+sees an app that does nothing.
 
 ### ACBL Live team events are not supported
 
@@ -264,7 +352,18 @@ To revert to production:
 chrome.storage.local.remove('devIngestUrl')
 ```
 
-The manifest already includes `http://localhost:3001/*` in `host_permissions` and the content script `matches`, so no rebuild is needed when switching. Run the local analyzer with:
+**That override alone is not enough, and this used to say it was.** The shipped
+manifest matches `bridge-classroom.org` and `.com` only — the localhost entry
+was removed when the `/game-analysis/` hand-off was retired — so on a local page
+the ingest content script never runs and the hand-off hangs silently. A local
+target needs the test build too:
+
+```bash
+npm run build:test    # INGEST_TEST=1 → dist/test, adds localhost to matches and host_permissions
+```
+
+Load `dist/test` unpacked, not `dist/chrome`. This is the same build the
+Playwright e2e tests load, for the same reason. Run the local analyzer with:
 
 ```bash
 cd /Volumes/Express2T/Development/GitHub/Bridge-Game-Analysis
@@ -272,6 +371,23 @@ python3 -m http.server 3001
 ```
 
 The local server serves the static SPA; extension-path analysis is fully client-side. BWS+PBN file upload still calls the production backend (`game-parser.bridge-craftwork.com`).
+
+## Capturing store screenshots
+
+`npm run build:shots` (`SHOT_MODE=1` → `dist/shots`) is an ordinary build plus a
+content script that redacts personal data on every page load —
+`src/ui/redactContent.js` running `src/lib/redact.js`. **It never ships**;
+`package-stores.sh` refuses any build containing it, the same way it refuses
+test origins.
+
+It is a build rather than a console snippet because the snippet worked and was
+forgotten once: the first iPhone capture went out carrying a real club manager's
+name and email. A build cannot forget.
+
+`tools/capture-ios.sh iphone|ipad` drives the Simulator end to end — clean
+status bar, right pixel size, alpha stripped. Two setup steps per simulator
+cannot be scripted (enable the extension in Settings; grant website permission
+in Safari) and both persist per device. See `docs/screenshot-set.md`.
 
 ## When unsure
 

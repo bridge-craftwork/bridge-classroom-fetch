@@ -23,6 +23,8 @@ For what the data means once captured, see
 | BBO tournament summary | `webutil.bridgebase.com/v2/tview.php` | **None, deliberately** | **Yes** | Service-worker fetch, `credentials: 'omit'` |
 | BBO replay LIN | `www.bridgebase.com/myhands/fetchlin.php` | None | **Yes** | **CLI, outside the browser** |
 | BBO hand viewer | `www.bridgebase.com/tools/handviewer.html` | None | **Yes** | **No fetch — the deal is in the URL** |
+| BBO History board list | `webutil.bridgebase.com/v2/mh_list.php` | None | **Yes** | **No fetch — copied from BBO's own request** |
+| BBO History board | `webutil.bridgebase.com/v2/mh_hand.php` | None | **Yes** | **No fetch — copied from BBO's own request** |
 
 "Testable logged out" is the property that matters for store review: it says
 whether someone with no account can exercise that path. Verified in a clean
@@ -95,8 +97,12 @@ Injected UI and in-page parsing, not a fetch mechanism as such:
 | `sourceContent.js` | ACBL + BBO result pages | Injects the "Analyze" button |
 | `bboLobbyContent.js` | `bridgebase.com/v3/*` | Injects history UI; drives batch and dev bulk export |
 | `ingestContent.js` | `bridge-classroom.{org,com}/*` | Hands the envelope to `/ingest` (see [ingest-protocol.md](ingest-protocol.md)) |
+| `bbo-page-hook.js` | `bridgebase.com/v3/*`, **in the page's own world** — Bridge Craftwork DD only | Copies BBO's `mh_list`/`mh_hand` responses to `ddContent.js` (§ 3.9) |
+| `ddContent.js` | `bridgebase.com/v3/*` — Bridge Craftwork DD only | The double-dummy review and its Show/Hide menu item |
 
-Three content scripts, matching `manifest.json`. A fourth,
+Three content scripts in Fetch's `manifest.json`. Bridge Craftwork DD
+(`manifest.dd.json`) has `ddContent.js` and `ingestContent.js`, plus the page
+hook, which its background registers at runtime (§ 3.9 says why). A fourth,
 `analyzerContent.js`, wrote the envelope into the analyzer page's
 `sessionStorage`; it was removed when `/ingest` became the only destination.
 
@@ -281,6 +287,61 @@ BBO caps a listing query at roughly a 30-day range, so multi-year history is
 collected in **28-day chunks, newest first**. Between batch items: **250 ms** for
 BBO hosts, **1 s** for ACBL hosts, which need more breathing room.
 
+### 3.9 BBO History panel — `mh_list.php` and `mh_hand.php`
+
+**Mechanism:** none of our own. The v3 client's History panel loads both as the
+user opens an event and its boards; a page hook copies the responses to the
+content script. Used by **Bridge Craftwork DD**, the second extension built
+from this repo (`EXT=dd`), for its double-dummy review
+(`src/ui/bboDdOverlay.js`). Fetch does not read them.
+
+Found by watching the panel's traffic, 1 Nov 2026:
+
+| The user… | BBO requests | Returns |
+|---|---|---|
+| Opens an event | `POST mh_list.php`, `tkey=33873-1793548800&username=kemistry` (+ `format`, `teamname`, `merge`) | `<sc_boards>`: per board, a `resultkey`, the result, score, and **each seat named by attribute** (`north=` …) |
+| Opens a board (board 1 opens with the event) | `POST mh_hand.php`, `hk=<resultkey>` | `<linhand>`: the full LIN — deal, auction with alerts, **every card played**, claim |
+| Steps through tricks | **nothing** | The panel replays the LIN it already has |
+
+Both answer **without a login** — checked with `curl` and no cookies — and send
+`Access-Control-Allow-Origin: *`. `tkey` is the number in the panel's title bar
+plus the event's start time; it is the same key `hands.php` puts in its
+`tview.php?t=` links. BBO fetches each board once per visit and keeps it, so
+returning to a board loads nothing: the overlay identifies the board on screen
+by matching its hand panels against the deals it has seen, not by the last
+response.
+
+`mh_list`'s seat attributes and the LIN's positional `pn|` (S, W, N, E) agree —
+two independent sources, pinned in `tests/adapters/bbo/mhXml.test.js`.
+
+**Why copy rather than fetch.** It costs BBO nothing extra, and it is
+available sooner: `myhands/hands.php` lags an event by about a minute, while
+this is what BBO's own panel shows as each board finishes. Not yet seen during
+a live event — whether the auto-loaded board arrives through `mh_hand.php`, as a
+click does, or over the websocket is the open question.
+
+**Why registered at runtime, not in the manifest.** crxjs loads every manifest
+content script through a dynamic `import()` of an extension URL. In the page's
+own world that import is subject to BBO's CSP, whose `script-src *` admits no
+extension scheme. `scripting.registerContentScripts({ world: 'MAIN' })` injects
+the file directly, so the CSP never applies. The file lives in `public/` and is
+copied unbundled.
+
+**The hook also shortens BBO's animation, on request.** Stepping the viewer to an
+error's trick presses BBO's own Next trick, and BBO animates each trick as
+`setTimeout(…, 750)` per card plus a 2-second pause, about 2.3 s a trick
+(measured; its Animation setting removes them but is read only at startup). For
+the length of a jump the hook cuts delays of 200–2000 ms to 10 ms, then
+restores them, with a 15-second failsafe. Measured: trick 3 from the start in
+~1 s instead of ~7 s, and BBO's own Next trick back to 2.3 s afterwards.
+
+**Casual play is not covered.** Casual tables have no `tkey`; the Recent hands
+tab loads them some other way, not yet captured.
+
+The analysis runs in the background, in bridge-solver's WASM
+(`Analyzer.dd_play`, ~40 ms for 52 cards), and is cached 14 days by
+`resultkey`. Nothing about it leaves the device.
+
 ---
 
 ## 4. Authentication summary
@@ -290,6 +351,7 @@ BBO hosts, **1 s** for ACBL hosts, which need more breathing room.
 | `live.acbl.org` (403 without) | `webutil.bridgebase.com/v2/tview.php` |
 | `my.acbl.org` (403 without) | `www.bridgebase.com/myhands/fetchlin.php` |
 | `bridgebase.com/myhands/hands.php` (302 to login) | `www.bridgebase.com/tools/handviewer.html` (deal is in the URL) |
+| | `webutil.bridgebase.com/v2/mh_list.php`, `mh_hand.php` (copied, not fetched) |
 
 The split is what makes the replay backfill practical: the extension does the
 ~3,660 session-bound fetches for a 264-event history in about 20 minutes, and a

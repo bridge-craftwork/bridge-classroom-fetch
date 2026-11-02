@@ -128,13 +128,19 @@ function parseVulnerability(sv) {
 }
 
 // Convert LIN bid tokens to canonical bid strings.
-// LIN uses: 'p'=pass, 'x'=double, 'r'=redouble, '1N'=1NT, '2C'=2♣, etc.
+// LIN uses: 'p'=pass, 'd'=double, 'r'=redouble, '1N'=1NT, '2C'=2♣, etc. BBO
+// writes 'd'; 'x' is accepted too, since some LIN writers use it.
+//
+// A trailing '!' marks an alerted call (`mb|2C!|an|10+|`). It is BBO's flag, not
+// part of the call, and left in place it hides the bid from deriveContract —
+// an alerted final contract would hand the declaration to the wrong seat.
 function buildAuction(mbTokens) {
-  return mbTokens.map((bid) => {
+  return mbTokens.map((raw) => {
+    const bid = raw.replace(/!+$/, '')
     const lower = bid.toLowerCase()
     if (lower === 'p') return 'PASS'
-    if (lower === 'x') return 'X'
-    if (lower === 'r') return 'XX'
+    if (lower === 'd' || lower === 'x') return 'X'
+    if (lower === 'r' || lower === 'xx') return 'XX'
     // Natural bid: LIN uses 'N' for NT, schema uses 'NT'.
     return bid.replace(/n$/i, 'NT').toUpperCase()
   })

@@ -1,6 +1,27 @@
 import { defineConfig } from 'vite'
 import { crx } from '@crxjs/vite-plugin'
-import baseManifest from './manifest.json' with { type: 'json' }
+import { execFileSync } from 'node:child_process'
+import fetchManifest from './manifest.json' with { type: 'json' }
+import ddManifest from './manifest.dd.json' with { type: 'json' }
+
+// Two extensions from one source tree. EXT=fetch (the default) is Bridge
+// Classroom Fetch; EXT=dd is Bridge Craftwork DD, the double-dummy review in
+// BBO's History panel. They share src/ — parsers, the hand-off to Bridge
+// Classroom — and differ in manifest, entry points and output folder.
+const EXT = process.env.EXT ?? 'fetch'
+if (EXT !== 'fetch' && EXT !== 'dd') throw new Error(`Unknown EXT=${EXT}. Supported: fetch, dd.`)
+const baseManifest = EXT === 'dd' ? ddManifest : fetchManifest
+
+// bridge-solver's WASM package is fetched, not committed (src/vendor/ is
+// gitignored). A plugin rather than an npm `prebuild` hook so that every DD
+// build variant gets it, not only `npm run build:dd`. Fetch doesn't use it.
+// The script is a no-op when the pinned release is in place.
+const fetchSolverWasm = {
+  name: 'fetch-solver-wasm',
+  buildStart() {
+    execFileSync(process.execPath, ['scripts/fetch-solver-wasm.mjs'], { stdio: 'inherit' })
+  },
+}
 
 // Cross-browser builds. Today only Chrome is published, but the structure
 // supports Edge / Firefox / Safari without source changes — see
@@ -37,8 +58,11 @@ const PER_BROWSER_OVERRIDES = {
   // service-worker support) would make the declaration a lint error. The two
   // floors differ, hence the separate gecko_android block.
   firefox: {
+    // The extension's own background entry — Fetch's or DD's — not a fixed
+    // path: hard-coding Fetch's here once shipped DD's Firefox build with the
+    // wrong background and no solver.
     background: {
-      scripts: ['src/background.js'],
+      scripts: [baseManifest.background.service_worker],
     },
     browser_specific_settings: {
       gecko: {
@@ -69,6 +93,17 @@ if (!Object.hasOwn(PER_BROWSER_OVERRIDES, BROWSER)) {
 
 const manifest = { ...baseManifest, ...PER_BROWSER_OVERRIDES[BROWSER] }
 
+// Firefox identifies an add-on by its gecko id, so DD needs its own.
+if (EXT === 'dd' && manifest.browser_specific_settings) {
+  manifest.browser_specific_settings = {
+    ...manifest.browser_specific_settings,
+    gecko: {
+      ...manifest.browser_specific_settings.gecko,
+      id: 'bridge-craftwork-dd@bridge-classroom.org',
+    },
+  }
+}
+
 // INGEST_TEST=1 adds origins for the test ingester (local static server and the
 // GitHub Pages copy) to the ingest content script and host permissions. Kept
 // out of shipped builds: a localhost or github.io permission in a store listing
@@ -88,10 +123,48 @@ if (process.env.INGEST_TEST === '1') {
   manifest.host_permissions = [...manifest.host_permissions, ...TEST_ORIGINS]
 }
 
+// SHOT_MODE=1 adds a content script that redacts personal data on every load,
+// for capturing store screenshots. It is NOT a shipping build: the redactor
+// rewrites the page, which is the last thing a real user wants. package-stores.sh
+// refuses any build containing it.
+//
+// It exists because the manual route failed once and once was enough — the
+// first iPhone capture went out with a real club manager's name and email on
+// screen, because redacting was a step a human had to remember before each
+// shot. See docs/screenshot-set.md.
+const SHOT_MODE = process.env.SHOT_MODE === '1'
+
+if (SHOT_MODE) {
+  manifest.content_scripts = [
+    ...manifest.content_scripts,
+    {
+      matches: [
+        'https://live.acbl.org/*',
+        'https://my.acbl.org/*',
+        'https://webutil.bridgebase.com/*',
+        'https://www.bridgebase.com/*',
+      ],
+      js: ['src/ui/redactContent.js'],
+      // document_idle, not document_start. There is nothing to redact before
+      // the content exists, and running early bought nothing while making the
+      // first pass fire against an empty page.
+      run_at: 'document_idle',
+    },
+  ]
+}
+
 export default defineConfig({
-  plugins: [crx({ manifest, browser: BROWSER === 'firefox' ? 'firefox' : 'chrome' })],
+  plugins: [...(EXT === 'dd' ? [fetchSolverWasm] : []), crx({ manifest, browser: BROWSER === 'firefox' ? 'firefox' : 'chrome' })],
+  define: {
+    // Off unless SHOT_HIDE_LOGO=1. The club logo is a photograph rather than
+    // identity; hiding it is a framing choice, not a redaction.
+    __SHOT_HIDE_LOGO__: JSON.stringify(process.env.SHOT_HIDE_LOGO === '1'),
+  },
+  // Files copied as-is. Only DD has any — the page hook, which must not be
+  // bundled — and Fetch must not ship it.
+  publicDir: EXT === 'dd' ? 'public-dd' : false,
   build: {
-    outDir: `dist/${BROWSER}`,
+    outDir: EXT === 'dd' ? `dist/dd-${BROWSER}` : `dist/${BROWSER}`,
     emptyOutDir: true,
   },
 })

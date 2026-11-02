@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bridge Craftwork DD — privacy &#183; Bridge Craftwork</title>
+<link rel="canonical" href="https://bridge-craftwork.com/dd/privacy/">
+<meta name="description" content="Privacy policy for Bridge Craftwork DD, the browser extension that adds double-dummy review to Bridge Base Online's History panel.">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="stylesheet" href="/styles.css">
+<!--
+  Bridge Craftwork DD's privacy policy, the URL its store listings point at.
+  Source of truth: PRIVACY-DD.md in bridge-craftwork/bridge-classroom-fetch,
+  which builds the extension. Keep the two in step.
+  Copy this file to site/dd/privacy/index.html.
+-->
+<style>
+body{background:var(--color-background-tertiary)}
+.page{max-width:760px;margin:0 auto;padding:36px 20px 56px}
+.doc{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:28px 32px 32px}
+h1{font-size:26px;font-weight:500;margin-bottom:8px}
+.lede{font-size:17px;color:var(--color-text-secondary);line-height:1.55;margin-bottom:18px}
+h2{font-size:19px;font-weight:500;margin:30px 0 10px;padding-top:18px;border-top:0.5px solid var(--color-border-tertiary)}
+p,li{font-size:15.5px;line-height:1.65;color:var(--color-text-primary)}
+p{margin:0 0 12px}
+ul{margin:0 0 12px 22px}
+li{margin-bottom:4px}
+table{border-collapse:collapse;width:100%;margin:0 0 14px;font-size:14.5px}
+th,td{text-align:left;vertical-align:top;padding:7px 10px;border-bottom:0.5px solid var(--color-border-tertiary)}
+th{font-weight:600}
+code{font-family:var(--font-mono);font-size:13.5px;background:var(--color-background-secondary);padding:1px 5px;border-radius:4px}
+.updated{font-size:14px;color:var(--color-text-tertiary)}
+</style>
+</head>
+<body>
+<main class="page">
+<article class="doc">
+<h1>Bridge Craftwork DD — privacy policy</h1>
+<p class="updated">Last updated 1 November 2026</p>
+<p class="lede">Bridge Craftwork DD is a browser extension that adds double-dummy review to the
+<strong>History</strong> panel of Bridge Base Online's web client. For each board you open
+there, it marks the cards that cost a trick, shows what should have been played, and totals
+the errors for the event. It can be hidden or shown from the menu on BBO's deal view.</p>
+
+<h2>What it reads</h2>
+<p>Only the History panel's own data. When you open an event or a board, Bridge Base's page
+loads them from Bridge Base's servers, and the extension reads a copy of those two responses:
+the event's list of boards, and each board's deal and play. It makes <strong>no requests of
+its own</strong> to Bridge Base and reads nothing else on the page. It never reads your Bridge
+Base login or password.</p>
+
+<h2>Where the analysis happens</h2>
+<p>On your device. The double-dummy solver runs inside the extension, in your browser. No
+deal, result or name is sent anywhere for analysis.</p>
+
+<h2>What it stores, and for how long</h2>
+<p>The analysis of each board you open is kept in the extension's storage, on your device,
+for <strong>14 days</strong>, so that going back to an earlier event does not repeat the work.
+Each entry holds the deal, the cards played, the four players' Bridge Base usernames and the
+result of the analysis. It is never sent anywhere and is deleted automatically after 14 days.
+Removing the extension deletes it at once. Whether the display is shown or hidden is also
+kept, so your choice holds.</p>
+
+<h2>Where results go</h2>
+<p>Nowhere, unless you click the <strong>DD Details</strong> button on a board. That sends
+that one deal, its auction and play, and the players' Bridge Base usernames to a Bridge
+Classroom page (bridge-classroom.org or bridge-classroom.com), which passes them on to the
+double-dummy viewer at bridge-craftwork.com/bridge-solver. The
+<a href="https://bridge-classroom.org/privacy#extension">Bridge Classroom privacy policy</a>
+governs them from there.</p>
+<p>There are no analytics, no telemetry, no advertising and no tracking. Nothing is sold or
+shared.</p>
+
+<h2>Permissions</h2>
+<table>
+<tr><th>Permission</th><th>Why</th></tr>
+<tr><td><code>storage</code></td><td>The 14-day analysis cache and the show/hide setting</td></tr>
+<tr><td><code>scripting</code></td><td>Adds a small script to Bridge Base's page that passes the History panel's boards to the extension as Bridge Base loads them, without making any request of its own</td></tr>
+<tr><td>Access to <code>www.bridgebase.com/v3/</code></td><td>The page the review is drawn on</td></tr>
+</table>
+
+<h2>Source code</h2>
+<p>Open source, released under The Unlicense:
+<a href="https://github.com/bridge-craftwork/bridge-classroom-fetch">github.com/bridge-craftwork/bridge-classroom-fetch</a>.</p>
+</article>
+</main>
+</body>
+</html>

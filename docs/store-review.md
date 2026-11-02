@@ -186,7 +186,7 @@ cold. It expects three files beside it:
 |---|---|
 | `demo/bbo-hands-list.mp4` | The button in BBO's hands-list header; one session extracted across the field |
 | `demo/bbo-history-batch.mp4` | The lobby date-range menu, the progress count, the batch result |
-| `demo/acbl-live-tournament.mp4` | `live.acbl.org`, the button beside the `h1`, multi-section extraction |
+| `demo/acbl-live-tournament.mp4` | `live.acbl.org`, the button beside the `h1`, one event extracted |
 
 `.github/workflows/pages.yml` publishes `demo/` to `/demo/` alongside the test
 ingester, on any push touching those paths.
@@ -241,7 +241,18 @@ finished downloading. `-an` drops audio, which these do not need.
 **Git LFS must not be used** — Pages serves the LFS pointer rather than the
 video, which looks like it works until a reviewer receives 130 bytes of text.
 
-**Not yet recorded.** This is the one submission asset still outstanding.
+**All three are recorded and committed**, and published at the URL above.
+
+**`acbl-live-tournament.mp4` is a release behind, and is being re-recorded for
+1.1.0.** It was shot on 11 August; the ACBL Live work landed on the 13th. What
+it shows — the button beside the `h1` on an event summary, then the analysis —
+still happens, so nothing in it is a lie. What it omits is now the interesting
+part: that page asks which pair before it fetches, and the label counts a
+percentage while it does. The clip exists to show a reviewer the path they
+cannot log in to, so it should show the path as built.
+
+The other two are unaffected. `bbo-history-batch.mp4` shows the *BBO* lobby
+batch, which was never touched — only ACBL Live's date-range batch was removed.
 
 ---
 
@@ -334,6 +345,114 @@ It should report no differences. A folder reference (blue in Xcode, `lastKnownFi
 tracks its contents automatically, so files *inside* `icons/` and `assets/` need
 no further action — only new top-level entries do.
 
+**New source files are not new top-level entries.** 1.1.0 added three modules —
+`src/ui/acblResultsList.js`, `pairPicker.js`, `extractProgress.js` — and needed
+no Xcode change, because Vite bundles them into the existing `assets/` chunks:
+they are imported by `sourceContent.js` rather than being fresh entry points.
+Checked rather than assumed — `ls dist/safari` before and after still reports
+exactly `assets`, `icons`, `manifest.json`, `service-worker-loader.js`.
+
+What *would* need registering is a new **entry point**: another content script
+or an HTML page in `manifest.json`, which @crxjs emits with its own loader
+beside `service-worker-loader.js`. That is the trigger to watch for, not "a file
+was added to `src/`".
+
+### 3bc. Safari: what the archive actually needs
+
+Checked by archiving rather than by reading, August 2026. `xcodebuild -scheme
+"Bridge Classroom Fetch (macOS)" -configuration Release archive` **succeeds**,
+and the archived app carries 1.1.0 / build 1 with the extension's resources
+byte-identical to `dist/safari`.
+
+**Sandboxing is already correct, and there is no `.entitlements` file to look
+for.** Current Xcode synthesises entitlements from build settings, so the
+absence of a file is not the absence of a sandbox. Verified against the signed
+archive with `codesign -d --entitlements`:
+
+| | App | Extension |
+|---|:--:|:--:|
+| `com.apple.security.app-sandbox` | ✅ | ✅ |
+| `com.apple.security.files.user-selected.read-only` | ✅ | ✅ |
+| `com.apple.security.network.client` | ✅ | — |
+
+That is an exact match for Xcode's own `macOS Safari Extension App` and
+`macOS Safari Extension` templates, which set `ENABLE_APP_SANDBOX`,
+`ENABLE_HARDENED_RUNTIME`, `ENABLE_USER_SELECTED_FILES = readonly`, and
+`ENABLE_OUTGOING_NETWORK_CONNECTIONS` **on the app only**. The extension needs
+no network entitlement: its fetches are made by Safari's own networking on
+behalf of the web extension, not by the `.appex`, which exists only to host the
+native-messaging handler. That was read off Apple's templates rather than
+reasoned about — the templates are at
+`/Applications/Xcode.app/Contents/Developer/Library/Xcode/Templates/Project Templates/MultiPlatform/Application/`.
+
+**`LSApplicationCategoryType` was missing, and the archive said so.** The build
+emitted `warning: No App Category is set for target`, and the archived
+`Info.plist` had no category key. App Store Connect requires one. Fixed by
+adding `INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities"`
+to both macOS App configurations — the idiomatic route here, since
+`GENERATE_INFOPLIST_FILE = YES` and the plists on disk hold almost nothing. It
+agrees with the *Utilities* category in § 3a. The warning is gone and the key is
+in the archive.
+
+**Signing for the store is not yet possible from this machine, and that is
+normal.** The two identities present are `Developer ID Application` — which is
+for distributing *outside* the store — and `Apple Development`. Neither is an
+App Store distribution identity, and there are no provisioning profiles. The
+local archive signs with `Apple Development`; Xcode's **Distribute App ▸ App
+Store Connect** flow creates the distribution certificate and profile on
+demand. Do not pass `-allowProvisioningUpdates` to a scripted build to force
+this: it mints certificates in the developer account as a side effect.
+
+**The version floors were the converter's, and they were wrong.** Raised to
+**macOS 11.0** and **iOS 16.4**, from 10.14 and 15.0. The reasoning is specific
+to this extension, so it is worth keeping:
+
+- **MV3 alone is not the constraint.** Safari has supported `manifest_version: 3`
+  since **Safari 15.4**, not 16.4 — an easy thing to misremember, and it was
+  misremembered here first.
+- **The constraint is the service worker's `import`.** `dist/safari/service-worker-loader.js`
+  is one line — `import './assets/background.js-*.js';` — and Safari had a bug
+  where a **background service worker failed to import scripts**, fixed in
+  **Safari 16.4**. Below that the background worker plausibly never starts, which
+  is the whole extension, not a degraded corner of it.
+- **Safari 16.4 shipped for macOS Big Sur, Monterey and Ventura**, and as
+  iOS/iPadOS 16.4. So macOS 11 is the oldest macOS that can reach a fixed Safari,
+  and iOS 16.4 is exactly where the fix landed. Xcode independently recommends
+  11.0 for macOS.
+
+A deployment target cannot enforce a Safari version, so a Big Sur user who has
+never updated Safari can still install and find it broken. The floor removes the
+systems that *cannot* work; it cannot remove the ones that merely have not
+updated.
+
+### Both platforms, one record
+
+`safari-web-extension-converter` produced iOS **and** macOS targets, and they
+share the bundle identifier `org.bridge-classroom.bridge-classroom-fetch`, so
+App Store Connect holds them as two platforms on one app record.
+
+**Submitting only macOS misses the point of Safari.** Safari is the only browser
+engine on iPad — there is no Chrome or Firefox to fall back on — which is the
+argument in CLAUDE.md for why iPadOS punches above its share. Both are archived
+for 1.1.0:
+
+```bash
+xcodebuild -scheme "Bridge Classroom Fetch (macOS)" -configuration Release \
+  -archivePath /tmp/BCF.xcarchive archive
+xcodebuild -scheme "Bridge Classroom Fetch (iOS)" -configuration Release \
+  -destination "generic/platform=iOS" -archivePath /tmp/BCF-ios.xcarchive archive
+```
+
+Both succeed, both carry 1.1.0 build 1, and both bundle the extension's
+`assets`, `icons`, `manifest.json` and `service-worker-loader.js`. The iOS
+archive reports `MinimumOSVersion 16.4`; the macOS one `LSMinimumSystemVersion
+11.0` and the Utilities category.
+
+**iPad needs its own screenshots.** Apple requires iPad-sized images, and the
+2560×1600 masters do not qualify — they are the Mac size. That is the one piece
+of genuinely new work the iOS platform adds; see
+[screenshot-set.md](screenshot-set.md) § iPad.
+
 ### 3c. addons-linter, and what it says
 
 AMO runs Mozilla's `addons-linter` on upload. Run it first:
@@ -355,8 +474,18 @@ The linter is flagging a vendored library implementing the DOM, not this
 extension writing markup into a page.
 
 **`data_collection_permissions` is required for new Firefox extensions.** It is
-declared in `vite.config.js` as the explicit `required: ['none']` — the
-extension collects nothing, and Mozilla wants that said rather than omitted.
+declared in `vite.config.js`, and it says
+`required: ['personallyIdentifyingInfo', 'websiteContent']`.
+
+It said `none` until 1.0.1, and that was wrong. `none` means "does not collect
+or transmit any personal data", and the extension does transmit: `Player` is
+`{ name, acbl_id, … }` — a real name and a national-body number — sent
+off-device to `bridge-classroom.org` whenever the source is ACBL. There is no
+server and no telemetry here, which is what made `none` feel right; but
+"collect" in every store's sense means *leaves the device*, not *reaches us*.
+The same mistake was made on Chrome's disclosure and corrected there too — see
+[submission-answers.md](submission-answers.md) § Data use, which is the longer
+version of this note. Keep the three in step.
 
 That key set the version floors. It landed in Firefox 140 and Firefox for
 Android 142, so the previous `strict_min_version: 121.0` (chosen only for MV3
@@ -470,13 +599,47 @@ Chrome requires a written justification per permission. Current manifest:
 
 **Paste-ready wording for every field is in [submission-answers.md](submission-answers.md)**, kept in step with this table.
 
-### Tightening candidates for 1.0.1
+### Bridge Craftwork DD — the second extension
+
+Built from this repo with `EXT=dd` (`manifest.dd.json`, output `dist/dd-<browser>`).
+Not yet listed anywhere. What its review will look at, none of which Fetch now
+carries:
+
+- **`content_security_policy.extension_pages` with `'wasm-unsafe-eval'`**, so the
+  background can compile bridge-solver's WASM and solve on the user's device.
+  The narrow directive: WebAssembly only, not `eval`.
+- **`scripting`**, for `registerContentScripts` with `world: 'MAIN'`: the page
+  hook (`public-dd/bbo-page-hook.js`) that copies two responses BBO's own History
+  panel loads, and requests nothing. [data-sources.md](data-sources.md) § 3.9
+  says why it is registered at runtime.
+- **`storage`** for a 14-day cache of analysed boards, which include other
+  players' BBO usernames. Local only. Its policy draft is
+  [PRIVACY-DD.md](../PRIVACY-DD.md).
+- **One host**, `www.bridgebase.com/v3/*`; no `tabs` (the hand-off only creates
+  a tab).
+
+Desktop browsers only, for a start: iOS users of BBO are in its app, not the
+v3 web client this runs on. Safari's support for `world: 'MAIN'` in
+`registerContentScripts` is unverified.
+
+### Tightening candidates — deferred again, to 1.2.0
 
 Audited after submitting 1.0.0. **None of these were changed at the time**:
 Chrome had 1.0.0 in review, and editing the manifest would have meant either
 resubmitting Chrome — restarting the review clock — or shipping the other three
 stores a different 1.0.0 than Chrome was reviewing. Parity was worth more than
 a tightening that changes no user-visible behaviour.
+
+**Still not done in 1.1.0, and this time the reason is different.** The note
+below says both belong in a version bump, and 1.1.0 is one — so it was
+considered rather than overlooked. Against it: 1.1.0 is already resubmitting to
+four stores at once, both changes rewrite justification text that has been
+through review once, and both want a QA pass on all four browsers to prove
+nothing regressed. Neither is visible to a user. Adding that to a release whose
+purpose is to get the ACBL Live fix out is spending risk on tidiness.
+
+They go in **1.2.0**, on their own, where a four-browser pass is the whole job
+and a rejection costs nothing else.
 
 **`tabs` can be dropped.** Verified empirically, not inferred: built without it,
 loaded the extension, opened a `www.bridgebase.com` tab, and called
@@ -513,8 +676,12 @@ than a hurried resubmission.
 
 - ~~Remove `http://localhost:3001/game-analysis/*` from `host_permissions`.~~
   Done — removed when the `/game-analysis/` hand-off was retired. Local
-  development now uses the `devIngestUrl` override, which needs no manifest
-  entry.
+  development uses the `devIngestUrl` override **plus the `INGEST_TEST=1`
+  build**: the override only says where to send the payload, and the content
+  script that delivers it matches `bridge-classroom.{org,com}` alone. This
+  entry, README.md and CLAUDE.md all used to claim the override was sufficient
+  on its own. It is not, and the failure is silent — the hand-off hangs on a
+  page with nothing listening.
 - **Do not ship the `INGEST_TEST=1` build.** It adds `localhost`, `127.0.0.1`
   and a GitHub Pages origin for end-to-end testing.
 
@@ -636,17 +803,39 @@ anyone reads, and colour alone won't separate them.
 (see *Where the policy lives* above). Needs the `Bridge-Classroom` repo deployed
 before it resolves.
 
-**~~Version number~~ — 1.0.0.** The first public release. Four places carry it,
-and they are not all the same string by default:
+**~~Version number~~ — 1.1.0.** Four places carry it, and they are not all the
+same string by default:
 
 | Where | Note |
 |---|---|
 | `manifest.json` | canonical; `PROVIDER.version` reads it, so the payload follows |
-| `package.json` + lock | `npm version 1.0.0 --no-git-tag-version` |
-| Xcode `MARKETING_VERSION` | was the template's `1.0`, which is *not* `1.0.0` |
+| `package.json` + lock | `npm version 1.1.0 --no-git-tag-version` |
+| Xcode `MARKETING_VERSION` | eight occurrences in `project.pbxproj` — four targets × two configurations |
 | Xcode `CURRENT_PROJECT_VERSION` | build number, at 1; bump per Safari **upload**, not per release |
 
-Bump it with one command, from the folder holding the `.xcodeproj`:
+**A minor, not a patch, and the number had to move.** 1.0.0 was the first public
+release; 1.0.1 corrected the Firefox data declaration and went to AMO on 11
+August. Everything in PRs #5–#9 landed on the 12th and 13th — *after* that
+upload — so the working tree and the build in AMO's queue were both calling
+themselves 1.0.1 while differing by a removed feature. That alone forces a bump.
+1.1.0 rather than 1.0.2 because the ACBL Live date-range batch was removed and
+replaced with per-row links, the pair picker is new, section coverage narrowed
+to the user's own, and the envelope went 1.1 → 1.4 — 1.2 for those
+changes, then 1.4 for the two ACBL E-W seat-order fixes, which a consumer must
+branch on to read anything a released build already produced. 1.3 is skipped
+deliberately: Bridge Classroom's ingest door already stamps it on envelopes
+whose players it corrected and whose double-dummy table it did not, so a
+producer must never publish it (seat-order-contract.md § Consumer rule).
+
+**Bump `MARKETING_VERSION` in `project.pbxproj`, not with agvtool.** There is an
+`agvtool new-marketing-version`, and on this project it does nothing useful: it
+substitutes `CFBundleShortVersionString` in the four `Info.plist`s, which do not
+contain that key — Xcode generates it from the build setting — and it leaves
+`MARKETING_VERSION` alone. It reports "Updated …" for each plist regardless, so
+it looks like it worked. `sed -i '' 's/MARKETING_VERSION = 1.0.1;/MARKETING_VERSION = 1.1.0;/g'`
+over `project.pbxproj` is what actually moves it; expect eight hits.
+
+The **build** number is agvtool's, and that command does work:
 
 ```bash
 cd "safari/Bridge Classroom Fetch"
@@ -654,12 +843,12 @@ xcrun agvtool new-version -all 2      # what-version -terse to check
 ```
 
 That updates all four targets across both configurations and leaves
-`MARKETING_VERSION` alone. Only `project.pbxproj` changes — the Info.plists
-agvtool names are generated.
+`MARKETING_VERSION` alone — which is exactly why it cannot be used for the
+marketing version. Only `project.pbxproj` changes.
 
-The first upload can go as build 1. App Store Connect refuses a second upload
-reusing a build number, so this is for re-uploading against the same 1.0.0
-after a rejection.
+**1.1.0 goes up as build 1**, since nothing has ever been uploaded to App Store
+Connect. Connect refuses a second upload reusing a build number, so bump to 2
+only when re-uploading against 1.1.0 after a rejection.
 
 `safari/…/Shared (Extension)/Resources/manifest.json` also carries it, but that
 is packaging output — re-run `package-stores.sh` rather than editing it.
@@ -676,6 +865,26 @@ Mitigated by leading with the three paths that need nothing.
 interstitial before the page loads — on `live.acbl.org` a login prompt follows,
 on `my.acbl.org` the results do. Worth mentioning in reviewer notes so the
 interstitial isn't mistaken for the extension misbehaving.
+
+**On iPhone and iPad the extension does nothing until website permission is
+granted, and nothing says so.** Enabling it in Settings is only half the job;
+Safari grants page access per site, separately, and until then no content script
+runs. There is no prompt unless the user opens the page menu, no console error,
+and no visible difference from a broken build.
+
+Confirmed on a real iPhone, iOS 26.6, August 2026 — and it is not the same
+journey on the two devices, which is what made it confusing:
+
+| | iPad | iPhone |
+|---|---|---|
+| Extensions button | puzzle-piece, directly in the toolbar | none — folded into the page menu |
+| Address bar | top | usually **bottom** |
+| How the extension surfaces | visible immediately | a warning indicator inside the page menu |
+
+Someone who has granted it on an iPad will look for a puzzle-piece on the phone
+and not find one, and reasonably conclude the extension did not install. The
+Apple reviewer notes in [submission-answers.md](submission-answers.md) walk
+through the iPhone route explicitly for exactly this reason.
 
 **The extension appears to do nothing on unsupported pages.** By design: the
 button only injects on recognised result pages. A reviewer opening

@@ -68,6 +68,44 @@ https://bridge-classroom.org/privacy#extension
 
 ---
 
+## Release notes — 1.1.0
+
+**Draft, needs Rick's sign-off before it goes in a console.** Edge Partner
+Center and addons.mozilla.org both ask for release notes per version. Chrome
+does not ask. Apple's field is *What's New in This Version*, which a **first**
+submission does not use — 1.1.0 is Apple's 1.0, so it gets the description
+above and nothing here.
+
+The honest framing is that a feature was removed, and why. Users of the Edge
+1.0.1 build have hit this: a five-event batch spent the sign-in allowance
+mid-run and ACBL Live signed them out.
+
+```
+ACBL Live tournaments
+
+• Each row of your results list now has its own "Analyze in Bridge Classroom" link, replacing the date-range batch. live.acbl.org allows a limited number of requests per sign-in, and fetching several events at once could spend it and sign you out. One event per click stays comfortably inside it — roughly two or three events per sign-in.
+• A tournament's event list now asks which pair you mean, with a search box, instead of guessing.
+• Progress now shows a percentage while an event is fetched.
+• If ACBL Live does sign you out mid-fetch, the extension says so under the row that was clicked, and tells you to sign in again — rather than failing with a message about the page.
+• Team events are not supported and no longer offer a link that could not work.
+
+ACBL club games (my.acbl.org) and Bridge Base Online are unchanged, and both keep their date-range batches — including your Bridge Base Online history from the lobby, a month, six months, a year, or all of it at once.
+```
+
+Keep the first bullet first. It is the only one that explains a removal, and a
+user who liked the batch deserves the reason before the replacement.
+
+**Name both surviving batches, and do not let the sentence imply otherwise.**
+An earlier draft ended "including the club date-range batch", which reads as
+though the club one is the only batch left. BBO's is not only intact, it is the
+larger of the two — the lobby offers up to *All time*, against a date range on
+`my.acbl.org` — and it is the one users have most of their sessions in. Only
+ACBL Live's batch was removed, and only because `live.acbl.org` counts requests
+per sign-in. A release note that quietly retires a working feature costs more
+trust than the one it was written to explain.
+
+---
+
 ## Single purpose
 
 Chrome asks for one sentence. Keep it narrow — a broad answer invites the
@@ -280,6 +318,37 @@ https://bridge-craftwork.github.io/bridge-classroom-fetch/demo/
 Other players' names are obscured in those recordings, for the same reason the extension does not collect them.
 ```
 
+**For Apple, add this to the reviewer notes.** It is not optional politeness —
+a reviewer who skips it sees an extension that does nothing, which is a
+rejection. Confirmed on a real iPhone (iOS 26.6) in August 2026: the extension
+was installed and enabled, and the content script was never injected. Safari's
+Web Inspector showed the page's own scripts under *Extra Scripts* and none of
+ours; the console was clean, because nothing of ours had run to fail.
+
+```
+On iPhone and iPad, enabling the extension in Settings is not sufficient on its own. Safari also requires per-website permission before any extension can run on a page, and until it is granted the extension is installed, enabled, and correctly does nothing — it has not been allowed to read the page. No error appears, because nothing has run.
+
+To grant it:
+
+1. Open the test URL below in Safari.
+2. Open the page menu — the button at the left end of the address bar. On iPhone the address bar is usually at the BOTTOM of the screen.
+3. In that menu, "Bridge Classroom Fetch" appears with a warning indicator beside it. Tap it and choose to allow it on every page.
+4. Reload the page.
+
+The "Analyze in Bridge Classroom" button then appears in the page's own navigation bar. Safari only injects content scripts into pages loaded after permission is granted, so the page open at step 3 needs the reload at step 4.
+
+Note that iPad and iPhone differ here. On iPad, Safari shows a puzzle-piece extensions button directly in the toolbar. On iPhone there is no room for one, and the same controls live inside the page menu described above.
+
+The best test needs no account:
+https://my.acbl.org/club-results/details/1455416
+```
+
+**Why this is worth the space.** The failure is silent and total, and it looks
+exactly like a broken app: no button, no error, no prompt. It cost an hour to
+diagnose on a device we own, with the source in front of us and a Web Inspector
+attached. A reviewer has none of those and no reason to suspect a permission
+model — they have a build that does nothing.
+
 **For addons.mozilla.org, add** — paste this into the reviewer-notes field at
 submission, rather than waiting to be asked. It is the difference between a
 note and a round-trip:
@@ -299,10 +368,18 @@ Neither touches a live document. The parsers run in the service worker against s
 Nothing in our own source assigns to innerHTML at all: `grep -rn innerHTML src/` returns no matches. We are happy to answer any question about either site.
 ```
 
-If a reviewer follows up, the two coordinates in the 1.0.0 build were
-`assets/background.js-*.js` line 2 col 8296 and line 7 col 443. The hash in that
-filename changes with every build, so cite the line and column rather than the
-name.
+If a reviewer follows up, the two coordinates are in `assets/background.js-*.js`
+at **line 2 col 8311 and line 7 col 443** in the 1.1.0 build — they were col
+8296 and col 443 in 1.0.0. The hash in that filename changes with every build,
+so cite the line and column rather than the name; and the column on line 2 moves
+with any change to the bundle, so re-read it before quoting it:
+
+```bash
+npx web-ext lint --source-dir dist/firefox --output json | \
+  python3 -c "import json,sys; [print(w['file'], w['line'], w['column']) for w in json.load(sys.stdin)['warnings']]"
+```
+
+1.1.0 lints at **0 errors, 2 warnings** — the same two, in the same order.
 
 ---
 
@@ -310,7 +387,7 @@ name.
 
 | Field | File |
 |---|---|
-| Package (Chrome) | `dist/packages/bridge-classroom-fetch-1.0.0-chrome.zip` |
+| Package (Chrome) | `dist/packages/bridge-classroom-fetch-1.1.0-chrome.zip` |
 | Package (Edge) | `…-edge.zip` |
 | Package (Firefox) | `…-firefox.zip` **and** `…-source.zip` |
 | Store icon 128×128 | `icons/icon-128.png` |
@@ -336,3 +413,10 @@ what each is and what is still to be captured.
 `bbo-hands-list-before`. That is the whole arc — button, choose a range, fetch,
 result — plus a second source. Edge takes six and Apple ten, so
 `acbl-club-game-before`/`-after` can be added there.
+
+**What went up, and what goes up to Apple.** `screenshots/listing/` is the five
+actually submitted in August 2026, numbered in reviewer order. They stand for
+1.1.0 unchanged — all five are ACBL clubs or BBO, and the ACBL Live work touched
+neither. The Mac App Store listing adds the four ACBL Live shots on top, for
+nine of its ten slots; see [screenshot-set.md](screenshot-set.md) § The Apple
+set.
