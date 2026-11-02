@@ -1,11 +1,12 @@
-// Parse the two XML responses behind the v3 client's History panel:
+// Parse the three XML responses behind the v3 client's History panel:
 //
+//   webutil.bridgebase.com/v2/tfind.php    — a player's recent events
 //   webutil.bridgebase.com/v2/mh_list.php  — one event's boards for one player
 //   webutil.bridgebase.com/v2/mh_hand.php  — one board's LIN, play included
 //
-// Neither is fetched by us. BBO's own History panel requests them as the user
-// opens an event and its boards, and the page hook (public-dd/bbo-page-hook.js)
-// hands us copies. See docs/data-sources.md § 3.9.
+// BBO's own History panel requests them as the user opens the list, an event
+// and its boards, and the page hook (public-dd/bbo-page-hook.js) hands us copies.
+// DD-all asks for the last two itself. See docs/data-sources.md § 3.9.
 //
 // The bodies arrive via window.postMessage from the page, so they are treated as
 // untrusted text: parsed as XML, never as HTML, and shape-checked.
@@ -23,6 +24,37 @@ function parseXml(xml, what) {
     throw new ParseError(`${what}: response is not well-formed XML`)
   }
   return doc
+}
+
+/** tfind.php → the player's recent events, as BBO lists them: [{ tkey, number,
+ *  title, teamname, format, username, started, award }]. `started` is epoch
+ *  milliseconds; `award` is the prize, a number. A row without a usable key is
+ *  left out rather than guessed at. */
+export function parseTfind(xml) {
+  const doc = parseXml(xml, 'tfind')
+  const root = doc.documentElement
+  if (root?.tagName !== 'tourneys') {
+    throw new ParseError(`tfind: expected <tourneys>, got <${root?.tagName ?? 'nothing'}>`)
+  }
+  const events = []
+  for (const row of root.getElementsByTagName('tourney')) {
+    const tkey = row.getAttribute('tkey')
+    const number = row.getAttribute('tourney_number')
+    if (!tkey || !number) continue
+    const started = Number.parseInt(row.getAttribute('ustarted'), 10)
+    const award = Number.parseFloat(row.getAttribute('award'))
+    events.push({
+      tkey,
+      number,
+      title: row.getAttribute('title') || null,
+      teamname: row.getAttribute('teamname') || null,
+      format: row.getAttribute('format') || null,
+      username: row.getAttribute('incoming_username') || null,
+      started: Number.isFinite(started) ? started * 1000 : null,
+      award: Number.isFinite(award) ? award : 0,
+    })
+  }
+  return events
 }
 
 /** mh_list.php → the event's boards, each with the key that fetches its hand.

@@ -1,10 +1,10 @@
 // Runs in BBO's own page (world: MAIN), registered by the background with
 // scripting.registerContentScripts. Not bundled: this file is copied as-is.
 //
-// BBO's History panel fetches each event's board list (mh_list.php) and each
-// board's LIN (mh_hand.php) as the user opens them. A content script cannot see
-// the page's network traffic, so this passes a copy of those two responses to
-// it with window.postMessage. It makes no requests of its own and changes
+// BBO's History panel fetches the list of recent events (tfind.php), each event's
+// board list (mh_list.php) and each board's LIN (mh_hand.php) as the user opens
+// them. A content script cannot see the page's network traffic, so this passes a
+// copy of those three responses to it with window.postMessage. It makes no requests of its own and changes
 // nothing BBO receives: every call goes through untouched, and the copy is
 // taken after the response has arrived.
 //
@@ -18,7 +18,8 @@
   window.__bridgeClassroomHook = true
 
   const TAG = 'bridge-classroom-bbo'
-  const WANTED = /^https:\/\/webutil\.bridgebase\.com\/v2\/mh_(list|hand)\.php/
+  const WANTED = /^https:\/\/webutil\.bridgebase\.com\/v2\/(tfind|mh_list|mh_hand)\.php/
+  const KINDS = { tfind: 'events', mh_list: 'list', mh_hand: 'hand' }
   const MAX_BODY = 256 * 1024
   const recent = []
 
@@ -42,7 +43,7 @@
     for (const msg of recent) window.postMessage(msg, window.location.origin)
   })
 
-  const kindOf = (url) => WANTED.exec(String(url ?? ''))?.[1] ?? null
+  const kindOf = (url) => KINDS[WANTED.exec(String(url ?? ''))?.[1]] ?? null
 
   // ── Fast steps ──────────────────────────────────────────────────────────────
   //

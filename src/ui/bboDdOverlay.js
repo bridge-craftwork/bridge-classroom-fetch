@@ -7,11 +7,12 @@
 //   • a button under BBO's own deal menu that sends the board to Bridge
 //     Classroom
 //
-// Nothing here fetches from BBO. The page hook (public-dd/bbo-page-hook.js) passes
-// on copies of what BBO's History panel itself loads — mh_list.php when an
-// event opens, mh_hand.php for each board shown — and the background solves
-// each board once, in WASM, caching the result for a fortnight. Going back to
-// an event later redraws from the cache.
+// Opening boards fetches nothing. The page hook (public-dd/bbo-page-hook.js)
+// passes on copies of what BBO's History panel itself loads — tfind.php for the
+// list of events, mh_list.php when an event opens, mh_hand.php for each board
+// shown — and the background solves each board once, in WASM, and caches it. Going
+// back to an event later redraws from the cache. The one thing that asks BBO for
+// anything is DD-all (src/lib/ddBatch.js), when the user chooses it.
 //
 // BBO's markup is a production Angular build: custom elements, inline absolute
 // positioning, no stable ids. Everything below is located by element name and
@@ -19,9 +20,26 @@
 // demonstrably hold the deal we analysed. A mismatch draws nothing rather than
 // something wrong.
 
-import { parseMhList, parseMhHand } from '../adapters/bbo/parsers/mhXml.js'
-import { parseLin } from '../adapters/bbo/parsers/lin.js'
+import { parseMhList, parseMhHand, parseTfind } from '../adapters/bbo/parsers/mhXml.js'
+import { parseLin, parseLinPlayers } from '../adapters/bbo/parsers/lin.js'
 import { summarizeTrace, seatOf, solverCard, trumpOf } from '../lib/ddPlay.js'
+import {
+  analyzeEvents,
+  eventsToRun,
+  fetchBoard,
+  fetchEventList,
+  isComplete,
+} from '../lib/ddBatch.js'
+import {
+  clearHistory,
+  closeMenu,
+  drawTallies,
+  menuRanges,
+  MENU_ID,
+  openMenu,
+  syncEventButton,
+  syncHeader,
+} from './ddHistory.js'
 
 const TAG = 'bridge-classroom-bbo'
 const BADGE_CLASS = 'bc-dd-trick'
@@ -455,6 +473,7 @@ export function clearAll(doc) {
   for (const el of doc.querySelectorAll(`.${CHIP_CLASS}, .${TOTALS_CLASS}`)) el.remove()
   syncPopout(doc, null)
   syncRestart(doc, null)
+  clearHistory(doc)
 }
 
 /** What the board list shows for one analysed board.
@@ -515,7 +534,7 @@ export function drawIndex(doc, list, entries, username, isVisible = defaultVisib
     const entry = board && entries.get(board.resultkey)
     let chip = null
     if (entry?.contract) {
-      const mySeat = seatOf(entry.players, username)
+      const mySeat = seatOf(board.players, username)
       const { counts } = summarizeTrace(entry.trace, { declarer: entry.declarer, mySeat })
       chip = chipFor(counts, entry.trace.filter((t) => t.cost > 0).length)
     }
@@ -603,7 +622,7 @@ export function drawTotals(doc, list, entries, username, isVisible = defaultVisi
     sum.all += entry.trace.filter((t) => t.cost > 0).length
     const { counts } = summarizeTrace(entry.trace, {
       declarer: entry.declarer,
-      mySeat: seatOf(entry.players, username),
+      mySeat: seatOf(board.players, username),
     })
     if (!counts) continue
     any = true
@@ -744,9 +763,20 @@ export function syncRestart(doc, viewer, onClick) {
 
 // ── Controller ───────────────────────────────────────────────────────────────
 
-export function startDdOverlay({ doc = document, win = window, sendMessage, onError = () => {} }) {
+export function startDdOverlay({
+  doc = document,
+  win = window,
+  sendMessage,
+  onError = () => {},
+  fetchImpl = (...args) => globalThis.fetch(...args),
+}) {
   const state = {
     list: null,
+    lists: new Map(), // every board list seen this visit, by tkey
+    boards: new Map(), // resultkey → { tkey, number, mySeat }
+    events: null, // BBO's list of recent events
+    tallies: new Map(), // tkey → the event's tally
+    run: null, // DD-all in progress: { stop, text, tkey }
     username: null,
     current: null, // the board BBO loaded last: { hk, lin, deal }
     hands: new Map(), // every board seen this visit, by resultkey
@@ -795,10 +825,13 @@ export function startDdOverlay({ doc = document, win = window, sendMessage, onEr
       clearAll(doc)
       return
     }
-    if (state.list) {
-      drawIndex(doc, state.list, state.entries, state.username)
-      drawTotals(doc, state.list, state.entries, state.username)
+    const shownEvent = eventOnScreen()
+    const list = shownEvent ? (state.lists.get(shownEvent.tkey) ?? state.list) : state.list
+    if (list) {
+      drawIndex(doc, list, state.entries, state.username)
+      drawTotals(doc, list, state.entries, state.username)
     }
+    drawHistory(shownEvent)
     const shown = onScreen()
     if (!shown) {
       clearDeal(doc)
@@ -811,7 +844,7 @@ export function startDdOverlay({ doc = document, win = window, sendMessage, onEr
     const summary = entry?.contract
       ? summarizeTrace(entry.trace, {
           declarer: entry.declarer,
-          mySeat: seatOf(entry.players, state.username),
+          mySeat: seatOf(cur.players, state.username),
           trump: trumpOf(entry.contract),
         })
       : null
@@ -902,39 +935,161 @@ export function startDdOverlay({ doc = document, win = window, sendMessage, onEr
     if (res?.type === 'extraction-error') onError(res.error?.message ?? 'extraction failed')
   }
 
-  async function lookupList() {
-    if (!state.list) return
+  // ── The list of events ─────────────────────────────────────────────────────
+
+  // Which event the panel is showing, by its title. BBO may not ask for a board
+  // list again on a second visit, so "the last list loaded" is not always this one.
+  function eventOnScreen() {
+    if (!state.events) return null
+    const panel = [...doc.querySelectorAll('result-list')].find(defaultVisible)
+    if (!panel) return null
+    const bar = [...doc.querySelectorAll('title-bar')].find(defaultVisible)
+    const title = bar?.textContent.replace(/\s+/g, ' ').trim()
+    return state.events.find((e) => e.title?.replace(/\s+/g, ' ').trim() === title) ?? null
+  }
+
+  function drawHistory(shownEvent) {
+    if (!state.events) return
+    drawTallies(doc, state.events, state.tallies)
+    syncHeader(doc, {
+      text: state.run ? `${state.run.text} ✕` : 'DD ▾',
+      title: state.run
+        ? 'Stop the analysis'
+        : 'Double-dummy errors: you-partner-opponents. * means some boards are still to do.',
+      onClick: state.run ? () => (state.run.stop = true) : showMenu,
+    })
+    const mine = state.run?.tkey === shownEvent?.tkey
+    syncEventButton(doc, {
+      text: state.run && mine ? `${state.run.text} ✕` : 'DD all',
+      title: state.run && mine ? 'Stop the analysis' : "Analyse all of this event's boards",
+      onClick:
+        !shownEvent || (state.run && !mine) || (!state.run && isComplete(state.tallies.get(shownEvent.tkey)))
+          ? null
+          : state.run
+            ? () => (state.run.stop = true)
+            : () => runEvents([shownEvent]),
+    })
+  }
+
+  function showMenu(anchor) {
+    if (doc.getElementById(MENU_ID)) return closeMenu(doc)
+    const items = menuRanges().map(({ label, since }) => {
+      const events = eventsToRun(state.events, state.tallies, since)
+      const inRange = state.events.some((e) => since === null || (e.started ?? 0) >= since)
+      return { label, count: events.length, inRange, onPick: () => runEvents(events) }
+    })
+    openMenu(doc, anchor, items)
+    // Closes on the next click anywhere else.
+    win.setTimeout(() => {
+      doc.addEventListener('click', () => closeMenu(doc), { once: true })
+    }, 0)
+  }
+
+  async function runEvents(events) {
+    if (state.run || !events.length) return
+    state.run = {
+      stop: false,
+      text: '…',
+      tkey: events.length === 1 ? events[0].tkey : null,
+    }
+    schedule()
+    const run = state.run
+    try {
+      const result = await analyzeEvents({
+        events,
+        tallies: state.tallies,
+        fetchList: async (event) => parseMhList(await fetchEventList(fetchImpl, event)),
+        fetchHand: async (hk) => parseMhHand(await fetchBoard(fetchImpl, hk)),
+        noteList: (event, list) => noteList(list, event.username),
+        solve: (hand) => solveBoard(hand),
+        sleep: (ms) => new Promise((r) => win.setTimeout(r, ms)),
+        shouldStop: () => run.stop || !enabled,
+        onProgress: ({ eventIndex, eventCount, done, total }) => {
+          run.text =
+            eventCount > 1 ? `${eventIndex + 1}/${eventCount}` : total ? `${done}/${total}` : '…'
+          schedule()
+        },
+      })
+      if (result.failed) {
+        onError(
+          `${result.failed} could not be analysed (${result.error}). Run it again to pick up the rest.`
+        )
+      }
+    } catch (err) {
+      onError(err?.message ?? String(err))
+    } finally {
+      state.run = null
+      schedule()
+    }
+  }
+
+  async function refreshTallies(tkeys) {
+    const res = await sendMessage({ type: 'dd-tallies', tkeys })
+    for (const [k, v] of Object.entries(res?.tallies ?? {})) state.tallies.set(k, v)
+    schedule()
+  }
+
+  // ── Boards ─────────────────────────────────────────────────────────────────
+
+  // A board list has been seen, from BBO or from DD-all: remember whose seat is
+  // whose (nothing stored names a player, so this is worked out fresh), and collect
+  // what the cache already knows. Resolves to the event's tally.
+  async function noteList(list, username) {
+    if (!list.tkey) return null
+    state.lists.set(list.tkey, list)
+    for (const b of list.boards) {
+      state.boards.set(b.resultkey, {
+        tkey: list.tkey,
+        number: b.number,
+        mySeat: seatOf(b.players, username),
+      })
+    }
     const res = await sendMessage({
-      type: 'dd-lookup',
-      resultkeys: state.list.boards.map((b) => b.resultkey),
+      type: 'dd-event',
+      tkey: list.tkey,
+      boards: list.boards.map((b) => ({ resultkey: b.resultkey, ...state.boards.get(b.resultkey) })),
     })
     for (const [k, v] of Object.entries(res?.entries ?? {})) state.entries.set(k, v)
+    if (res?.tally) state.tallies.set(list.tkey, res.tally)
+    schedule()
+    return res?.tally ?? null
+  }
+
+  async function solveBoard(hand) {
+    const place = state.boards.get(hand.hk) ?? null
+    const res = await sendMessage({ type: 'dd-trace', resultkey: hand.hk, lin: hand.lin, place })
+    if (res?.type !== 'dd-trace') throw new Error(res?.error ?? 'no analysis')
+    state.entries.set(hand.hk, res.entry)
+    if (place) await refreshTallies([place.tkey])
     schedule()
   }
 
   async function solve(hand) {
     if (state.entries.has(hand.hk)) return
-    const res = await sendMessage({ type: 'dd-trace', resultkey: hand.hk, lin: hand.lin })
-    if (res?.type !== 'dd-trace') throw new Error(res?.error ?? 'no analysis')
-    state.entries.set(hand.hk, res.entry)
-    schedule()
+    await solveBoard(hand)
   }
 
   // Shown again after being hidden: pick up whatever BBO loaded meanwhile.
   async function catchUp() {
-    await lookupList()
+    if (state.events) await refreshTallies(state.events.map((e) => e.tkey))
+    if (state.list) await noteList(state.list, state.username)
     for (const hand of state.hands.values()) await solve(hand)
   }
 
   async function handle(msg) {
-    if (msg.kind === 'list') {
+    if (msg.kind === 'events') {
+      state.events = parseTfind(msg.body)
+      if (enabled) await refreshTallies(state.events.map((e) => e.tkey))
+      schedule()
+    } else if (msg.kind === 'list') {
       const list = parseMhList(msg.body)
       state.list = list
       state.username = new URLSearchParams(msg.requestBody ?? '').get('username') || list.username
-      if (enabled) await lookupList()
+      state.lists.set(list.tkey, list)
+      if (enabled) await noteList(list, state.username)
     } else if (msg.kind === 'hand') {
       const { hk, lin } = parseMhHand(msg.body)
-      state.current = { hk, lin, deal: parseLin(lin).deal }
+      state.current = { hk, lin, deal: parseLin(lin).deal, players: parseLinPlayers(lin) }
       state.hands.set(hk, state.current)
       schedule()
       if (enabled) await solve(state.current)

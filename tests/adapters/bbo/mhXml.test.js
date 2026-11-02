@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { parseMhList, parseMhHand } from '../../../src/adapters/bbo/parsers/mhXml.js'
+import { parseMhList, parseMhHand, parseTfind } from '../../../src/adapters/bbo/parsers/mhXml.js'
 import { parseLinPlayers } from '../../../src/adapters/bbo/parsers/lin.js'
 
 const fixture = (name) =>
@@ -66,5 +66,42 @@ describe('seat order: mh_list attributes agree with the LIN pn|', () => {
       const { lin } = parseMhHand(fixture(`mh-hand-33873-board${n}.xml`))
       expect(parseLinPlayers(lin)).toEqual(list.boards[n - 1].players)
     }
+  })
+})
+
+describe('parseTfind', () => {
+  const events = parseTfind(fixture('tfind-kemistry.xml'))
+
+  it('reads each event, with the key and fields a board list asks for', () => {
+    const first = events.find((e) => e.number === '33879')
+    expect(first).toMatchObject({
+      tkey: '33879-1793552400',
+      title: '#33879 ACBL Sun Noon ET Speedball (GIB)',
+      teamname: 'kemistry+aam135',
+      format: 'pairs',
+      username: 'kemistry',
+      started: 1793552400000,
+      award: 0,
+    })
+  })
+
+  it('reads a daylong, whose key and number look different', () => {
+    const daylong = events.find((e) => e.number === '51908583')
+    expect(daylong.tkey).toMatch(/^ARDARD:/)
+    expect(daylong.format).toBe('indy')
+  })
+
+  it('reads a prize as a number', () => {
+    const xml =
+      '<tourneys><tourney tkey="1-2" tourney_number="1" award="1.50" prettyaward="1.50 BB$"/></tourneys>'
+    expect(parseTfind(xml)[0].award).toBe(1.5)
+  })
+
+  it('leaves out a row with no key', () => {
+    expect(parseTfind('<tourneys><tourney title="x"/></tourneys>')).toEqual([])
+  })
+
+  it('says so when the response is something else', () => {
+    expect(() => parseTfind('<status err="1"/>')).toThrow(/tfind: expected <tourneys>/)
   })
 })

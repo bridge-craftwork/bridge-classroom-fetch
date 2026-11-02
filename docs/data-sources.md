@@ -287,11 +287,12 @@ BBO caps a listing query at roughly a 30-day range, so multi-year history is
 collected in **28-day chunks, newest first**. Between batch items: **250 ms** for
 BBO hosts, **1 s** for ACBL hosts, which need more breathing room.
 
-### 3.9 BBO History panel — `mh_list.php` and `mh_hand.php`
+### 3.9 BBO History panel — `tfind.php`, `mh_list.php` and `mh_hand.php`
 
-**Mechanism:** none of our own. The v3 client's History panel loads both as the
-user opens an event and its boards; a page hook copies the responses to the
-content script. Used by **Bridge Craftwork DD**, the second extension built
+**Mechanism:** none of our own for what the user opens. The v3 client's History
+panel loads all three as the user opens the list, an event and its boards; a page
+hook copies the responses to the content script. **DD all** is the one exception:
+the content script asks for the last two itself, when the user chooses it. Used by **Bridge Craftwork DD**, the second extension built
 from this repo (`EXT=dd`), for its double-dummy review
 (`src/ui/bboDdOverlay.js`). Fetch does not read them.
 
@@ -299,11 +300,12 @@ Found by watching the panel's traffic, 1 Nov 2026:
 
 | The user… | BBO requests | Returns |
 |---|---|---|
+| Opens Recent tournaments | `POST tfind.php`, `u=kemistry` | `<tourneys>`: per event, `tkey`, `tourney_number`, `title`, `teamname`, `format`, `ustarted`, `award`. 33 events back about three months (2 Nov 2026) |
 | Opens an event | `POST mh_list.php`, `tkey=33873-1793548800&username=kemistry` (+ `format`, `teamname`, `merge`) | `<sc_boards>`: per board, a `resultkey`, the result, score, and **each seat named by attribute** (`north=` …) |
 | Opens a board (board 1 opens with the event) | `POST mh_hand.php`, `hk=<resultkey>` | `<linhand>`: the full LIN — deal, auction with alerts, **every card played**, claim |
 | Steps through tricks | **nothing** | The panel replays the LIN it already has |
 
-Both answer **without a login** — checked with `curl` and no cookies — and send
+All three answer **without a login** — checked with `curl` and no cookies — and send
 `Access-Control-Allow-Origin: *`. `tkey` is the number in the panel's title bar
 plus the event's start time; it is the same key `hands.php` puts in its
 `tview.php?t=` links. BBO fetches each board once per visit and keeps it, so
@@ -314,7 +316,25 @@ response.
 `mh_list`'s seat attributes and the LIN's positional `pn|` (S, W, N, E) agree —
 two independent sources, pinned in `tests/adapters/bbo/mhXml.test.js`.
 
-**Why copy rather than fetch.** It costs BBO nothing extra, and it is
+**The last column is BBO's Prize, showing `award`.** Blank at zero, so DD's tally
+uses it and relabels the header; a row with `award` above zero keeps its prize, with
+the tally in the tooltip. A real prize row has not been seen in the panel: all 33
+rows here were zero, though robot races do pay.
+
+**Daylongs have no boards here.** Their `tkey` is `ARDARD:<uuid>-<time>`, and
+`mh_list` answers with an empty `<sc_board_group/>` for BBO's own panel too. They
+show `–` in the tally column and are not asked for again.
+
+**DD all** (`src/lib/ddBatch.js`) sends the panel's own parameters from the content
+script: one request at a time, a second apart, `credentials: 'omit'`, stopping
+after three failures in a row. It needs no host permission, because of the
+`Access-Control-Allow-Origin: *` above. It resumes from the tallies, so a complete
+event costs no requests. Measured 2 Nov 2026: three 12-board events, 39 requests in
+about 46 s, no console errors. Three clean runs stayed signed in. One earlier run lost
+BBO's connection partway ("Connection lost") after its script had clicked into
+Practice by mistake; it did not recur, but the cause was not established.
+
+**Why copy rather than fetch, for boards the user opens.** It costs BBO nothing extra, and it is
 available sooner: `myhands/hands.php` lags an event by about a minute, while
 this is what BBO's own panel shows as each board finishes. Not yet seen during
 a live event — whether the auto-loaded board arrives through `mh_hand.php`, as a
@@ -339,8 +359,17 @@ restores them, with a 15-second failsafe. Measured: trick 3 from the start in
 tab loads them some other way, not yet captured.
 
 The analysis runs in the background, in bridge-solver's WASM
-(`Analyzer.dd_play`, ~40 ms for 52 cards), and is cached 14 days by
-`resultkey`. Nothing about it leaves the device.
+(`Analyzer.dd_play`, ~40 ms for 52 cards). Each board is cached by `resultkey`
+(about 2 KB; oldest deleted past `MAX_BOARDS`, well inside Chrome's 10 MB) and its
+errors go into the event's tally (`ddt:<tkey>`), which is kept. Neither names a
+player: which seat is yours is worked out from `mh_list` when it is drawn. BBO keeps
+these games for years, so a deleted board costs only a solve. Nothing about it
+leaves the device.
+
+**Testing: an unpacked build can run an old background.** With `--load-extension`
+on an existing profile, Chrome kept running a stale worker after a rebuild, and even
+after a version bump. Clear the profile's `Service Worker` folder, or press reload
+on `chrome://extensions`, before trusting a storage check.
 
 ---
 

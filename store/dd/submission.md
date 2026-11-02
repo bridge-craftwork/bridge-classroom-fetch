@@ -1,8 +1,8 @@
 # Bridge Craftwork DD — submission answers, paste-ready
 
-Version **1.0.0**. Chrome, Edge, Firefox (addons.mozilla.org) and the Mac App
+Version **1.1.0**. Chrome, Edge, Firefox (addons.mozilla.org) and the Mac App
 Store. Built with `EXT=dd scripts/package-stores.sh`, which writes
-`dist/packages/bridge-craftwork-dd-1.0.0-{chrome,edge,firefox,source}.zip` and
+`dist/packages/bridge-craftwork-dd-1.1.0-{chrome,edge,firefox,source}.zip` and
 refreshes the Xcode project in `safari-dd/`.
 
 Modelled on Fetch's [docs/submission-answers.md](../../docs/submission-answers.md),
@@ -39,7 +39,9 @@ Open an event in BBO's History and, for every board you open:
 • Each board in the list is tagged with the errors by you, your partner and the opponents, or "clean". The event's totals sit beside BBO's own score.
 • A DD Details button opens the board in the detailed double-dummy viewer, by way of Bridge Classroom.
 
-The double-dummy solver runs inside the extension, on your device. Nothing is sent to a server for analysis, and the extension makes no requests of its own to Bridge Base: it reads the boards BBO's own History panel has already loaded. Analyses are kept on your device for 14 days, so going back to an event is instant.
+On the list of Recent tournaments, each event you have analysed shows its tally as me-partner-opponents, so you can see how your results line up with the errors on each side. A * means some of its boards are still to do. DD all fills in a whole event, and the DD menu fills in today, the last 7 or 30 days, or everything listed.
+
+The double-dummy solver runs inside the extension, on your device. Nothing is sent to a server for analysis. Boards you open are read from what BBO's own History panel has already loaded. Only DD all asks BBO for anything: it requests the boards from BBO's public History pages, one a second, without your login. Analyses stay on your device, so going back to an event is instant.
 
 Hide or show it any time from the menu on BBO's deal view.
 
@@ -85,19 +87,19 @@ Show a double-dummy review of the boards the user opens in Bridge Base Online's 
 **storage**
 
 ```
-Keeps the double-dummy analysis of each board the user opens for 14 days, on the user's device, so returning to an event does not repeat the work, and remembers whether the user has hidden the display. Nothing is transmitted anywhere.
+Keeps the double-dummy analysis of each board and a small per-event error tally on the user's device, so returning to an event does not repeat the work and the list of tournaments keeps its numbers, and remembers whether the user has hidden the display. The oldest analyses are deleted when space runs short. Nothing stored names a player, and nothing stored is transmitted anywhere.
 ```
 
 **scripting**
 
 ```
-Registers one small script on www.bridgebase.com/v3/ that runs in the page's own context, because only there can it see the History panel's data. When BBO's own page loads an event's board list or a board's play from its own server, the script passes a copy of that response to the extension. It makes no requests of its own, changes nothing BBO receives, and ignores every other request. Its one other job: while the user's click is stepping BBO's viewer to a particular trick, it shortens BBO's card-animation delays so the step takes a moment instead of two seconds a trick, and restores them when the step ends (or after 15 seconds at most). It is registered with scripting.registerContentScripts rather than declared in the manifest so the browser injects it directly.
+Registers one small script on www.bridgebase.com/v3/ that runs in the page's own context, because only there can it see the History panel's data. When BBO's own page loads the user's list of events, an event's board list or a board's play from its own server, the script passes a copy of that response to the extension. It makes no requests of its own, changes nothing BBO receives, and ignores every other request. Its one other job: while the user's click is stepping BBO's viewer to a particular trick, it shortens BBO's card-animation delays so the step takes a moment instead of two seconds a trick, and restores them when the step ends (or after 15 seconds at most). It is registered with scripting.registerContentScripts rather than declared in the manifest so the browser injects it directly.
 ```
 
 **Host permissions** — one host.
 
 ```
-www.bridgebase.com/v3/ — Bridge Base Online's web client, whose History panel the review is drawn on. No other origin is requested. The extension sends nothing anywhere unless the user clicks its DD Details button, which opens the board on bridge-classroom.org, and that page passes it to the viewer at bridge-craftwork.com/bridge-solver.
+www.bridgebase.com/v3/ — Bridge Base Online's web client, whose History panel the review is drawn on. No other host permission is requested. Two things the user chooses send anything: DD Details opens the board on bridge-classroom.org, and that page passes it to the viewer at bridge-craftwork.com/bridge-solver; DD all requests the event's boards from webutil.bridgebase.com, BBO's public History endpoints, which allow any origin, one request a second and without cookies.
 ```
 
 **Content script on `bridge-classroom.org` / `.com`** — no host permission is
@@ -136,7 +138,7 @@ unrelated purposes; not used for creditworthiness or lending.
 **If a free-text field is offered**
 
 ```
-The extension analyses, on the user's device, the bridge boards the user opens in Bridge Base Online's History panel, from the copy of that data BBO's own page has already loaded. The analysis and the boards are kept in extension storage on the device for 14 days. Nothing leaves the device unless the user clicks DD Details on a board, which opens that one board, with the players' BBO usernames, on bridge-classroom.org, which passes it to the viewer at bridge-craftwork.com/bridge-solver. No analytics, no telemetry, no third-party endpoint.
+The extension analyses, on the user's device, the bridge boards the user opens in Bridge Base Online's History panel, from the copy of that data BBO's own page has already loaded, or the boards the user asks for with DD all, which it requests from BBO's public History endpoints without cookies. The analyses and per-event error tallies are kept in extension storage on the device and name no player. Nothing leaves the device for us or a third party unless the user clicks DD Details on a board, which opens that one board, with the players' BBO usernames, on bridge-classroom.org, which passes it to the viewer at bridge-craftwork.com/bridge-solver. No analytics, no telemetry, no third-party endpoint.
 ```
 
 ---
@@ -147,9 +149,9 @@ Paste for Firefox and Apple. Chrome's test instructions field takes 500
 characters, so use the short version there:
 
 ```
-Needs a signed-in Bridge Base Online account with played boards. We can't supply one: BBO allows one session per account, and a new account has no history. Demo of every feature:
+Needs a signed-in Bridge Base Online account with played boards. We can't supply one: BBO allows one session per account; a new account has no history. Demo:
 https://bridge-craftwork.github.io/bridge-classroom-fetch/demo/dd/bridge-craftwork-dd.mp4
-With an account: www.bridgebase.com/v3/ > History > Recent tournaments > any event. Boards get error tags. Click a marked card to step to its trick. BBO's deal menu (three lines) has Hide/Show.
+With an account: www.bridgebase.com/v3/ > History > Recent tournaments > any event. Boards get error tags. Click a marked card to step to its trick. DD all analyses the event; the list's DD column shows tallies. Menu has Hide/Show.
 ```
 
 The full version:
@@ -166,8 +168,9 @@ To see it with your own account, if you have one with recent tournament play:
 3. The board shown below has its error cards marked in the hands. Click one: the viewer steps to that trick, and the player who erred has their alternatives marked green (best) and red.
 4. The menu button (three lines) on the board has "Hide Bridge Craftwork DD", which removes everything; "Show" brings it back.
 5. DD Details opens the board on bridge-classroom.org, which passes it to the viewer at bridge-craftwork.com/bridge-solver.
+6. "DD all" above Results analyses the whole event. On the Recent tournaments list, the last column is headed DD: analysed events show errors as me-partner-opponents, and its menu runs a date range.
 
-The solver runs locally (bundled WebAssembly). The extension makes no network requests of its own to Bridge Base.
+The solver runs locally (bundled WebAssembly). The only requests the extension makes are DD all's, to BBO's public History endpoints, one a second and without cookies.
 ```
 
 **Apple: add this.** As with Fetch, a reviewer who skips it sees nothing. The
@@ -182,10 +185,10 @@ In Safari, after enabling the extension in Settings > Extensions, also allow it 
 
 ---
 
-## Release notes — 1.0.0
+## Release notes — 1.1.0
 
 ```
-First release: double-dummy review in Bridge Base Online's History panel. Error cards marked in the hands; click to step to the trick and see the alternatives; lead and winner marked on the table; per-board tags and event totals for you, partner and opponents; Show/Hide from BBO's deal menu; DD Details opens the board in Bridge Classroom.
+Tallies on your Recent tournaments list: errors by you, your partner and the opponents for each event, with * where boards are still to do. DD all analyses a whole event, and the DD menu runs today, the last 7 or 30 days, or everything listed. Analyses now stay on your device with no time limit, and no longer store player names.
 ```
 
 ---

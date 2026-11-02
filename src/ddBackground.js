@@ -4,7 +4,8 @@
 // (src/ui/ddContent.js). Also carries the one hand-off the overlay's
 // "Classroom" button needs, reusing Fetch's code for it.
 //
-// Nothing here fetches from BBO. See docs/data-sources.md § 3.9.
+// Nothing here fetches from BBO: the one thing that does is DD-all, in the
+// content script, when the user asks. See docs/data-sources.md § 3.9.
 
 import browser from 'webextension-polyfill'
 import { createDdSolver } from './background/ddSolver.js'
@@ -69,7 +70,7 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
   switch (message?.type) {
     case 'dd-trace':
       return reply(
-        ddSolver.trace(message.resultkey, message.lin).then((entry) => ({ entry })),
+        ddSolver.trace(message.resultkey, message.lin, message.place).then((entry) => ({ entry })),
         sendResponse,
         'dd-trace'
       )
@@ -78,6 +79,14 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
         ddSolver.alternatives(message.lin, message.node).then((node) => ({ node })),
         sendResponse,
         'dd-node'
+      )
+    case 'dd-event':
+      return reply(ddSolver.event(message.tkey, message.boards), sendResponse, 'dd-event')
+    case 'dd-tallies':
+      return reply(
+        ddSolver.tallies(message.tkeys).then((tallies) => ({ tallies })),
+        sendResponse,
+        'dd-tallies'
       )
     case 'dd-lookup':
       return reply(

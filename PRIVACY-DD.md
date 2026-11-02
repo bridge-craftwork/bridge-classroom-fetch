@@ -20,11 +20,18 @@ It can be hidden or shown from the menu on BBO's deal view
 
 ## What it reads
 
-Only the History panel's own data: when you open an event or a board, Bridge
-Base's page loads them from Bridge Base's servers, and the extension reads a
-copy of those two responses — the event's list of boards, and each board's
-deal and play. It makes **no requests of its own** to Bridge Base, and reads
-nothing else on the page.
+Only the History panel's own data: when you open the list of tournaments, an
+event or a board, Bridge Base's page loads them from Bridge Base's servers, and
+the extension reads a copy of those three responses — your recent events, the
+event's list of boards, and each board's deal and play. It reads nothing else
+on the page.
+
+**It asks Bridge Base for anything itself only when you choose DD all**, on an
+event or from the DD menu on the list of tournaments. It then requests that
+event's board list and boards from the same public addresses Bridge Base's page
+uses, one request a second, with your Bridge Base username in the board-list
+request as Bridge Base's page sends it. No cookies or login go with them. Opening
+boards yourself never causes a request from the extension.
 
 It does not read your Bridge Base login or password.
 
@@ -35,12 +42,18 @@ browser. No deal, result or name is sent anywhere for analysis.
 
 ## What it stores, and for how long
 
-The analysis of each board you open is kept in the extension's storage, on
-your device, for **14 days**, so that going back to an earlier event does not
-repeat the work. Each entry holds the deal, the cards played, the four players'
-Bridge Base usernames and the result of the analysis. It is never sent
-anywhere and is deleted automatically after 14 days. Removing the extension
-deletes it at once.
+Two things are kept in the extension's storage, on your device, and never sent
+anywhere:
+
+- **The analysis of each board**: the contract, the cards played and what each
+  cost, so that going back to an event does not repeat the work. There is no
+  time limit. When storage runs short, about 3,500 boards, the oldest are deleted.
+- **A tally for each event**: how many errors you, your partner and the opponents
+  made on each board, and the event's key. It is small and is kept, so your list
+  of tournaments keeps its numbers.
+
+Neither names any player. Bridge Base keeps these games, so anything deleted can
+be analysed again. Removing the extension deletes all of it at once.
 
 Whether the display is shown or hidden is also kept, so your choice holds.
 
@@ -59,8 +72,8 @@ There are no analytics, no telemetry, no advertising and no tracking.
 
 | Permission | Why |
 |---|---|
-| `storage` | The 14-day analysis cache and the show/hide setting |
-| `scripting` | Adds a small script to Bridge Base's page that passes the History panel's boards to the extension as Bridge Base loads them, without making any request of its own |
+| `storage` | The analyses, the event tallies and the show/hide setting |
+| `scripting` | Adds a small script to Bridge Base's page that passes the History panel's data to the extension as Bridge Base loads it. That script makes no request of its own |
 | Site access to `www.bridgebase.com/v3/*` | The page the review is drawn on |
 
 ## Source code
