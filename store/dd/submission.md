@@ -151,10 +151,14 @@ To see it with your own account, if you have one with recent tournament play:
 The solver runs locally (bundled WebAssembly). The extension makes no network requests of its own to Bridge Base.
 ```
 
-**Apple: add this.** As with Fetch, a reviewer who skips it sees nothing:
+**Apple: add this.** As with Fetch, a reviewer who skips it sees nothing. The
+second site is easy to miss: on a real Mac, 2 Nov 2026, DD Details failed with
+"The extension did not respond" while everything on BBO worked.
+
+
 
 ```
-In Safari, after enabling the extension in Settings > Extensions, also allow it on www.bridgebase.com (Safari asks per website, or use the extension's button in the toolbar). Until that is granted, Safari does not run the extension on the page and nothing appears, with no error.
+In Safari, after enabling the extension in Settings > Extensions, also allow it on two websites, using the extension's button in the toolbar on each: www.bridgebase.com, where the review is drawn, and bridge-classroom.org, which receives a board when you click DD Details. Safari asks per website. Until it is granted on www.bridgebase.com, nothing appears, with no error. Until it is granted on bridge-classroom.org, DD Details opens a page saying the extension did not respond; allow it there and reload that page, and the board arrives.
 ```
 
 ---
