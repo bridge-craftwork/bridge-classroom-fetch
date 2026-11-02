@@ -55,11 +55,20 @@ App Store), as Fetch.
 https://bridge-craftwork.com/dd/privacy/
 ```
 
-**Homepage / support URL**
+**Homepage URL**
 
 ```
-https://github.com/bridge-craftwork/bridge-classroom-fetch
+https://bridge-craftwork.com/dd/
 ```
+
+**Support URL**
+
+```
+https://github.com/bridge-craftwork/bridge-classroom-fetch/issues
+```
+
+**Official URL** (Chrome): leave as None, as Fetch does. It only offers verified
+domains.
 
 ---
 
@@ -134,7 +143,16 @@ The extension analyses, on the user's device, the bridge boards the user opens i
 
 ## Notes for reviewers
 
-Paste for Firefox and Apple; Chrome has per-permission fields only.
+Paste for Firefox and Apple. Chrome's test instructions field takes 500
+characters, so use the short version there:
+
+```
+Needs a signed-in Bridge Base Online account with played boards. We can't supply one: BBO allows one session per account, and a new account has no history. Demo of every feature:
+https://bridge-craftwork.github.io/bridge-classroom-fetch/demo/dd/bridge-craftwork-dd.mp4
+With an account: www.bridgebase.com/v3/ > History > Recent tournaments > any event. Boards get error tags. Click a marked card to step to its trick. BBO's deal menu (three lines) has Hide/Show.
+```
+
+The full version:
 
 ```
 This extension works inside Bridge Base Online's History panel, which requires a signed-in BBO account with played boards. We cannot supply one: BBO allows only one active session per account, so a shared login would sign reviewers out of one another, and a newly created account has no History to review.
@@ -178,7 +196,7 @@ First release: double-dummy review in Bridge Base Online's History panel. Error 
 |---|---|
 | Icon | `icons-dd/icon-128.png`; Edge's 300×300 store logo is `icons-dd/icon-300.png` |
 | Mac app icon | rendered into the Xcode project's asset catalog by `node scripts/render-icons.mjs --ext dd` |
-| Screenshots | `store/dd/screenshots/`, 1280×800 (Chrome, Edge, Firefox); see that folder's README |
+| Screenshots | `store/dd/screenshots/listing-1280/`, 1280×800 (Chrome, Edge, Firefox); `store/dd/screenshots/`, 2560×1600 (Mac App Store); see that folder's README |
 | Privacy page | live at https://bridge-craftwork.com/dd/privacy/, from `bridge-craftwork-site/site/dd/privacy/index.html` (copy of `store/dd/privacy-page.html`) |
 
 ---
