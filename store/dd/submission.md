@@ -191,10 +191,9 @@ Things only Rick can do, in the order they block:
 2. ~~Publish the privacy page~~ — **done**, live at
    <https://bridge-craftwork.com/dd/privacy/> (bridge-craftwork-site#12,
    2 Nov 2026).
-3. **Test in Safari on a Mac.** Two things DD needs have not been seen working
-   there: `scripting.registerContentScripts` with `world: 'MAIN'` (the page
-   hook) and WebAssembly in the background. If either fails, Mac drops out of
-   1.0.0 and the other three stores are unaffected.
+3. ~~Test in Safari on a Mac~~ — **passed**, 2 Nov 2026 (Rick). The hand
+   diagram needed a fix first (`75f8ea2`), and DD Details needs the
+   per-website permission on bridge-classroom.org, as the Apple notes say.
 4. ~~Test in Firefox~~ — **passed**, 2 Nov 2026 (Rick, temporary add-on,
    including the fast trick jumps).
 5. **Record the reviewer demo** and put the URL in the reviewer notes. Fetch's
