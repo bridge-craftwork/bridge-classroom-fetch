@@ -182,7 +182,8 @@ First release: double-dummy review in Bridge Base Online's History panel. Error 
 
 Things only Rick can do, in the order they block:
 
-1. **Approve the icon** (`icons-dd/`: Fetch's mortarboard with a red DD badge).
+1. ~~Approve the icon~~ — **approved**, 2 Nov 2026 (`icons-dd/`: Fetch's
+   mortarboard with a red DD badge).
 2. ~~Publish the privacy page~~ — **done**, live at
    <https://bridge-craftwork.com/dd/privacy/> (bridge-craftwork-site#12,
    2 Nov 2026).
