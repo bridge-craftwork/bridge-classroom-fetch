@@ -4,7 +4,7 @@
 // so it holds across tabs and visits.
 
 import { startDdOverlay } from './bboDdOverlay.js'
-import { syncToggleItem, ENABLED_KEY } from './ddMenu.js'
+import { syncToggleItem, ENABLED_KEY, TOGGLE_ITEM_ID } from './ddMenu.js'
 
 function showToast(text) {
   const el = document.createElement('div')
@@ -38,7 +38,24 @@ if (typeof globalThis.chrome !== 'undefined' || typeof globalThis.browser !== 'u
     let enabled = (await storage.get(ENABLED_KEY))[ENABLED_KEY] !== false
     overlay.setEnabled(enabled)
 
-    const toggle = () => storage.set({ [ENABLED_KEY]: !enabled })
+    // When the extension is updated or reloaded, this script keeps running in
+    // any BBO tab already open, cut off from the extension: every call to it
+    // throws "Extension context invalidated". Rather than leave a menu item
+    // that does nothing and marks that no longer update, it takes itself down
+    // the first time it notices. Reloading the page brings the new one.
+    const alive = () => !!globalThis.chrome?.runtime?.id
+    let observer = null
+    function retire() {
+      observer?.disconnect()
+      document.removeEventListener('click', onClick, true)
+      overlay.setEnabled(false)
+      document.getElementById(TOGGLE_ITEM_ID)?.remove()
+    }
+
+    const toggle = () => {
+      if (!alive()) return retire()
+      storage.set({ [ENABLED_KEY]: !enabled }).catch(retire)
+    }
     storage.onChanged.addListener((changes) => {
       if (!(ENABLED_KEY in changes)) return
       enabled = changes[ENABLED_KEY].newValue !== false
@@ -46,23 +63,24 @@ if (typeof globalThis.chrome !== 'undefined' || typeof globalThis.browser !== 'u
       syncToggleItem(document, enabled, toggle)
     })
 
-    const sync = () => syncToggleItem(document, enabled, toggle)
-    new MutationObserver(() => {
+    const sync = () => {
+      if (!alive()) return retire()
+      syncToggleItem(document, enabled, toggle)
+    }
+    observer = new MutationObserver(() => {
       sync()
       overlay.render()
-    }).observe(document.body, { childList: true, subtree: true })
+    })
+    observer.observe(document.body, { childList: true, subtree: true })
     // BBO opens its deal menu by restyling it, not by adding anything, so the
     // observer above never sees it open. Watching style changes would fire on
     // every frame of BBO's card animations; a click is what opens the menu, so
     // re-check just after each one instead.
-    document.addEventListener(
-      'click',
-      () => {
-        setTimeout(sync, 0)
-        setTimeout(sync, 250)
-      },
-      true
-    )
+    function onClick() {
+      setTimeout(sync, 0)
+      setTimeout(sync, 250)
+    }
+    document.addEventListener('click', onClick, true)
     overlay.render()
   })
 }
