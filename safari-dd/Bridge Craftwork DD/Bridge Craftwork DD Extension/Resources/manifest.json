@@ -24,7 +24,7 @@
   "content_scripts": [
     {
       "js": [
-        "assets/ddContent.js-loader-B_IzFt2Z.js"
+        "assets/ddContent.js-loader-Dx-5o7Mh.js"
       ],
       "matches": [
         "https://www.bridgebase.com/v3/*"
@@ -61,7 +61,7 @@
         "assets/preload-helper-ckwbz45p.js",
         "assets/ddPlay-DZMJO9yL.js",
         "assets/browser-polyfill-CDc_Ui7X.js",
-        "assets/ddContent.js-a0VArpWa.js"
+        "assets/ddContent.js-rOp67GoC.js"
       ],
       "use_dynamic_url": false
     },

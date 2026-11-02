@@ -32,7 +32,6 @@ if (typeof globalThis.chrome !== 'undefined' || typeof globalThis.browser !== 'u
     const overlay = startDdOverlay({
       sendMessage: (msg) => browser.runtime.sendMessage(msg),
       onError: (text) => showToast(`Bridge Craftwork DD: ${text}`),
-      onNotice: (text) => showToast(text),
     })
 
     let enabled = (await storage.get(ENABLED_KEY))[ENABLED_KEY] !== false

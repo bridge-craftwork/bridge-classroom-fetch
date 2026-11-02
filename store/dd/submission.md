@@ -82,7 +82,7 @@ Keeps the double-dummy analysis of each board the user opens for 14 days, on the
 **scripting**
 
 ```
-Registers one small script on www.bridgebase.com/v3/ that runs in the page's own context, because only there can it see the History panel's data. When BBO's own page loads an event's board list or a board's play from its own server, the script passes a copy of that response to the extension. It makes no requests of its own, changes nothing BBO receives, and ignores every other request. It is registered with scripting.registerContentScripts rather than declared in the manifest so the browser injects it directly.
+Registers one small script on www.bridgebase.com/v3/ that runs in the page's own context, because only there can it see the History panel's data. When BBO's own page loads an event's board list or a board's play from its own server, the script passes a copy of that response to the extension. It makes no requests of its own, changes nothing BBO receives, and ignores every other request. Its one other job: while the user's click is stepping BBO's viewer to a particular trick, it shortens BBO's card-animation delays so the step takes a moment instead of two seconds a trick, and restores them when the step ends (or after 15 seconds at most). It is registered with scripting.registerContentScripts rather than declared in the manifest so the browser injects it directly.
 ```
 
 **Host permissions** — one host.

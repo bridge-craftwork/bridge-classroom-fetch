@@ -9,6 +9,10 @@
 // taken after the response has arrived.
 //
 // Everything else BBO requests is ignored. See docs/data-sources.md § 3.9.
+//
+// It also does one other thing, and only on request: while the extension steps
+// BBO's viewer to an error's trick, it shortens BBO's animation delays so the
+// jump takes a moment rather than two seconds a trick (see "Fast steps" below).
 ;(() => {
   if (window.__bridgeClassroomHook) return
   window.__bridgeClassroomHook = true
@@ -39,6 +43,30 @@
   })
 
   const kindOf = (url) => WANTED.exec(String(url ?? ''))?.[1] ?? null
+
+  // ── Fast steps ──────────────────────────────────────────────────────────────
+  //
+  // BBO animates a trick as a chain of setTimeout(…, 750) calls, one per card,
+  // then a 2-second pause (measured). Its own Animation setting would remove
+  // them, but BBO reads that only at startup and changing it is the user's
+  // business. So while the extension is stepping to a trick, and only then,
+  // delays in that range are cut to 10 ms. Everything else is untouched, and
+  // fast mode switches itself off after 15 seconds whatever happens, so a
+  // stalled jump cannot leave BBO running fast.
+  //
+  // This script runs before BBO's code, so BBO's own timer wrapper (zone.js)
+  // sits on top of this one and every BBO timer passes through it.
+  const FAST_FOR_MS = 15000
+  let fastUntil = 0
+  const nativeSetTimeout = window.setTimeout
+  window.setTimeout = function (fn, ms, ...args) {
+    if (typeof ms === 'number' && ms >= 200 && ms <= 2000 && performance.now() < fastUntil) ms = 10
+    return nativeSetTimeout.call(this, fn, ms, ...args)
+  }
+  window.addEventListener('message', (e) => {
+    if (e.source !== window || e.data?.source !== TAG + ':fast') return
+    fastUntil = e.data.on ? performance.now() + FAST_FOR_MS : 0
+  })
 
   const xhr = XMLHttpRequest.prototype
   const open = xhr.open

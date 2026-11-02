@@ -327,6 +327,14 @@ extension scheme. `scripting.registerContentScripts({ world: 'MAIN' })` injects
 the file directly, so the CSP never applies. The file lives in `public/` and is
 copied unbundled.
 
+**The hook also shortens BBO's animation, on request.** Stepping the viewer to an
+error's trick presses BBO's own Next trick, and BBO animates each trick as
+`setTimeout(…, 750)` per card plus a 2-second pause, about 2.3 s a trick
+(measured; its Animation setting removes them but is read only at startup). For
+the length of a jump the hook cuts delays of 200–2000 ms to 10 ms, then
+restores them, with a 15-second failsafe. Measured: trick 3 from the start in
+~1 s instead of ~7 s, and BBO's own Next trick back to 2.3 s afterwards.
+
 **Casual play is not covered.** Casual tables have no `tkey`; the Recent hands
 tab loads them some other way, not yet captured.
 

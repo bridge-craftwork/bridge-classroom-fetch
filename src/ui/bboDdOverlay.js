@@ -731,13 +731,7 @@ export function syncRestart(doc, viewer, onClick) {
 
 // ── Controller ───────────────────────────────────────────────────────────────
 
-export function startDdOverlay({
-  doc = document,
-  win = window,
-  sendMessage,
-  onError = () => {},
-  onNotice = onError,
-}) {
+export function startDdOverlay({ doc = document, win = window, sendMessage, onError = () => {} }) {
   const state = {
     list: null,
     username: null,
@@ -852,18 +846,14 @@ export function startDdOverlay({
   // goes back to the start. BBO does nothing itself on a card click (checked),
   // so nothing is overridden.
   let jumping = false
-  let tipShown = false
+  const fast = (on) => win.postMessage({ source: `${TAG}:fast`, on }, win.location.origin)
   function jumpTo(viewer, trick) {
     const buttons = trickButtons(doc)
     if (!buttons || jumping) return
-    if (trick > cardsPlayed(viewer) / 4 && animationOn() && !tipShown) {
-      tipShown = true
-      onNotice(
-        'BBO animates each trick, so this takes a moment. Turning off Animation in ' +
-          'Account ▸ Settings makes it instant.'
-      )
-    }
     jumping = true
+    // BBO animates each trick for about two seconds. The page hook cuts its
+    // animation delays for the length of the jump, and only that long.
+    fast(true)
     stepToTrick({
       ...buttons,
       cards: () => cardsInHands(viewer),
@@ -872,21 +862,10 @@ export function startDdOverlay({
     })
       .catch((err) => console.warn('[bc] could not step to the trick:', err?.message ?? err))
       .finally(() => {
+        fast(false)
         jumping = false
         schedule()
       })
-  }
-
-  // BBO keeps its Animation setting in its own localStorage, per user ("n" when
-  // off), and reads it only when the client starts — so it can be read here but
-  // not usefully changed. Unset means BBO's default, which is on.
-  function animationOn() {
-    if (!state.username) return true
-    try {
-      return win.localStorage.getItem(`${state.username}_general_animate`) !== 'n'
-    } catch {
-      return true
-    }
   }
 
   doc.addEventListener(
