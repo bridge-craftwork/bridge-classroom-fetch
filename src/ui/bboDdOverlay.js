@@ -50,7 +50,20 @@ const PD_FG = 'rgb(205, 100, 0)'
 const OPP_FG = 'rgb(0, 130, 40)'
 const MUTED_FG = 'rgb(110, 110, 110)'
 
-const defaultVisible = (el) => !!el && el.getClientRects().length > 0
+// On screen, by whether it has a layout box. BBO's deal-viewer and hand panels
+// are custom elements holding only absolutely positioned children, which leaves
+// the element itself with no box of its own in some engines, so its children
+// are asked too. A hidden ancestor (BBO's second, undisplayed viewer) leaves
+// them all without boxes, which is still read correctly as hidden.
+const defaultVisible = (el) =>
+  !!el &&
+  (el.getClientRects().length > 0 ||
+    [...el.children].some((child) => child.getClientRects().length > 0))
+
+// The suit in a symbol's text. Apple platforms draw bare suit characters as
+// emoji, so a page may add a variation selector (U+FE0E) after them: an exact
+// match on the text would miss it.
+const suitIn = (text) => SUIT_BY_SYMBOL[/[♠♥♦♣]/u.exec(String(text ?? ''))?.[0]]
 
 // ── Reading BBO's hand diagram ───────────────────────────────────────────────
 
@@ -68,7 +81,7 @@ export function rankOf(text) {
 export function readPanel(panel) {
   const symbols = new Map()
   for (const sym of panel.querySelectorAll('.suitSymbolClass')) {
-    const suit = SUIT_BY_SYMBOL[sym.textContent.trim()]
+    const suit = suitIn(sym.textContent)
     if (suit) symbols.set(sym.style.top, suit)
   }
   if (symbols.size !== 4) return null
@@ -292,7 +305,7 @@ export function drawTable(viewer, summary, isVisible = defaultVisible) {
   const complete = played > 0 && played % 4 === 0
   const doc = viewer.ownerDocument
   for (const card of viewer.querySelectorAll('.handDiagramCurrentTrickClass')) {
-    const text = card.textContent.replace(/[\s+−-]\d*$/u, '').replace(/\s+/g, '')
+    const text = card.textContent.replace(/[\s+−-]\d*$/u, '').replace(/[\s\uFE0E\uFE0F]+/gu, '')
     const suit = SYMBOL_SUIT[text[0]]
     const rank = rankOf(text.slice(1))
     const info = suit && rank ? summary?.cards[suit + rank] : null

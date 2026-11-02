@@ -407,3 +407,34 @@ describe('what the error should have been', () => {
     expect(el('SJ').querySelector('.bc-dd-trick').textContent).toBe('T10')
   })
 })
+
+// Differences seen between engines: the symbol may carry a variation selector,
+// and a custom element holding only positioned children may have no box.
+describe('reading the diagram across engines', () => {
+  it('reads suit symbols that carry a variation selector', () => {
+    const panel = [...doc.querySelectorAll('hand-diagram-panel')].find((p) =>
+      p.querySelector('hand-diagram-card')
+    )
+    const before = readPanel(panel).map((c) => c.code)
+    for (const sym of panel.querySelectorAll('.suitSymbolClass')) {
+      sym.textContent = sym.textContent.trim() + '︎'
+    }
+    expect(readPanel(panel).map((c) => c.code)).toEqual(before)
+  })
+
+  it('counts an element with no box of its own as visible when a child has one', () => {
+    const viewer = [...doc.querySelectorAll('deal-viewer')].find((v) =>
+      v.querySelector('hand-diagram-card')
+    )
+    const rects = (n) => () => ({ length: n })
+    // jsdom has no layout: give the panels and viewer no box, their children one.
+    for (const el of [viewer, ...viewer.querySelectorAll('hand-diagram-panel')]) {
+      el.getClientRects = rects(0)
+      for (const child of el.children) child.getClientRects = rects(1)
+    }
+    for (const other of doc.querySelectorAll('deal-viewer')) {
+      if (other !== viewer) other.getClientRects = rects(0)
+    }
+    expect(matchPanels(doc, deal1)).not.toBeNull()
+  })
+})
