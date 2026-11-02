@@ -191,8 +191,8 @@ Things only Rick can do, in the order they block:
    there: `scripting.registerContentScripts` with `world: 'MAIN'` (the page
    hook) and WebAssembly in the background. If either fails, Mac drops out of
    1.0.0 and the other three stores are unaffected.
-4. **Test in Firefox.** The build is right (checked: DD's own background and
-   the solver are in the zip) but it has not been run there.
+4. ~~Test in Firefox~~ — **passed**, 2 Nov 2026 (Rick, temporary add-on,
+   including the fast trick jumps).
 5. **Record the reviewer demo** and put the URL in the reviewer notes. Fetch's
    recordings live at bridge-craftwork.github.io/bridge-classroom-fetch/demo/.
    Other players' usernames must be blurred, as there.
