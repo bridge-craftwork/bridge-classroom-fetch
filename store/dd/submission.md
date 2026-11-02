@@ -37,7 +37,7 @@ Open an event in BBO's History and, for every board you open:
 • Click one and the viewer steps to that trick. The hand that erred shows what it should have played: the double-dummy best cards in green, the rest in red.
 • On the table, the card that led and the card that won each trick are marked, since the hands no longer say who won the trick before.
 • Each board in the list is tagged with the errors by you, your partner and the opponents, or "clean". The event's totals sit beside BBO's own score.
-• A DD Details button opens the board in Bridge Classroom's detailed double-dummy view.
+• A DD Details button opens the board in the detailed double-dummy viewer, by way of Bridge Classroom.
 
 The double-dummy solver runs inside the extension, on your device. Nothing is sent to a server for analysis, and the extension makes no requests of its own to Bridge Base: it reads the boards BBO's own History panel has already loaded. Analyses are kept on your device for 14 days, so going back to an event is instant.
 
@@ -88,7 +88,7 @@ Registers one small script on www.bridgebase.com/v3/ that runs in the page's own
 **Host permissions** — one host.
 
 ```
-www.bridgebase.com/v3/ — Bridge Base Online's web client, whose History panel the review is drawn on. No other origin is requested. The extension sends nothing anywhere unless the user clicks its DD Details button, which opens the board on bridge-classroom.org.
+www.bridgebase.com/v3/ — Bridge Base Online's web client, whose History panel the review is drawn on. No other origin is requested. The extension sends nothing anywhere unless the user clicks its DD Details button, which opens the board on bridge-classroom.org, and that page passes it to the viewer at bridge-craftwork.com/bridge-solver.
 ```
 
 **Content script on `bridge-classroom.org` / `.com`** — no host permission is
@@ -111,7 +111,8 @@ No remote code. The double-dummy solver is WebAssembly bundled in the package (a
 **Collected** — tick **Website content** and **Personally identifiable
 information**, as Fetch does, and for the same reason: "collect" in every
 store's sense means *leaves the device*. One path does. DD Details sends the
-board, its play and the four players' **BBO usernames** to bridge-classroom.org.
+board, its play and the four players' **BBO usernames** to bridge-classroom.org,
+which passes them to bridge-craftwork.com/bridge-solver.
 A username identifies a person. Everything else stays on the device.
 
 Firefox's manifest already declares `personallyIdentifyingInfo` and
@@ -126,7 +127,7 @@ unrelated purposes; not used for creditworthiness or lending.
 **If a free-text field is offered**
 
 ```
-The extension analyses, on the user's device, the bridge boards the user opens in Bridge Base Online's History panel, from the copy of that data BBO's own page has already loaded. The analysis and the boards are kept in extension storage on the device for 14 days. Nothing leaves the device unless the user clicks DD Details on a board, which opens that one board, with the players' BBO usernames, on bridge-classroom.org. No analytics, no telemetry, no third-party endpoint.
+The extension analyses, on the user's device, the bridge boards the user opens in Bridge Base Online's History panel, from the copy of that data BBO's own page has already loaded. The analysis and the boards are kept in extension storage on the device for 14 days. Nothing leaves the device unless the user clicks DD Details on a board, which opens that one board, with the players' BBO usernames, on bridge-classroom.org, which passes it to the viewer at bridge-craftwork.com/bridge-solver. No analytics, no telemetry, no third-party endpoint.
 ```
 
 ---
@@ -146,7 +147,7 @@ To see it with your own account, if you have one with recent tournament play:
 2. Open Recent tournaments, then any event. Boards that have errors get a tag in the Result column; checked boards with none say "clean".
 3. The board shown below has its error cards marked in the hands. Click one: the viewer steps to that trick, and the player who erred has their alternatives marked green (best) and red.
 4. The menu button (three lines) on the board has "Hide Bridge Craftwork DD", which removes everything; "Show" brings it back.
-5. DD Details opens the board on bridge-classroom.org.
+5. DD Details opens the board on bridge-classroom.org, which passes it to the viewer at bridge-craftwork.com/bridge-solver.
 
 The solver runs locally (bundled WebAssembly). The extension makes no network requests of its own to Bridge Base.
 ```
@@ -196,9 +197,13 @@ Things only Rick can do, in the order they block:
    per-website permission on bridge-classroom.org, as the Apple notes say.
 4. ~~Test in Firefox~~ — **passed**, 2 Nov 2026 (Rick, temporary add-on,
    including the fast trick jumps).
-5. **Record the reviewer demo** and put the URL in the reviewer notes. Fetch's
-   recordings live at bridge-craftwork.github.io/bridge-classroom-fetch/demo/.
-   Other players' usernames must be blurred, as there.
-6. **Mac App Store**: create the app record for bundle id
+5. **Publish the reviewer demo** and put its URL in the reviewer notes. Recorded:
+   `demo/dd/bridge-craftwork-dd.mp4` (`tools/record-dd-demo.mjs`, names hidden).
+   GitHub Pages publishes from `main`, so it goes live when this reaches `main`.
+6. **Republish the privacy page.** The live page says DD Details opens a Bridge
+   Classroom page; the board then goes on to bridge-craftwork.com/bridge-solver
+   (logged 2 Nov 2026). `store/dd/privacy-page.html` is corrected; the live copy
+   in bridge-craftwork-site is not.
+7. **Mac App Store**: create the app record for bundle id
    `org.bridge-classroom.bridge-craftwork-dd` (team 8H3FX5B8KD). The bundle id
    is permanent once created; change it in `project.pbxproj` first if needed.

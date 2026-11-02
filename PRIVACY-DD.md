@@ -46,11 +46,12 @@ Whether the display is shown or hidden is also kept, so your choice holds.
 
 ## Where results go
 
-Nowhere, unless you click the **DD Details** button on a board. That opens a
-Bridge Classroom page (bridge-classroom.org or bridge-classroom.com) with that
-one deal, its auction and play, and the players' Bridge Base usernames — the
-same thing that happens with Bridge Classroom Fetch, and governed from there
-by the [Bridge Classroom privacy policy](https://bridge-classroom.org/privacy#extension).
+Nowhere, unless you click the **DD Details** button on a board. That sends that
+one deal, its auction and play, and the players' Bridge Base usernames to a
+Bridge Classroom page (bridge-classroom.org or bridge-classroom.com), which
+passes them on to the double-dummy viewer at bridge-craftwork.com/bridge-solver.
+The [Bridge Classroom privacy policy](https://bridge-classroom.org/privacy#extension)
+governs them from there.
 
 There are no analytics, no telemetry, no advertising and no tracking.
 
