@@ -140,7 +140,7 @@ Paste for Firefox and Apple; Chrome has per-permission fields only.
 This extension works inside Bridge Base Online's History panel, which requires a signed-in BBO account with played boards. We cannot supply one: BBO allows only one active session per account, so a shared login would sign reviewers out of one another, and a newly created account has no History to review.
 
 A short recording of the whole extension in use, on a real BBO account, is here:
-[RECORDING URL — see Blockers]
+https://bridge-craftwork.github.io/bridge-classroom-fetch/demo/dd/bridge-craftwork-dd.mp4
 
 To see it with your own account, if you have one with recent tournament play:
 1. Sign in at https://www.bridgebase.com/v3/ and open the History tab on the right.
@@ -197,13 +197,11 @@ Things only Rick can do, in the order they block:
    per-website permission on bridge-classroom.org, as the Apple notes say.
 4. ~~Test in Firefox~~ — **passed**, 2 Nov 2026 (Rick, temporary add-on,
    including the fast trick jumps).
-5. **Publish the reviewer demo** and put its URL in the reviewer notes. Recorded:
-   `demo/dd/bridge-craftwork-dd.mp4` (`tools/record-dd-demo.mjs`, names hidden).
-   GitHub Pages publishes from `main`, so it goes live when this reaches `main`.
-6. **Republish the privacy page.** The live page says DD Details opens a Bridge
-   Classroom page; the board then goes on to bridge-craftwork.com/bridge-solver
-   (logged 2 Nov 2026). `store/dd/privacy-page.html` is corrected; the live copy
-   in bridge-craftwork-site is not.
+5. ~~Publish the reviewer demo~~ — **done**, live and linked in the reviewer notes
+   (bridge-classroom-fetch#10, 2 Nov 2026). Re-record with
+   `tools/record-dd-demo.mjs` after visible changes.
+6. ~~Republish the privacy page~~ — **done**, now names bridge-craftwork.com too
+   (bridge-craftwork-site#13, 2 Nov 2026).
 7. **Mac App Store**: create the app record for bundle id
    `org.bridge-classroom.bridge-craftwork-dd` (team 8H3FX5B8KD). The bundle id
    is permanent once created; change it in `project.pbxproj` first if needed.
