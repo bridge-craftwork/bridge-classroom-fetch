@@ -2,9 +2,10 @@
 
 **Last updated:** 1 November 2026
 
-> Draft, kept beside the code it describes. Not yet published; a store listing
-> will need a public URL for it, as Bridge Classroom Fetch's points at
-> bridge-classroom.org/privacy.
+> The published policy will be **<https://bridge-craftwork.com/dd/privacy/>**,
+> the URL the store listings point at. Its page is `store/dd/privacy-page.html`,
+> to be copied to `site/dd/privacy/index.html` in bridge-craftwork-site. This
+> file is the source; keep the two in step. **Not yet published.**
 
 ## Overview
 
@@ -45,7 +46,7 @@ Whether the display is shown or hidden is also kept, so your choice holds.
 
 ## Where results go
 
-Nowhere, unless you click the **Classroom** button on a board. That opens a
+Nowhere, unless you click the **DD Details** button on a board. That opens a
 Bridge Classroom page (bridge-classroom.org or bridge-classroom.com) with that
 one deal, its auction and play, and the players' Bridge Base usernames — the
 same thing that happens with Bridge Classroom Fetch, and governed from there

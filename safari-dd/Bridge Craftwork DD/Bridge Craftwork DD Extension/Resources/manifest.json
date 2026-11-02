@@ -1,0 +1,81 @@
+{
+  "manifest_version": 3,
+  "name": "Bridge Craftwork DD",
+  "version": "1.0.0",
+  "description": "Double-dummy review in Bridge Base Online's History panel: every card that cost a trick, and what should have been played instead.",
+  "icons": {
+    "16": "icons-dd/icon-16.png",
+    "32": "icons-dd/icon-32.png",
+    "48": "icons-dd/icon-48.png",
+    "128": "icons-dd/icon-128.png"
+  },
+  "action": {
+    "default_title": "Bridge Craftwork DD",
+    "default_icon": {
+      "16": "icons-dd/icon-16.png",
+      "24": "icons-dd/icon-24.png",
+      "32": "icons-dd/icon-32.png"
+    }
+  },
+  "background": {
+    "service_worker": "service-worker-loader.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "js": [
+        "assets/ddContent.js-loader-B_IzFt2Z.js"
+      ],
+      "matches": [
+        "https://www.bridgebase.com/v3/*"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "js": [
+        "assets/ingestContent.js-loader-BvEeLTOF.js"
+      ],
+      "matches": [
+        "https://bridge-classroom.org/*",
+        "https://bridge-classroom.com/*"
+      ],
+      "run_at": "document_start"
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+  },
+  "permissions": [
+    "storage",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://www.bridgebase.com/v3/*"
+  ],
+  "web_accessible_resources": [
+    {
+      "matches": [
+        "https://www.bridgebase.com/*"
+      ],
+      "resources": [
+        "assets/preload-helper-ckwbz45p.js",
+        "assets/ddPlay-DZMJO9yL.js",
+        "assets/browser-polyfill-CDc_Ui7X.js",
+        "assets/ddContent.js-a0VArpWa.js"
+      ],
+      "use_dynamic_url": false
+    },
+    {
+      "matches": [
+        "https://bridge-classroom.com/*",
+        "https://bridge-classroom.org/*"
+      ],
+      "resources": [
+        "assets/preload-helper-ckwbz45p.js",
+        "assets/browser-polyfill-CDc_Ui7X.js",
+        "assets/ingestContent.js-DgaWawV7.js"
+      ],
+      "use_dynamic_url": false
+    }
+  ]
+}

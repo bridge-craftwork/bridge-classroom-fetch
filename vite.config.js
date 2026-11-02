@@ -58,8 +58,11 @@ const PER_BROWSER_OVERRIDES = {
   // service-worker support) would make the declaration a lint error. The two
   // floors differ, hence the separate gecko_android block.
   firefox: {
+    // The extension's own background entry — Fetch's or DD's — not a fixed
+    // path: hard-coding Fetch's here once shipped DD's Firefox build with the
+    // wrong background and no solver.
     background: {
-      scripts: ['src/background.js'],
+      scripts: [baseManifest.background.service_worker],
     },
     browser_specific_settings: {
       gecko: {

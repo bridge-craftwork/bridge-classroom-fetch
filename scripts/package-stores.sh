@@ -1,7 +1,8 @@
 #!/bin/bash
 # Build store-ready archives for every target.
 #
-#   scripts/package-stores.sh
+#   scripts/package-stores.sh           Bridge Classroom Fetch
+#   EXT=dd scripts/package-stores.sh    Bridge Craftwork DD
 #
 # Produces dist/packages/<name>-<version>-<target>.zip for Chrome, Edge and
 # Firefox, plus a source archive for Firefox review. Safari is not a zip — it
@@ -11,12 +12,27 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-NAME=$(python3 -c "import json;print(json.load(open('package.json'))['name'])")
-VERSION=$(python3 -c "import json;print(json.load(open('manifest.json'))['version'])")
+EXT="${EXT:-fetch}"
+if [ "$EXT" = "dd" ]; then
+  NAME="bridge-craftwork-dd"
+  MANIFEST="manifest.dd.json"
+  DIST_PREFIX="dd-"
+  SAFARI_RES="safari-dd/Bridge Craftwork DD/Bridge Craftwork DD Extension/Resources"
+  SAFARI_PROJECT="safari-dd"
+else
+  NAME=$(python3 -c "import json;print(json.load(open('package.json'))['name'])")
+  MANIFEST="manifest.json"
+  DIST_PREFIX=""
+  SAFARI_RES="safari/Bridge Classroom Fetch/Shared (Extension)/Resources"
+  SAFARI_PROJECT="safari"
+fi
+export EXT
+VERSION=$(python3 -c "import json;print(json.load(open('$MANIFEST'))['version'])")
 OUT="dist/packages"
 
 echo "==> $NAME $VERSION"
-rm -rf "$OUT"; mkdir -p "$OUT"
+mkdir -p "$OUT"
+rm -f "$OUT/$NAME-"*
 
 # Guard: the test build widens host permissions for end-to-end testing and must
 # never reach a store.
@@ -56,11 +72,12 @@ EOF
 
 for target in chrome edge firefox; do
   echo "==> building $target"
-  BROWSER="$target" npx vite build --outDir "dist/$target" >/dev/null
-  guard_test_origins "dist/$target/manifest.json"
-  guard_shot_mode "dist/$target"
-  guard_description_length "dist/$target/manifest.json"
-  (cd "dist/$target" && zip -qr "../../$OUT/$NAME-$VERSION-$target.zip" .)
+  dir="dist/$DIST_PREFIX$target"
+  BROWSER="$target" npx vite build --outDir "$dir" >/dev/null
+  guard_test_origins "$dir/manifest.json"
+  guard_shot_mode "$dir"
+  guard_description_length "$dir/manifest.json"
+  (cd "$dir" && zip -qr "../../$OUT/$NAME-$VERSION-$target.zip" .)
 done
 
 # Firefox reviewers require buildable source when the submission is minified.
@@ -69,28 +86,29 @@ git archive --format=zip --prefix="$NAME-$VERSION/" HEAD \
   -o "$OUT/$NAME-$VERSION-source.zip"
 
 echo "==> refreshing Safari resources"
-BROWSER=safari npx vite build --outDir dist/safari >/dev/null
-guard_test_origins dist/safari/manifest.json
-guard_shot_mode dist/safari
-SAFARI_RES="safari/Bridge Classroom Fetch/Shared (Extension)/Resources"
+SAFARI_DIST="dist/${DIST_PREFIX}safari"
+BROWSER=safari npx vite build --outDir "$SAFARI_DIST" >/dev/null
+guard_test_origins "$SAFARI_DIST/manifest.json"
+guard_shot_mode "$SAFARI_DIST"
 if [ -d "$SAFARI_RES" ]; then
   rm -rf "${SAFARI_RES:?}/"*
-  cp -R dist/safari/* "$SAFARI_RES/"
+  cp -R "$SAFARI_DIST"/* "$SAFARI_RES/"
   echo "    updated $SAFARI_RES"
 else
   echo "    no Xcode project yet — create one with:"
-  echo "    xcrun safari-web-extension-converter dist/safari --project-location safari/"
+  echo "    xcrun safari-web-extension-converter $SAFARI_DIST --project-location $SAFARI_PROJECT/"
 fi
 
 echo
-ls -lh "$OUT"
+ls -lh "$OUT"/"$NAME"-*
 cat <<'EOF'
 
 Next steps
   Chrome   upload the -chrome.zip at chrome.google.com/webstore/devconsole
   Edge     upload the -edge.zip at partner.microsoft.com/dashboard/microsoftedge
   Firefox  upload the -firefox.zip AND the -source.zip at addons.mozilla.org
-  Safari   open safari/*/*.xcodeproj in Xcode, bump the build number,
+  Safari   open the .xcodeproj under safari/ (Fetch) or safari-dd/ (DD) in Xcode,
+           bump the build number,
            then Product > Archive > Distribute App
 
 See docs/store-review.md for listing copy, permission justifications and the

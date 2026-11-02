@@ -3,8 +3,8 @@
 // hides it (ddMenu.js). On by default; the choice is kept in extension storage,
 // so it holds across tabs and visits.
 
-import { startDdOverlay } from './bboDdOverlay.js'
-import { syncToggleItem, ENABLED_KEY, TOGGLE_ITEM_ID } from './ddMenu.js'
+import { startDdOverlay, POPOUT_ID, RESTART_ID } from './bboDdOverlay.js'
+import { syncToggleItem, findDealMenu, ENABLED_KEY, TOGGLE_ITEM_ID } from './ddMenu.js'
 
 function showToast(text) {
   const el = document.createElement('div')
@@ -66,6 +66,13 @@ if (typeof globalThis.chrome !== 'undefined' || typeof globalThis.browser !== 'u
     const sync = () => {
       if (!alive()) return retire()
       syncToggleItem(document, enabled, toggle)
+      // Our buttons sit in a higher stacking layer than BBO's deal menu, so
+      // while it is open they would cover its rows. Step aside until it closes.
+      const menuOpen = !!findDealMenu(document)
+      for (const id of [POPOUT_ID, RESTART_ID]) {
+        const btn = document.getElementById(id)
+        if (btn) btn.style.visibility = menuOpen ? 'hidden' : ''
+      }
     }
     observer = new MutationObserver(() => {
       sync()

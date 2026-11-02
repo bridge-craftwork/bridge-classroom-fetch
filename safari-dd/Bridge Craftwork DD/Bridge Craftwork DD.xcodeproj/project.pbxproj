@@ -1,0 +1,597 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 110;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		1D1569303098109A00A5A7BC /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D15692F3098109A00A5A7BC /* AppDelegate.swift */; };
+		1D1569343098109A00A5A7BC /* Main.html in Resources */ = {isa = PBXBuildFile; fileRef = 1D1569323098109A00A5A7BC /* Main.html */; };
+		1D1569363098109A00A5A7BC /* Icon.png in Resources */ = {isa = PBXBuildFile; fileRef = 1D1569353098109A00A5A7BC /* Icon.png */; };
+		1D1569383098109A00A5A7BC /* Style.css in Resources */ = {isa = PBXBuildFile; fileRef = 1D1569373098109A00A5A7BC /* Style.css */; };
+		1D15693A3098109A00A5A7BC /* Script.js in Resources */ = {isa = PBXBuildFile; fileRef = 1D1569393098109A00A5A7BC /* Script.js */; };
+		1D15693C3098109A00A5A7BC /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D15693B3098109A00A5A7BC /* ViewController.swift */; };
+		1D15693F3098109A00A5A7BC /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 1D15693D3098109A00A5A7BC /* Main.storyboard */; };
+		1D1569413098109A00A5A7BC /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1D1569403098109A00A5A7BC /* Assets.xcassets */; };
+		1D1569483098109B00A5A7BC /* Bridge Craftwork DD Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 1D1569473098109B00A5A7BC /* Bridge Craftwork DD Extension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		1D15694D3098109B00A5A7BC /* SafariWebExtensionHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D15694C3098109B00A5A7BC /* SafariWebExtensionHandler.swift */; };
+		1D15695E3098109B00A5A7BC /* bbo-page-hook.js in Resources */ = {isa = PBXBuildFile; fileRef = 1D1569593098109B00A5A7BC /* bbo-page-hook.js */; };
+		1D15695F3098109B00A5A7BC /* service-worker-loader.js in Resources */ = {isa = PBXBuildFile; fileRef = 1D15695A3098109B00A5A7BC /* service-worker-loader.js */; };
+		1D1569603098109B00A5A7BC /* manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = 1D15695B3098109B00A5A7BC /* manifest.json */; };
+		1D1569613098109B00A5A7BC /* icons-dd in Resources */ = {isa = PBXBuildFile; fileRef = 1D15695C3098109B00A5A7BC /* icons-dd */; };
+		1D1569623098109B00A5A7BC /* assets in Resources */ = {isa = PBXBuildFile; fileRef = 1D15695D3098109B00A5A7BC /* assets */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		1D1569493098109B00A5A7BC /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 1D1569243098109A00A5A7BC /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 1D1569463098109B00A5A7BC;
+			remoteInfo = "Bridge Craftwork DD Extension";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		1D1569543098109B00A5A7BC /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			dstPath = "";
+			dstSubfolder = PlugIns;
+			files = (
+				1D1569483098109B00A5A7BC /* Bridge Craftwork DD Extension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		1D15692C3098109A00A5A7BC /* Bridge Craftwork DD.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Bridge Craftwork DD.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		1D15692F3098109A00A5A7BC /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		1D1569333098109A00A5A7BC /* Base */ = {isa = PBXFileReference; lastKnownFileType = text.html; name = Base; path = Base.lproj/Main.html; sourceTree = "<group>"; };
+		1D1569353098109A00A5A7BC /* Icon.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Icon.png; sourceTree = "<group>"; };
+		1D1569373098109A00A5A7BC /* Style.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = Style.css; sourceTree = "<group>"; };
+		1D1569393098109A00A5A7BC /* Script.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = Script.js; sourceTree = "<group>"; };
+		1D15693B3098109A00A5A7BC /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
+		1D15693E3098109A00A5A7BC /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
+		1D1569403098109A00A5A7BC /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		1D1569423098109A00A5A7BC /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		1D1569473098109B00A5A7BC /* Bridge Craftwork DD Extension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Bridge Craftwork DD Extension.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
+		1D15694C3098109B00A5A7BC /* SafariWebExtensionHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafariWebExtensionHandler.swift; sourceTree = "<group>"; };
+		1D15694E3098109B00A5A7BC /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		1D1569593098109B00A5A7BC /* bbo-page-hook.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; name = "bbo-page-hook.js"; path = "Resources/bbo-page-hook.js"; sourceTree = "<group>"; };
+		1D15695A3098109B00A5A7BC /* service-worker-loader.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; name = "service-worker-loader.js"; path = "Resources/service-worker-loader.js"; sourceTree = "<group>"; };
+		1D15695B3098109B00A5A7BC /* manifest.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = manifest.json; path = Resources/manifest.json; sourceTree = "<group>"; };
+		1D15695C3098109B00A5A7BC /* icons-dd */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "icons-dd"; path = "Resources/icons-dd"; sourceTree = "<group>"; };
+		1D15695D3098109B00A5A7BC /* assets */ = {isa = PBXFileReference; lastKnownFileType = folder; name = assets; path = Resources/assets; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		1D1569293098109A00A5A7BC /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			files = (
+			);
+		};
+		1D1569443098109B00A5A7BC /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			files = (
+			);
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		1D1569233098109A00A5A7BC = {
+			isa = PBXGroup;
+			children = (
+				1D15692E3098109A00A5A7BC /* Bridge Craftwork DD */,
+				1D15694B3098109B00A5A7BC /* Bridge Craftwork DD Extension */,
+				1D15692D3098109A00A5A7BC /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		1D15692D3098109A00A5A7BC /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				1D15692C3098109A00A5A7BC /* Bridge Craftwork DD.app */,
+				1D1569473098109B00A5A7BC /* Bridge Craftwork DD Extension.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		1D15692E3098109A00A5A7BC /* Bridge Craftwork DD */ = {
+			isa = PBXGroup;
+			children = (
+				1D15692F3098109A00A5A7BC /* AppDelegate.swift */,
+				1D15693B3098109A00A5A7BC /* ViewController.swift */,
+				1D15693D3098109A00A5A7BC /* Main.storyboard */,
+				1D1569403098109A00A5A7BC /* Assets.xcassets */,
+				1D1569423098109A00A5A7BC /* Info.plist */,
+				1D1569313098109A00A5A7BC /* Resources */,
+			);
+			path = "Bridge Craftwork DD";
+			sourceTree = "<group>";
+		};
+		1D1569313098109A00A5A7BC /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				1D1569323098109A00A5A7BC /* Main.html */,
+				1D1569353098109A00A5A7BC /* Icon.png */,
+				1D1569373098109A00A5A7BC /* Style.css */,
+				1D1569393098109A00A5A7BC /* Script.js */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		1D15694B3098109B00A5A7BC /* Bridge Craftwork DD Extension */ = {
+			isa = PBXGroup;
+			children = (
+				1D1569583098109B00A5A7BC /* Resources */,
+				1D15694C3098109B00A5A7BC /* SafariWebExtensionHandler.swift */,
+				1D15694E3098109B00A5A7BC /* Info.plist */,
+			);
+			path = "Bridge Craftwork DD Extension";
+			sourceTree = "<group>";
+		};
+		1D1569583098109B00A5A7BC /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				1D1569593098109B00A5A7BC /* bbo-page-hook.js */,
+				1D15695A3098109B00A5A7BC /* service-worker-loader.js */,
+				1D15695B3098109B00A5A7BC /* manifest.json */,
+				1D15695C3098109B00A5A7BC /* icons-dd */,
+				1D15695D3098109B00A5A7BC /* assets */,
+			);
+			name = Resources;
+			path = "Bridge Craftwork DD Extension";
+			sourceTree = SOURCE_ROOT;
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		1D15692B3098109A00A5A7BC /* Bridge Craftwork DD */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1D1569553098109B00A5A7BC /* Build configuration list for PBXNativeTarget "Bridge Craftwork DD" */;
+			buildPhases = (
+				1D1569283098109A00A5A7BC /* Sources */,
+				1D1569293098109A00A5A7BC /* Frameworks */,
+				1D15692A3098109A00A5A7BC /* Resources */,
+				1D1569543098109B00A5A7BC /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				1D15694A3098109B00A5A7BC /* PBXTargetDependency */,
+			);
+			name = "Bridge Craftwork DD";
+			productName = "Bridge Craftwork DD";
+			productReference = 1D15692C3098109A00A5A7BC /* Bridge Craftwork DD.app */;
+			productType = "com.apple.product-type.application";
+		};
+		1D1569463098109B00A5A7BC /* Bridge Craftwork DD Extension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1D1569513098109B00A5A7BC /* Build configuration list for PBXNativeTarget "Bridge Craftwork DD Extension" */;
+			buildPhases = (
+				1D1569433098109B00A5A7BC /* Sources */,
+				1D1569443098109B00A5A7BC /* Frameworks */,
+				1D1569453098109B00A5A7BC /* Resources */,
+			);
+			buildRules = (
+			);
+			name = "Bridge Craftwork DD Extension";
+			productName = "Bridge Craftwork DD Extension";
+			productReference = 1D1569473098109B00A5A7BC /* Bridge Craftwork DD Extension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		1D1569243098109A00A5A7BC /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2710;
+				LastUpgradeCheck = 2710;
+				TargetAttributes = {
+					1D15692B3098109A00A5A7BC = {
+						CreatedOnToolsVersion = 27.1;
+					};
+					1D1569463098109B00A5A7BC = {
+						CreatedOnToolsVersion = 27.1;
+					};
+				};
+			};
+			buildConfigurationList = 1D1569273098109A00A5A7BC /* Build configuration list for PBXProject "Bridge Craftwork DD" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 1D1569233098109A00A5A7BC;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 1D15692D3098109A00A5A7BC /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				1D15692B3098109A00A5A7BC /* Bridge Craftwork DD */,
+				1D1569463098109B00A5A7BC /* Bridge Craftwork DD Extension */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		1D15692A3098109A00A5A7BC /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			files = (
+				1D1569363098109A00A5A7BC /* Icon.png in Resources */,
+				1D15693F3098109A00A5A7BC /* Main.storyboard in Resources */,
+				1D15693A3098109A00A5A7BC /* Script.js in Resources */,
+				1D1569343098109A00A5A7BC /* Main.html in Resources */,
+				1D1569413098109A00A5A7BC /* Assets.xcassets in Resources */,
+				1D1569383098109A00A5A7BC /* Style.css in Resources */,
+			);
+		};
+		1D1569453098109B00A5A7BC /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			files = (
+				1D1569623098109B00A5A7BC /* assets in Resources */,
+				1D15695E3098109B00A5A7BC /* bbo-page-hook.js in Resources */,
+				1D1569613098109B00A5A7BC /* icons-dd in Resources */,
+				1D1569603098109B00A5A7BC /* manifest.json in Resources */,
+				1D15695F3098109B00A5A7BC /* service-worker-loader.js in Resources */,
+			);
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		1D1569283098109A00A5A7BC /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			files = (
+				1D15693C3098109A00A5A7BC /* ViewController.swift in Sources */,
+				1D1569303098109A00A5A7BC /* AppDelegate.swift in Sources */,
+			);
+		};
+		1D1569433098109B00A5A7BC /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			files = (
+				1D15694D3098109B00A5A7BC /* SafariWebExtensionHandler.swift in Sources */,
+			);
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		1D15694A3098109B00A5A7BC /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 1D1569463098109B00A5A7BC /* Bridge Craftwork DD Extension */;
+			targetProxy = 1D1569493098109B00A5A7BC /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXVariantGroup section */
+		1D1569323098109A00A5A7BC /* Main.html */ = {
+			isa = PBXVariantGroup;
+			children = (
+				1D1569333098109A00A5A7BC /* Base */,
+			);
+			name = Main.html;
+			sourceTree = "<group>";
+		};
+		1D15693D3098109A00A5A7BC /* Main.storyboard */ = {
+			isa = PBXVariantGroup;
+			children = (
+				1D15693E3098109A00A5A7BC /* Base */,
+			);
+			name = Main.storyboard;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		1D15694F3098109B00A5A7BC /* Debug configuration for PBXProject "Bridge Craftwork DD" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		1D1569503098109B00A5A7BC /* Release configuration for PBXProject "Bridge Craftwork DD" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		1D1569523098109B00A5A7BC /* Debug configuration for PBXNativeTarget "Bridge Craftwork DD Extension" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 8H3FX5B8KD;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Bridge Craftwork DD Extension/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Bridge Craftwork DD Extension";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MARKETING_VERSION = 1.0.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "org.bridge-classroom.bridge-craftwork-dd.Extension";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		1D1569533098109B00A5A7BC /* Release configuration for PBXNativeTarget "Bridge Craftwork DD Extension" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 8H3FX5B8KD;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Bridge Craftwork DD Extension/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Bridge Craftwork DD Extension";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MARKETING_VERSION = 1.0.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "org.bridge-classroom.bridge-craftwork-dd.Extension";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		1D1569563098109B00A5A7BC /* Debug configuration for PBXNativeTarget "Bridge Craftwork DD" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 8H3FX5B8KD;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Bridge Craftwork DD/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Bridge Craftwork DD";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSMainStoryboardFile = Main;
+				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
+				INFOPLIST_KEY_NSViewGestureRecognizerIsExclusive = NO;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+					"-framework",
+					WebKit,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "org.bridge-classroom.bridge-craftwork-dd";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		1D1569573098109B00A5A7BC /* Release configuration for PBXNativeTarget "Bridge Craftwork DD" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 8H3FX5B8KD;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Bridge Craftwork DD/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Bridge Craftwork DD";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSMainStoryboardFile = Main;
+				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
+				INFOPLIST_KEY_NSViewGestureRecognizerIsExclusive = NO;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+					"-framework",
+					WebKit,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "org.bridge-classroom.bridge-craftwork-dd";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1D1569273098109A00A5A7BC /* Build configuration list for PBXProject "Bridge Craftwork DD" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1D15694F3098109B00A5A7BC /* Debug configuration for PBXProject "Bridge Craftwork DD" */,
+				1D1569503098109B00A5A7BC /* Release configuration for PBXProject "Bridge Craftwork DD" */,
+			);
+			defaultConfigurationName = Release;
+		};
+		1D1569513098109B00A5A7BC /* Build configuration list for PBXNativeTarget "Bridge Craftwork DD Extension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1D1569523098109B00A5A7BC /* Debug configuration for PBXNativeTarget "Bridge Craftwork DD Extension" */,
+				1D1569533098109B00A5A7BC /* Release configuration for PBXNativeTarget "Bridge Craftwork DD Extension" */,
+			);
+			defaultConfigurationName = Release;
+		};
+		1D1569553098109B00A5A7BC /* Build configuration list for PBXNativeTarget "Bridge Craftwork DD" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1D1569563098109B00A5A7BC /* Debug configuration for PBXNativeTarget "Bridge Craftwork DD" */,
+				1D1569573098109B00A5A7BC /* Release configuration for PBXNativeTarget "Bridge Craftwork DD" */,
+			);
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 1D1569243098109A00A5A7BC /* Project object */;
+	validationLevel = 1;
+}
