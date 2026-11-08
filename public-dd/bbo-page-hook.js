@@ -9,7 +9,14 @@
 // taken after the response has arrived.
 //
 // A daylong (robot game) fills My Table with one more: ard.php, whose <deals>
-// answer is every board of the event so far. Only that answer is copied.
+// answer is every board of the event so far. Only that answer is copied, and
+// not its request, which carries the session password.
+//
+// While a daylong is played, the robot game's own requests are copied too, so
+// each board can be analysed as it ends: ard_v1/deal's answer (the board and
+// the user's hand), and each ard_v1/poll that carries a move — from its request
+// only the board's id and the user's own calls and cards (dealid, actions), and
+// its answer, the robots' moves. The session token both carry is taken out.
 //
 // Everything else BBO requests is ignored. See docs/data-sources.md § 3.9.
 //
@@ -29,17 +36,46 @@
   // ard.php answers several questions for a daylong; only its list of the
   // event's boards, <deals>, is copied.
   const ARD_DEALS = /^\s*(<\?xml[^>]*\?>\s*)?<deals[\s>]/
+  const ARD_PLAY =
+    /^https:\/\/bboardapi\.bridgebase\.com\/(?:[\w-]+\/)*ard_v1\/(deal|poll)(?:[?/#]|$)/
+  const ARD_KINDS = { deal: 'ard-deal', poll: 'ard-poll' }
   const MAX_BODY = 256 * 1024
   const recent = []
+
+  // One field of a form-encoded request body, whatever BBO built it with.
+  function formField(body, name) {
+    try {
+      if (typeof body === 'string') return new URLSearchParams(body).get(name)
+      if (body instanceof URLSearchParams || body instanceof FormData) {
+        const v = body.get(name)
+        return typeof v === 'string' ? v : null
+      }
+    } catch {
+      // Not a form: nothing to read.
+    }
+    return null
+  }
+
+  const noToken = (text) => text.replace(/\stoken="[^"]*"/g, '')
 
   function pass(kind, url, requestBody, body) {
     if (typeof body !== 'string' || body.length > MAX_BODY) return
     if (kind === 'ard' && !ARD_DEALS.test(body)) return
+    let request = typeof requestBody === 'string' ? requestBody : null
+    if (kind === 'ard' || kind === 'ard-deal') request = null
+    if (kind === 'ard-deal' || kind === 'ard-poll') body = noToken(body)
+    if (kind === 'ard-poll') {
+      const dealid = formField(requestBody, 'dealid')
+      const actions = formField(requestBody, 'actions') ?? '[]'
+      // Most polls only wait for the robots, and carry nothing either way.
+      if (!dealid || (actions.trim() === '[]' && !/<sc_/.test(body))) return
+      request = JSON.stringify({ dealid, actions })
+    }
     const msg = {
       source: TAG,
       kind,
       url,
-      requestBody: typeof requestBody === 'string' ? requestBody : null,
+      requestBody: request,
       body,
     }
     // Kept so a content script that starts late can ask for what it missed.
@@ -53,7 +89,10 @@
     for (const msg of recent) window.postMessage(msg, window.location.origin)
   })
 
-  const kindOf = (url) => KINDS[WANTED.exec(String(url ?? ''))?.[1]] ?? null
+  const kindOf = (url) =>
+    KINDS[WANTED.exec(String(url ?? ''))?.[1]] ??
+    ARD_KINDS[ARD_PLAY.exec(String(url ?? ''))?.[1]] ??
+    null
 
   // ── Fast steps ──────────────────────────────────────────────────────────────
   //

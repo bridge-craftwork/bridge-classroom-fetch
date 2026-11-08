@@ -400,9 +400,32 @@ board so far, each `dealstring` a LIN with `result` and the four names as
 attributes — read by `parseArdDeals`, key `ard:<tid>:<round>:<board>`. The hook
 copies `ard.php` only when the answer is `<deals>`. BBO asks for it on load but
 not after each board, nor on Refresh, so a board finished since the page loaded
-appears only after a reload. Reading the polls is the open item; it needs one
-`deal` answer and a poll after the player's own card, still to capture. A
-passed-out board is `P` there and `Pass` on screen.
+appears only after a reload. A passed-out board is `P` there and `Pass` on screen.
+
+**Daylong boards as they end: the robot game's polls.** Each board is also built
+from the robot game's own traffic (`src/adapters/bbo/parsers/ardPlay.js`),
+captured from a live daylong on 8 Nov 2026:
+
+| Request | Carries |
+|---|---|
+| `ard_v1/deal`, answer | `<sc_deal>`: board, dealer, `vul`, and the user's hand only (the others `SHDC`); `dealid="HAND/<tid>/<round>/<board>/<user>"` |
+| `ard_v1/poll`, request | form fields `dealid` and `actions`, the user's own moves: `[{"t":"b","b":"2C","e":"…","a":"n"}]` a call, `[{"t":"p","c":"SA"},{"t":"p","c":"H9"}]` cards, `[]` nothing |
+| `ard_v1/poll`, answer | the robots' moves: `<sc_call_made call="2H" explain="…"/>`, `<sc_card_played card="SK"/>`; at the end `<sc_claim_accept tricks="11"/>`, `<sc_player_holds north=… south=…/>` (all four hands) and `<sc_deal_complete result="4HS+1"/>` |
+
+The user's moves go out in a poll and the robots' come back in its answer, so a
+board is the two interleaved. When the user's side declares, the user's actions
+carry both hands' cards. No move names its seat; the hands at the end do. A board
+is handed on only when it checks out: the user's hand as dealt, the auction giving
+BBO's contract and declarer, and every card from the hand that held it, in turn,
+following suit. A board joined halfway is dropped, and the next reload brings it
+from `ard.php`. It takes `ard.php`'s key, `ard:<tid>:<round>:<board>`, so a board
+seen both ways is solved once.
+
+The hook passes only `dealid` and `actions` from a poll's request, and takes the
+`token` out of every answer. Most polls carry nothing either way and are not
+passed at all. `ard.php`'s own request is not passed either: it carries the
+session password (`p`). `cmd=dhb` asked of `ard.php` without `p` answers `Could
+not authenticate`, so the extension cannot ask for the boards itself.
 
 **Why registered at runtime, not in the manifest.** crxjs loads every manifest
 content script through a dynamic `import()` of an extension URL. In the page's

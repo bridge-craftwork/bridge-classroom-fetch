@@ -22,6 +22,7 @@
 
 import { parseMhList, parseMhHand, parseTfind } from '../adapters/bbo/parsers/mhXml.js'
 import { parseArdDeals, parseBoardDetails, resultOfLin } from '../adapters/bbo/parsers/liveXml.js'
+import { createArdBoardBuilder } from '../adapters/bbo/parsers/ardPlay.js'
 import { parseLin, parseLinPlayers } from '../adapters/bbo/parsers/lin.js'
 import { summarizeTrace, seatOf, hasRobotPartner, solverCard, trumpOf } from '../lib/ddPlay.js'
 import {
@@ -1200,6 +1201,30 @@ export function startDdOverlay({
     for (const hand of state.hands.values()) await solve(hand)
   }
 
+  // A daylong's boards, from ard.php or built from the robot game's polls: the
+  // same key either way, so a board seen both ways is solved once.
+  const ardBuilder = createArdBoardBuilder({
+    onDrop: (err) => console.warn('[bc] daylong board not built:', err?.message ?? err),
+  })
+  async function addArdBoards(tid, boards) {
+    if (tid !== state.liveEvent) {
+      state.live.clear()
+      state.liveEvent = tid
+    }
+    for (const b of boards) {
+      const hand = { hk: b.hk, lin: b.lin, deal: parseLin(b.lin).deal, players: b.players }
+      state.hands.set(b.hk, hand)
+      state.live.set(b.number, {
+        number: b.number,
+        resultkey: b.hk,
+        result: b.result,
+        players: b.players,
+      })
+    }
+    schedule()
+    if (enabled) for (const b of boards) await solve(state.hands.get(b.hk))
+  }
+
   async function handle(msg) {
     if (msg.kind === 'live-user') {
       // Who is signed in, from BBO's login message: the seat to count as "me" on
@@ -1245,22 +1270,19 @@ export function startDdOverlay({
       // A daylong's My Table: every board of the event so far, in one answer.
       // Everyone else at the table is a robot, so every board is the user's own.
       const { tid, boards } = parseArdDeals(msg.body)
-      if (tid !== state.liveEvent) {
-        state.live.clear()
-        state.liveEvent = tid
-      }
-      for (const b of boards) {
-        const hand = { hk: b.hk, lin: b.lin, deal: parseLin(b.lin).deal, players: b.players }
-        state.hands.set(b.hk, hand)
-        state.live.set(b.number, {
-          number: b.number,
-          resultkey: b.hk,
-          result: b.result,
-          players: b.players,
-        })
-      }
-      schedule()
-      if (enabled) for (const b of boards) await solve(state.hands.get(b.hk))
+      await addArdBoards(tid, boards)
+      return
+    }
+    if (msg.kind === 'ard-deal') {
+      // A daylong board starting, and then its moves: put together as it is
+      // played, so it is analysed as it ends rather than at the next reload.
+      ardBuilder.deal(msg.body)
+      return
+    }
+    if (msg.kind === 'ard-poll') {
+      const { dealid, actions } = JSON.parse(msg.requestBody ?? '{}')
+      const board = ardBuilder.poll(dealid, actions, msg.body)
+      if (board) await addArdBoards(board.tid, [board])
       return
     }
     if (msg.kind === 'events') {
