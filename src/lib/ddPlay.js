@@ -52,6 +52,18 @@ export function buildPlayRequest(lin) {
   }
 }
 
+/** A robot's BBO name starts with "~" ("~~M7911muq", "~Mnorth", "~robot"); no
+ *  member's can. */
+export function isRobot(name) {
+  return typeof name === 'string' && name.startsWith('~')
+}
+
+/** The user's partner is a robot. BBO then has the user play both hands whenever
+ *  their side declares, so a contract the robot "declares" is the user's to play. */
+export function hasRobotPartner(players, mySeat) {
+  return !!mySeat && isRobot(players?.[PARTNER[mySeat]])
+}
+
 /** Which seat `username` held, matched as BBO does — case-insensitively. */
 export function seatOf(players, username) {
   if (!players || !username) return null
@@ -103,8 +115,10 @@ export function trickWinners(trace, trump) {
  *            `mySeat` is null (a board the user only watched)
  *
  *  Dummy's cards are declarer's decisions, so they count against declarer:
- *  when you are dummy, partner's line is partner's, not yours. */
-export function summarizeTrace(trace, { declarer, mySeat, trump = null }) {
+ *  when you are dummy, partner's line is partner's, not yours. Unless partner is
+ *  a robot (`robotPartner`): then BBO had you play its hand as declarer, so the
+ *  declaring side's errors are yours and the robot was, in effect, dummy. */
+export function summarizeTrace(trace, { declarer, mySeat, trump = null, robotPartner = false }) {
   const dummy = PARTNER[declarer]
   const won = new Set(trump ? trickWinners(trace, trump) : [])
   const cards = {}
@@ -127,13 +141,18 @@ export function summarizeTrace(trace, { declarer, mySeat, trump = null }) {
   }
   if (!mySeat) return { cards, counts: null }
   const opps = [NEXT[mySeat], PARTNER[NEXT[mySeat]]]
+  const playedForPartner = robotPartner && PARTNER[mySeat] === declarer
   return {
     cards,
     counts: {
       // `dummy` marks the one of you who played no card of their own, so a
       // display can say so rather than credit them with a clean board.
-      me: { ...bySeat[mySeat], dummy: mySeat === dummy },
-      partner: { ...bySeat[PARTNER[mySeat]], dummy: PARTNER[mySeat] === dummy },
+      me: playedForPartner
+        ? { ...bySeat[declarer], dummy: false }
+        : { ...bySeat[mySeat], dummy: mySeat === dummy },
+      partner: playedForPartner
+        ? { ...zero(), dummy: true }
+        : { ...bySeat[PARTNER[mySeat]], dummy: PARTNER[mySeat] === dummy },
       opps: {
         errors: bySeat[opps[0]].errors + bySeat[opps[1]].errors,
         tricks: bySeat[opps[0]].tricks + bySeat[opps[1]].tricks,

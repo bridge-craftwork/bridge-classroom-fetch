@@ -74,6 +74,38 @@ if (!(await visible('historic-tournament-list'))) {
   await page.locator('.mdc-tab__text-label:text-is("Recent tournaments")').click()
   await page.waitForTimeout(1500)
 }
+// Every player's name in the deal, the account's own included: it is in the
+// top bar already, and a blurred row of four reads as deliberate.
+async function blurNames() {
+  await page.evaluate(() => {
+    for (const el of document.querySelectorAll('.nameDisplayClass')) el.style.filter = 'blur(6px)'
+  })
+}
+async function shot(name) {
+  await blurNames()
+  await page.waitForTimeout(300)
+  await page.screenshot({ path: path.join(OUT, `${name}.png`) })
+  console.log('wrote', path.join(OUT, `${name}.png`))
+}
+
+// The list of tournaments, part-way through a run, so one shot has complete events,
+// an incomplete one marked *, and events not yet started. TALLY_MS sets how far it
+// gets, at a second a request.
+await page.locator('.bc-dd-history-header').filter({ visible: true }).click()
+await page.waitForTimeout(400)
+await page.locator('#bridge-craftwork-dd-menu button', { hasText: 'Everything listed' }).click()
+await page.waitForTimeout(Number(process.env.TALLY_MS ?? 75000))
+await page.locator('.bc-dd-history-header').filter({ visible: true }).click()
+await page.waitForTimeout(2500)
+await page.mouse.move(5, 5)
+// BBO announces live vugraphs in a box over this corner, for several seconds.
+await page
+  .getByText(/vugraph broadcast has just started/i)
+  .waitFor({ state: 'hidden', timeout: 30000 })
+  .catch(() => console.log('a BBO announcement is still showing: check dd-4-tallies'))
+await page.waitForTimeout(1000)
+await shot('dd-4-tallies')
+
 await page
   .locator('historic-tournament-list-item', { hasText: EVENT })
   .filter({ visible: true })
@@ -91,20 +123,6 @@ for (let i = 1; i < n; i++) {
 }
 await rows.nth(0).click()
 await page.waitForTimeout(2500)
-
-// Every player's name in the deal, the account's own included: it is in the
-// top bar already, and a blurred row of four reads as deliberate.
-async function blurNames() {
-  await page.evaluate(() => {
-    for (const el of document.querySelectorAll('.nameDisplayClass')) el.style.filter = 'blur(6px)'
-  })
-}
-async function shot(name) {
-  await blurNames()
-  await page.waitForTimeout(300)
-  await page.screenshot({ path: path.join(OUT, `${name}.png`) })
-  console.log('wrote', path.join(OUT, `${name}.png`))
-}
 
 // 1. The event: board tags, totals, and board 1's error cards.
 await page

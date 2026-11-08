@@ -609,11 +609,12 @@ carries:
   background can compile bridge-solver's WASM and solve on the user's device.
   The narrow directive: WebAssembly only, not `eval`.
 - **`scripting`**, for `registerContentScripts` with `world: 'MAIN'`: the page
-  hook (`public-dd/bbo-page-hook.js`) that copies two responses BBO's own History
-  panel loads, and requests nothing. [data-sources.md](data-sources.md) § 3.9
+  hook (`public-dd/bbo-page-hook.js`) that copies three responses BBO's own History
+  panel loads, and requests nothing. Only DD all requests anything, from the
+  content script; see § 3.9. [data-sources.md](data-sources.md) § 3.9
   says why it is registered at runtime.
-- **`storage`** for a 14-day cache of analysed boards, which include other
-  players' BBO usernames. Local only. Its policy draft is
+- **`storage`** for analysed boards and per-event tallies, with no time limit and
+  no player names. Oldest boards deleted past `MAX_BOARDS`. Local only. Its policy draft is
   [PRIVACY-DD.md](../PRIVACY-DD.md).
 - **One host**, `www.bridgebase.com/v3/*`; no `tabs` (the hand-off only creates
   a tab).

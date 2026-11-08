@@ -4,6 +4,8 @@ import { join } from 'node:path'
 import {
   readPanel,
   matchPanels,
+  trickButtons,
+  listOnScreen,
   drawDeal,
   clearDeal,
   drawIndex,
@@ -83,6 +85,65 @@ describe('reading the hand diagram', () => {
     expect(matched.hands.every((h) => h.cards.length === 13)).toBe(true)
   })
 
+  it("finds History's viewer when the player's table comes first", () => {
+    // Seated at a table, BBO shows two viewers, the table's first. Model it with a
+    // copy of the viewer holding some other deal: two cards swapped between hands.
+    const history = [...doc.querySelectorAll('deal-viewer')].find(visible)
+    const table = history.cloneNode(true)
+    const faces = [...table.querySelectorAll('hand-diagram-panel')]
+      .map((p) => p.querySelector('.handDiagramCardClass'))
+      .filter(Boolean)
+    const [a, b] = [faces[0].firstChild, faces[1].firstChild]
+    ;[a.textContent, b.textContent] = [b.textContent, a.textContent]
+    history.before(table)
+    expect(matchPanels(doc, deal1, visible).viewer).toBe(history)
+  })
+
+  it("prefers History's whole deal to the same board's last cards lingering at the table", () => {
+    // 8 Nov 2026: a board just finished stays at the table as a few cards, each in
+    // its right hand, so the table fits too. Model it with a copy of the viewer
+    // keeping one card per hand.
+    const history = [...doc.querySelectorAll('deal-viewer')].find(visible)
+    const table = history.cloneNode(true)
+    for (const panel of table.querySelectorAll('hand-diagram-panel')) {
+      const cards = [...panel.querySelectorAll('hand-diagram-card')]
+      for (const card of cards.slice(1)) card.remove()
+    }
+    history.before(table)
+    expect(matchPanels(doc, deal1, visible).viewer).toBe(history)
+  })
+
+  it("prefers History's viewer to the same whole deal shown at the table for review", () => {
+    // 8 Nov 2026: at the end of a board the table shows all four hands, as many
+    // cards as History. The table comes first; History's, later, wins the tie.
+    const history = [...doc.querySelectorAll('deal-viewer')].find(visible)
+    history.before(history.cloneNode(true))
+    expect(matchPanels(doc, deal1, visible).viewer).toBe(history)
+  })
+
+  it("keeps to History's viewer once stepped into the play, with the full deal still at the table", () => {
+    // 8 Nov 2026: History showing fewer cards than the table's review must not
+    // hand the board to the table.
+    const history = [...doc.querySelectorAll('deal-viewer')].find(visible)
+    history.before(history.cloneNode(true))
+    for (const panel of history.querySelectorAll('hand-diagram-panel')) {
+      panel.querySelector('hand-diagram-card')?.remove()
+    }
+    expect(matchPanels(doc, deal1, visible).viewer).toBe(history)
+  })
+
+  it("takes the trick buttons nearest History's viewer", () => {
+    const history = [...doc.querySelectorAll('deal-viewer')].find(visible)
+    const own = trickButtons(doc, visible, history)
+    expect(own.next.textContent.trim()).toBe('Next trick')
+    // A table's pair, earlier in the page, is passed over.
+    const decoy = doc.createElement('div')
+    decoy.innerHTML = '<button>Previous trick</button><button>Next trick</button>'
+    doc.body.prepend(decoy)
+    expect(trickButtons(doc, visible, history)).toEqual(own)
+    expect(trickButtons(doc, visible).next.parentElement).toBe(decoy)
+  })
+
   it('refuses to draw on a different deal', () => {
     const board5 = parseLin(parseMhHand(fx('mh-hand-33873-board5.xml')).lin).deal
     expect(matchPanels(doc, board5, visible)).toBeNull()
@@ -152,6 +213,54 @@ describe('the board list', () => {
   it('shows nothing for a board not yet analysed', () => {
     drawIndex(doc, list, new Map(), 'kemistry', visible)
     expect(doc.querySelectorAll('.bc-dd-chip')).toHaveLength(0)
+  })
+})
+
+describe('which list is on screen', () => {
+  const resultCells = () =>
+    [...doc.querySelectorAll('result-list-item')].map((r) =>
+      r.querySelectorAll('.cellClass')[1].querySelector('.innerClass')
+    )
+
+  it('knows the list it loaded, with suit symbols and NT as BBO draws them', () => {
+    expect(listOnScreen(doc, list, visible)).toBe(true)
+  })
+
+  it("refuses another event's list: My Table, seen 6 Nov 2026", () => {
+    // Same board numbers, other results.
+    const cells = resultCells()
+    for (const [i, cell] of cells.entries()) cell.textContent = i % 2 ? '1NTN=' : '3♣W='
+    expect(listOnScreen(doc, list, visible)).toBe(false)
+  })
+
+  it('refuses a list whose boards are still being played', () => {
+    for (const cell of resultCells()) cell.textContent = ''
+    expect(listOnScreen(doc, list, visible)).toBe(false)
+  })
+
+  it('refuses a list without a board shown on screen', () => {
+    const short = { ...list, boards: list.boards.slice(1) }
+    expect(listOnScreen(doc, short, visible)).toBe(false)
+  })
+
+  it("takes My Table's list a board at a time, checking the boards it knows", () => {
+    // Only the boards opened so far are known; the rest are skipped, not failed.
+    const opened = { boards: list.boards.slice(2, 4) }
+    expect(listOnScreen(doc, opened, visible)).toBe(false)
+    expect(listOnScreen(doc, opened, visible, { partial: true })).toBe(true)
+    const wrong = { boards: [{ ...list.boards[2], result: '7NS=' }] }
+    expect(listOnScreen(doc, wrong, visible, { partial: true })).toBe(false)
+  })
+
+  it('matches a daylong\'s passed-out "P" to the "Pass" on screen, seen 7 Nov 2026', () => {
+    resultCells()[0].textContent = 'Pass'
+    const passed = { boards: [{ ...list.boards[0], result: 'P' }] }
+    expect(listOnScreen(doc, passed, visible, { partial: true })).toBe(true)
+  })
+
+  it('lets one odd spelling through', () => {
+    resultCells()[0].textContent = 'Passed out'
+    expect(listOnScreen(doc, list, visible)).toBe(true)
   })
 })
 
@@ -330,11 +439,12 @@ describe('the trick on the table, once played', () => {
 })
 
 describe('Restart', () => {
-  it('sits under the Classroom button, and goes when there is nothing to restart', () => {
+  it("takes DD Details' place under the menu, and goes when there is nothing to restart", () => {
     const { viewer } = matchPanels(doc, deal1, visible)
     let n = 0
     const btn = syncRestart(doc, viewer, () => n++)
-    expect(btn.style.top).toBe('82px')
+    // DD Details' own spot: a second row would cover BBO Helper's par box.
+    expect(btn.style.top).toBe('52px')
     btn.click()
     expect(n).toBe(1)
     syncRestart(doc, viewer, null)

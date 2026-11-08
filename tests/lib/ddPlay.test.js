@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import {
   buildPlayRequest,
   summarizeTrace,
+  hasRobotPartner,
   seatOf,
   solverCard,
   trickWinners,
@@ -88,6 +89,30 @@ describe('summarizeTrace', () => {
     expect(counts.me).toEqual({ errors: 0, tricks: 0, dummy: true })
     expect(counts.partner).toEqual({ errors: 2, tricks: 2, dummy: false })
     expect(counts.opps).toEqual({ errors: 1, tricks: 2 })
+  })
+
+  it("charges a robot partner's declaring to the user, who played it, seen 8 Nov 2026", () => {
+    const { counts } = summarizeTrace(trace, { declarer: 'S', mySeat: 'N', robotPartner: true })
+    expect(counts.me).toEqual({ errors: 2, tricks: 2, dummy: false })
+    expect(counts.partner).toEqual({ errors: 0, tricks: 0, dummy: true })
+    expect(counts.opps).toEqual({ errors: 1, tricks: 2 })
+  })
+
+  it("leaves a robot partner's defence, and the user's own declaring, as they were", () => {
+    const declaring = summarizeTrace(trace, { declarer: 'S', mySeat: 'S', robotPartner: true })
+    expect(declaring.counts.me).toEqual({ errors: 2, tricks: 2, dummy: false })
+    expect(declaring.counts.partner).toEqual({ errors: 0, tricks: 0, dummy: true })
+    const defending = summarizeTrace(trace, { declarer: 'S', mySeat: 'W', robotPartner: true })
+    expect(defending.counts.me.errors).toBe(0)
+    expect(defending.counts.partner).toEqual({ errors: 1, tricks: 2, dummy: false })
+  })
+
+  it('knows a robot by its name', () => {
+    expect(hasRobotPartner({ N: '~~M7911muq', S: 'kemistry' }, 'S')).toBe(true)
+    expect(hasRobotPartner({ N: '~Mnorth', S: 'kemistry' }, 'S')).toBe(true)
+    expect(hasRobotPartner({ N: 'aam135', S: 'kemistry' }, 'S')).toBe(false)
+    expect(hasRobotPartner({ N: '~robot' }, null)).toBe(false)
+    expect(hasRobotPartner(null, 'S')).toBe(false)
   })
 
   it('counts nothing as "me" for a board the user only watched', () => {

@@ -287,11 +287,12 @@ BBO caps a listing query at roughly a 30-day range, so multi-year history is
 collected in **28-day chunks, newest first**. Between batch items: **250 ms** for
 BBO hosts, **1 s** for ACBL hosts, which need more breathing room.
 
-### 3.9 BBO History panel — `mh_list.php` and `mh_hand.php`
+### 3.9 BBO History panel — `tfind.php`, `mh_list.php` and `mh_hand.php`
 
-**Mechanism:** none of our own. The v3 client's History panel loads both as the
-user opens an event and its boards; a page hook copies the responses to the
-content script. Used by **Bridge Craftwork DD**, the second extension built
+**Mechanism:** none of our own for what the user opens. The v3 client's History
+panel loads all three as the user opens the list, an event and its boards; a page
+hook copies the responses to the content script. **DD all** is the one exception:
+the content script asks for the last two itself, when the user chooses it. Used by **Bridge Craftwork DD**, the second extension built
 from this repo (`EXT=dd`), for its double-dummy review
 (`src/ui/bboDdOverlay.js`). Fetch does not read them.
 
@@ -299,11 +300,12 @@ Found by watching the panel's traffic, 1 Nov 2026:
 
 | The user… | BBO requests | Returns |
 |---|---|---|
+| Opens Recent tournaments | `POST tfind.php`, `u=kemistry` | `<tourneys>`: per event, `tkey`, `tourney_number`, `title`, `teamname`, `format`, `ustarted`, `award`. 33 events back about three months (2 Nov 2026) |
 | Opens an event | `POST mh_list.php`, `tkey=33873-1793548800&username=kemistry` (+ `format`, `teamname`, `merge`) | `<sc_boards>`: per board, a `resultkey`, the result, score, and **each seat named by attribute** (`north=` …) |
 | Opens a board (board 1 opens with the event) | `POST mh_hand.php`, `hk=<resultkey>` | `<linhand>`: the full LIN — deal, auction with alerts, **every card played**, claim |
 | Steps through tricks | **nothing** | The panel replays the LIN it already has |
 
-Both answer **without a login** — checked with `curl` and no cookies — and send
+All three answer **without a login** — checked with `curl` and no cookies — and send
 `Access-Control-Allow-Origin: *`. `tkey` is the number in the panel's title bar
 plus the event's start time; it is the same key `hands.php` puts in its
 `tview.php?t=` links. BBO fetches each board once per visit and keeps it, so
@@ -314,11 +316,93 @@ response.
 `mh_list`'s seat attributes and the LIN's positional `pn|` (S, W, N, E) agree —
 two independent sources, pinned in `tests/adapters/bbo/mhXml.test.js`.
 
-**Why copy rather than fetch.** It costs BBO nothing extra, and it is
+**The last column is BBO's Prize, showing `award`.** Blank at zero, so DD's tally
+uses it and relabels the header; a row with `award` above zero keeps its prize, with
+the tally in the tooltip. A real prize row has not been seen in the panel: all 33
+rows here were zero, though robot races do pay.
+
+**Three shapes of resultkey.** Checked 8 Nov 2026 against a finished daylong and a
+Weekly Free Instant Tournament, both of which `mh_list` and `mh_hand` answer in full:
+
+| Event | `tkey` | `resultkey` |
+|---|---|---|
+| Pairs, speedball | `33873-1793548800` | `h/4748677413/33873-1793548800-50407802/2026-11-01 16:04:55` |
+| Instant tournament (`format="indy"`) | `SB:kemistry-1794151716` | `h/4751965667/SB:kemistry-1794151716-1/2026-11-08 15:31:33` |
+| Daylong (`format="indy"`) | `ARDARD:9ca06e6d.da89.11f1.8901.ac1f6b5a106e-1794041999` | `ARD/INSTANCE-T52462824-R1-B5-I2/kemistry/52462824` |
+
+The daylong's `tkey` is its `ard.php` `tid` with dots for dashes. Until 8 Nov the
+key check accepted only the first shape, so the other two had every board turned
+away, a tally of zero, `–` in the column, and DD all counting them complete. This
+doc said then that daylongs have no boards in `mh_list`. That holds only at the two
+ends: a running daylong answers an empty `<sc_board_group/>`, a finished one lists
+every board, and within weeks BBO drops them again (8 Nov: the Nov 5 and Nov 7
+daylongs full, every one from Oct 3 back to Aug 20 empty). So an empty answer is
+asked again while the event started under three days ago, and is final after
+(`EMPTY_FINAL_AFTER_MS` in `ddBatch.js`). An old daylong's `–` is BBO's, not ours.
+
+**DD all** (`src/lib/ddBatch.js`) sends the panel's own parameters from the content
+script: one request at a time, a second apart, `credentials: 'omit'`, stopping
+after three failures in a row. It needs no host permission, because of the
+`Access-Control-Allow-Origin: *` above. It resumes from the tallies, so a complete
+event costs no requests. Measured 2 Nov 2026: three 12-board events, 39 requests in
+about 46 s, no console errors. Three clean runs stayed signed in. One earlier run lost
+BBO's connection partway ("Connection lost") after its script had clicked into
+Practice by mistake; it did not recur, but the cause was not established.
+
+**Why copy rather than fetch, for boards the user opens.** It costs BBO nothing extra, and it is
 available sooner: `myhands/hands.php` lags an event by about a minute, while
 this is what BBO's own panel shows as each board finishes. Not yet seen during
 a live event — whether the auto-loaded board arrives through `mh_hand.php`, as a
 click does, or over the websocket is the open question.
+
+**Seated at a table, two viewers are on screen.** The table's comes first in the
+page, then History's. 1.1.0 as first built drew on the first visible one, so a
+player seated at a table saw tags and totals but nothing on the board, not even
+DD Details (6 Nov 2026, found by reading the page from DevTools during a live
+event). The overlay now tries every visible viewer, and takes the trick buttons
+nearest History's.
+
+**When both fit, the last viewer wins.** A board just finished stays at the
+table, as its last few cards or as the whole deal for review, and fits the
+board as well as History's does. Preferring the viewer showing the most cards
+looked right and was wrong twice on 8 Nov: the review ties History at 52, and
+once the player steps into the play History shows fewer. Page order is what
+holds — the table's first, History's after — so `matchPanels` takes the last.
+
+**My Table must not borrow another event's tags.** No board list we see arrives
+for the event being played. On 6 Nov My Table carried #33873's tags and totals,
+because the overlay fell back to the last list loaded. Tags and totals are now
+drawn only when the results on screen agree with the list's (`listOnScreen`).
+
+**My Table, pairs and teams: `sc_board_details` on the game connection.** Opening
+a board sends `cs_get_board`; the answer is `<sc_board_details request_id=
+"d~t~52031~1~16~0">` holding `<sc_deal>` (hands, dealer, vulnerability, names),
+each `<sc_call_made>` and each `<sc_card_played>`, closed by
+`</sc_board_details >` — with a space, so the close is matched by pattern. Most
+frames are binary and a long message arrives in pieces. `parseBoardDetails`
+(`src/adapters/bbo/parsers/liveXml.js`) turns it into LIN; its key is
+`live:` + the request id. Checked against BBO's own `mh_hand.php` for the same
+board: identical but for rank order. Working live, 8 Nov 2026.
+
+A board is sent only when opened, so the overlay keeps a short record of the
+event in progress (`ddl:table`: board number, key, result, the user's seat — no
+names, latest event only, twelve hours) to put My Table's tags back after a
+reload. The marks on the cards still wait for a click, since the deal is not
+stored.
+
+**My Table, daylongs: `ard.php`.** A robot game is not played over the game
+connection. The deal comes from `bboardapi.bridgebase.com/ard_v1/deal` and each
+robot move from `ard_v1/poll` (`<events>` holding `sc_call_made`,
+`sc_card_played`, `sc_claim_accept`, and at the end `sc_player_holds` and
+`sc_deal_complete result="4CS-1"`). History's My Table is filled from
+`webutil.bridgebase.com/v2/ard.php`, whose `<deals tid="…">` answer holds every
+board so far, each `dealstring` a LIN with `result` and the four names as
+attributes — read by `parseArdDeals`, key `ard:<tid>:<round>:<board>`. The hook
+copies `ard.php` only when the answer is `<deals>`. BBO asks for it on load but
+not after each board, nor on Refresh, so a board finished since the page loaded
+appears only after a reload. Reading the polls is the open item; it needs one
+`deal` answer and a poll after the player's own card, still to capture. A
+passed-out board is `P` there and `Pass` on screen.
 
 **Why registered at runtime, not in the manifest.** crxjs loads every manifest
 content script through a dynamic `import()` of an extension URL. In the page's
@@ -339,8 +423,17 @@ restores them, with a 15-second failsafe. Measured: trick 3 from the start in
 tab loads them some other way, not yet captured.
 
 The analysis runs in the background, in bridge-solver's WASM
-(`Analyzer.dd_play`, ~40 ms for 52 cards), and is cached 14 days by
-`resultkey`. Nothing about it leaves the device.
+(`Analyzer.dd_play`, ~40 ms for 52 cards). Each board is cached by `resultkey`
+(about 2 KB; oldest deleted past `MAX_BOARDS`, well inside Chrome's 10 MB) and its
+errors go into the event's tally (`ddt:<tkey>`), which is kept. Neither names a
+player: which seat is yours is worked out from `mh_list` when it is drawn. BBO keeps
+these games for years, so a deleted board costs only a solve. Nothing about it
+leaves the device.
+
+**Testing: an unpacked build can run an old background.** With `--load-extension`
+on an existing profile, Chrome kept running a stale worker after a rebuild, and even
+after a version bump. Clear the profile's `Service Worker` folder, or press reload
+on `chrome://extensions`, before trusting a storage check.
 
 ---
 
