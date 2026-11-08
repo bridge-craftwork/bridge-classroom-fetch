@@ -252,6 +252,13 @@ describe('which list is on screen', () => {
     expect(listOnScreen(doc, wrong, visible, { partial: true })).toBe(false)
   })
 
+  it('waits for BBO to write in a board it already knows, without dropping the rest', () => {
+    // Built from the polls, a board is known before BBO shows it (8 Nov 2026).
+    resultCells()[3].textContent = ''
+    const known = { boards: list.boards.slice(0, 4) }
+    expect(listOnScreen(doc, known, visible, { partial: true })).toBe(true)
+  })
+
   it('matches a daylong\'s passed-out "P" to the "Pass" on screen, seen 7 Nov 2026', () => {
     resultCells()[0].textContent = 'Pass'
     const passed = { boards: [{ ...list.boards[0], result: 'P' }] }

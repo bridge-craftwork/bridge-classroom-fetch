@@ -570,7 +570,8 @@ const resultKey = (text) =>
  *  in the same component, and My Table is filled over the game connection,
  *  not by a list we see, so the last list loaded may belong to another event
  *  entirely (seen 6 Nov 2026). A board still being played shows no result on
- *  screen, which counts as disagreeing.
+ *  screen, which counts as disagreeing — except in My Table's list (`partial`),
+ *  where a blank row is a board BBO has not written in yet.
  *
  *  One disagreement in ten is let through: the two spellings have only been
  *  compared for ordinary contracts, and a passed-out board, say, may be
@@ -594,6 +595,9 @@ export function listOnScreen(doc, list, isVisible = defaultVisible, { partial = 
     }
     if (!board.result) continue
     const inner = cells[1].querySelector('.innerClass') ?? cells[1]
+    // A board built from the robot game's polls is known a few seconds before BBO
+    // writes it into My Table (seen 8 Nov 2026): blank there is not yet, not wrong.
+    if (partial && !inner.textContent.trim()) continue
     compared++
     if (resultKey(inner.textContent) === resultKey(board.result)) agreed++
   }
@@ -611,8 +615,10 @@ export function drawIndex(doc, list, entries, username, isVisible = defaultVisib
     const number = Number.parseInt(cells[0].textContent.trim(), 10)
     const board = byNumber.get(number)
     const entry = board && entries.get(board.resultkey)
+    // No tag on a row BBO has not filled in yet.
+    const shown = (cells[1].querySelector('.innerClass') ?? cells[1]).textContent.trim()
     let chip = null
-    if (entry?.contract) {
+    if (entry?.contract && shown) {
       const mySeat = board.mySeat ?? seatOf(board.players, username)
       const { counts } = summarizeTrace(entry.trace, {
         declarer: entry.declarer,
@@ -961,7 +967,10 @@ export function startDdOverlay({
     // another extension draws there (seen 8 Nov 2026).
     const restart =
       summary && cardsPlayed(matched.viewer) > 0 ? () => jumpTo(matched.viewer, 0) : null
-    syncPopout(doc, restart ? null : matched.viewer, () => popOut(cur.lin))
+    // Nothing to show for a passed-out board (seen 8 Nov 2026): its analysis is
+    // back and has no contract.
+    const passedOut = !!entry && !entry.contract
+    syncPopout(doc, restart || passedOut ? null : matched.viewer, () => popOut(cur.lin))
     syncRestart(doc, matched.viewer, restart)
   }
 
