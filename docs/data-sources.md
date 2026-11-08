@@ -321,9 +321,24 @@ uses it and relabels the header; a row with `award` above zero keeps its prize, 
 the tally in the tooltip. A real prize row has not been seen in the panel: all 33
 rows here were zero, though robot races do pay.
 
-**Daylongs have no boards here.** Their `tkey` is `ARDARD:<uuid>-<time>`, and
-`mh_list` answers with an empty `<sc_board_group/>` for BBO's own panel too. They
-show `–` in the tally column and are not asked for again.
+**Three shapes of resultkey.** Checked 8 Nov 2026 against a finished daylong and a
+Weekly Free Instant Tournament, both of which `mh_list` and `mh_hand` answer in full:
+
+| Event | `tkey` | `resultkey` |
+|---|---|---|
+| Pairs, speedball | `33873-1793548800` | `h/4748677413/33873-1793548800-50407802/2026-11-01 16:04:55` |
+| Instant tournament (`format="indy"`) | `SB:kemistry-1794151716` | `h/4751965667/SB:kemistry-1794151716-1/2026-11-08 15:31:33` |
+| Daylong (`format="indy"`) | `ARDARD:9ca06e6d.da89.11f1.8901.ac1f6b5a106e-1794041999` | `ARD/INSTANCE-T52462824-R1-B5-I2/kemistry/52462824` |
+
+The daylong's `tkey` is its `ard.php` `tid` with dots for dashes. Until 8 Nov the
+key check accepted only the first shape, so the other two had every board turned
+away, a tally of zero, `–` in the column, and DD all counting them complete. This
+doc said then that daylongs have no boards in `mh_list`. That holds only at the two
+ends: a running daylong answers an empty `<sc_board_group/>`, a finished one lists
+every board, and within weeks BBO drops them again (8 Nov: the Nov 5 and Nov 7
+daylongs full, every one from Oct 3 back to Aug 20 empty). So an empty answer is
+asked again while the event started under three days ago, and is final after
+(`EMPTY_FINAL_AFTER_MS` in `ddBatch.js`). An old daylong's `–` is BBO's, not ours.
 
 **DD all** (`src/lib/ddBatch.js`) sends the panel's own parameters from the content
 script: one request at a time, a second apart, `credentials: 'omit'`, stopping

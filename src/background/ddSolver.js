@@ -31,11 +31,17 @@ export const MAX_BOARDS = 3500
 const PRUNE_TO = 3000
 const PRUNE_EVERY = 200
 const CACHE_VERSION = 2
-const TALLY_VERSION = 1
+// 2: a robot partner's declaring counts as the user's (8 Nov 2026).
+const TALLY_VERSION = 2
 
 // A resultkey looks like "h/4748677413/33873-1793548800-50407802/2026-11-01 16:04:55".
+// Two other shapes, seen 8 Nov 2026, both answered by mh_hand.php:
+//   an instant tournament   "h/4751965667/SB:kemistry-1794151716-1/2026-11-08 15:31:33"
+//   a finished daylong      "ARD/INSTANCE-T52462824-R1-B5-I2/kemistry/52462824"
+// Turning these away cost each such event every board: its tally was written as
+// zero boards, shown as "–", and DD all counted it complete.
 // It comes from the page, so it is checked before it becomes a storage key.
-const RESULTKEY_RE = /^h\/\d+\/[\w-]+\/[\d :-]+$/
+const RESULTKEY_RE = /^(h\/\d+\/[\w:.-]+\/[\d :-]+|ARD\/[\w-]+\/[\w.~+-]+\/\d+)$/
 // The event being played has no such key yet, so its boards carry one made from
 // what BBO sent: "live:d~t~52031~1~16~0" from the game connection (the request's
 // own id), "ard:<tid>:<round>:<board>" from a daylong's ard.php.
@@ -56,10 +62,14 @@ export function isTkey(key) {
 }
 
 // [me, partner, opponents] errors on one board. Null when the seat is unknown.
-function tallyOf(entry, mySeat) {
+function tallyOf(entry, mySeat, robotPartner = false) {
   if (!mySeat) return null
   if (!entry.contract) return [0, 0, 0]
-  const { counts } = summarizeTrace(entry.trace, { declarer: entry.declarer, mySeat })
+  const { counts } = summarizeTrace(entry.trace, {
+    declarer: entry.declarer,
+    mySeat,
+    robotPartner: robotPartner === true,
+  })
   return counts ? [counts.me.errors, counts.partner.errors, counts.opps.errors] : null
 }
 
@@ -157,7 +167,8 @@ export function createDdSolver({ loadSolver, storage, now = () => Date.now() }) 
         prune(MAX_BOARDS).catch(() => {})
       }
     }
-    const tally = place && isTkey(place.tkey) ? tallyOf(entry, place.mySeat) : null
+    const tally =
+      place && isTkey(place.tkey) ? tallyOf(entry, place.mySeat, place.robotPartner) : null
     if (tally) {
       await changeTally(place.tkey, (record) => {
         record.b[place.number] = tally
@@ -178,7 +189,8 @@ export function createDdSolver({ loadSolver, storage, now = () => Date.now() }) 
       record.total = list.length
       for (const board of list) {
         const entry = entries[board.resultkey]
-        const counted = entry && !record.b[board.number] && tallyOf(entry, board.mySeat)
+        const counted =
+          entry && !record.b[board.number] && tallyOf(entry, board.mySeat, board.robotPartner)
         if (counted) {
           record.b[board.number] = counted
           changed = true
@@ -258,6 +270,7 @@ export function createDdSolver({ loadSolver, storage, now = () => Date.now() }) 
         resultkey: board.resultkey,
         result: LIVE_RESULT_RE.test(board.result ?? '') ? board.result : null,
         mySeat: ['N', 'E', 'S', 'W'].includes(board.mySeat) ? board.mySeat : null,
+        robotPartner: board.robotPartner === true,
       }
       record.t = now()
       await save({ [LIVE_TABLE_KEY]: record })

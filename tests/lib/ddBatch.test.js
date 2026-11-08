@@ -40,7 +40,12 @@ describe('isComplete', () => {
     expect(isComplete({ total: 2, b: { 1: [0, 0, 0], 2: [1, 0, 0] } })).toBe(true)
   })
 
-  it('counts an event with no boards as done, so it is not asked for again', () => {
+  it('asks again about a young event with no boards: a daylong lists none until it ends', () => {
+    const now = Date.UTC(2026, 10, 8)
+    const day = 24 * 60 * 60 * 1000
+    expect(isComplete({ total: 0, b: {} }, { started: now - day }, now)).toBe(false)
+    // BBO drops a daylong's boards within weeks: an old empty answer is final.
+    expect(isComplete({ total: 0, b: {} }, { started: now - 36 * day }, now)).toBe(true)
     expect(isComplete({ total: 0, b: {} })).toBe(true)
   })
 })

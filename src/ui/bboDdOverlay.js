@@ -23,7 +23,7 @@
 import { parseMhList, parseMhHand, parseTfind } from '../adapters/bbo/parsers/mhXml.js'
 import { parseArdDeals, parseBoardDetails, resultOfLin } from '../adapters/bbo/parsers/liveXml.js'
 import { parseLin, parseLinPlayers } from '../adapters/bbo/parsers/lin.js'
-import { summarizeTrace, seatOf, solverCard, trumpOf } from '../lib/ddPlay.js'
+import { summarizeTrace, seatOf, hasRobotPartner, solverCard, trumpOf } from '../lib/ddPlay.js'
 import {
   analyzeEvents,
   eventsToRun,
@@ -610,7 +610,11 @@ export function drawIndex(doc, list, entries, username, isVisible = defaultVisib
     let chip = null
     if (entry?.contract) {
       const mySeat = board.mySeat ?? seatOf(board.players, username)
-      const { counts } = summarizeTrace(entry.trace, { declarer: entry.declarer, mySeat })
+      const { counts } = summarizeTrace(entry.trace, {
+        declarer: entry.declarer,
+        mySeat,
+        robotPartner: board.robotPartner ?? hasRobotPartner(board.players, mySeat),
+      })
       chip = chipFor(counts, entry.trace.filter((t) => t.cost > 0).length)
     }
     const cell = cells[1]
@@ -695,9 +699,11 @@ export function drawTotals(doc, list, entries, username, isVisible = defaultVisi
     checked++
     if (!entry.contract) continue
     sum.all += entry.trace.filter((t) => t.cost > 0).length
+    const mySeat = board.mySeat ?? seatOf(board.players, username)
     const { counts } = summarizeTrace(entry.trace, {
       declarer: entry.declarer,
-      mySeat: board.mySeat ?? seatOf(board.players, username),
+      mySeat,
+      robotPartner: board.robotPartner ?? hasRobotPartner(board.players, mySeat),
     })
     if (!counts) continue
     any = true
@@ -849,7 +855,7 @@ export function startDdOverlay({
   const state = {
     list: null,
     lists: new Map(), // every board list seen this visit, by tkey
-    boards: new Map(), // resultkey → { tkey, number, mySeat }
+    boards: new Map(), // resultkey → { tkey, number, mySeat, robotPartner }
     events: null, // BBO's list of recent events
     tallies: new Map(), // tkey → the event's tally
     run: null, // DD-all in progress: { stop, text, tkey }
@@ -934,6 +940,7 @@ export function startDdOverlay({
           declarer: entry.declarer,
           mySeat: seatOf(cur.players, state.username),
           trump: trumpOf(entry.contract),
+          robotPartner: hasRobotPartner(cur.players, seatOf(cur.players, state.username)),
         })
       : null
     drawDeal(
@@ -1052,7 +1059,9 @@ export function startDdOverlay({
       text: state.run && mine ? `${state.run.text} ✕` : 'DD all',
       title: state.run && mine ? 'Stop the analysis' : "Analyse all of this event's boards",
       onClick:
-        !shownEvent || (state.run && !mine) || (!state.run && isComplete(state.tallies.get(shownEvent.tkey)))
+        !shownEvent ||
+        (state.run && !mine) ||
+        (!state.run && isComplete(state.tallies.get(shownEvent.tkey), shownEvent))
           ? null
           : state.run
             ? () => (state.run.stop = true)
@@ -1127,16 +1136,21 @@ export function startDdOverlay({
     if (!list.tkey) return null
     state.lists.set(list.tkey, list)
     for (const b of list.boards) {
+      const mySeat = seatOf(b.players, username)
       state.boards.set(b.resultkey, {
         tkey: list.tkey,
         number: b.number,
-        mySeat: seatOf(b.players, username),
+        mySeat,
+        robotPartner: hasRobotPartner(b.players, mySeat),
       })
     }
     const res = await sendMessage({
       type: 'dd-event',
       tkey: list.tkey,
-      boards: list.boards.map((b) => ({ resultkey: b.resultkey, ...state.boards.get(b.resultkey) })),
+      boards: list.boards.map((b) => ({
+        resultkey: b.resultkey,
+        ...state.boards.get(b.resultkey),
+      })),
     })
     for (const [k, v] of Object.entries(res?.entries ?? {})) state.entries.set(k, v)
     if (res?.tally) state.tallies.set(list.tkey, res.tally)
@@ -1193,7 +1207,13 @@ export function startDdOverlay({
         sendMessage({
           type: 'dd-live-note',
           event,
-          board: { number, resultkey: hk, result: board.result, mySeat: seatOf(players, me) },
+          board: {
+            number,
+            resultkey: hk,
+            result: board.result,
+            mySeat: seatOf(players, me),
+            robotPartner: hasRobotPartner(players, seatOf(players, me)),
+          },
         }).catch(() => {})
       }
       schedule()
@@ -1211,7 +1231,12 @@ export function startDdOverlay({
       for (const b of boards) {
         const hand = { hk: b.hk, lin: b.lin, deal: parseLin(b.lin).deal, players: b.players }
         state.hands.set(b.hk, hand)
-        state.live.set(b.number, { number: b.number, resultkey: b.hk, result: b.result, players: b.players })
+        state.live.set(b.number, {
+          number: b.number,
+          resultkey: b.hk,
+          result: b.result,
+          players: b.players,
+        })
       }
       schedule()
       if (enabled) for (const b of boards) await solve(state.hands.get(b.hk))

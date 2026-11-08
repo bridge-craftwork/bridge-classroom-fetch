@@ -214,6 +214,26 @@ describe('createDdSolver', () => {
     expect(isResultKey('h/4748677413/33873-1793548800-50407802/2026-11-01 16:04:55')).toBe(true)
   })
 
+  it("accepts an instant tournament's and a finished daylong's keys, seen 8 Nov 2026", () => {
+    expect(isResultKey('h/4751965667/SB:kemistry-1794151716-1/2026-11-08 15:31:33')).toBe(true)
+    expect(isResultKey('ARD/INSTANCE-T52462824-R1-B5-I2/kemistry/52462824')).toBe(true)
+    expect(isResultKey('ARD/../../x/1')).toBe(false)
+    expect(isResultKey('h/1/../x/2026-11-08')).toBe(false)
+  })
+
+  it('tallies every board of an instant tournament and a daylong, not none', async () => {
+    for (const [tkey, hk] of [
+      ['SB:kemistry-1794151716', 'h/4751965667/SB:kemistry-1794151716-1/2026-11-08 15:31:33'],
+      [
+        'ARDARD:9ca06e6d.da89.11f1.8901.ac1f6b5a106e-1794041999',
+        'ARD/INSTANCE-T52462824-R1-B1-I1/kemistry/52462824',
+      ],
+    ]) {
+      const { tally } = await solver.event(tkey, [{ number: 1, resultkey: hk, mySeat: 'S' }])
+      expect(tally.total).toBe(1)
+    }
+  })
+
   it("accepts the event being played: the game connection's and a daylong's keys, seen 7 Nov 2026", () => {
     expect(isResultKey('live:d~t~52031~1~16~0')).toBe(true)
     expect(isResultKey('ard:9ca06e6d-da89-11f1-8901-ac1f6b5a106e:1:4')).toBe(true)
@@ -233,7 +253,9 @@ describe('createDdSolver', () => {
     })
     const table = await solver.liveTable()
     expect(table.event).toBe('52031~1')
-    expect(table.boards).toEqual([{ number: 16, resultkey: key, result: '2SSx+1', mySeat: 'E' }])
+    expect(table.boards).toEqual([
+      { number: 16, resultkey: key, result: '2SSx+1', mySeat: 'E', robotPartner: false },
+    ])
     expect(table.entries[key].contract).toBe('3NT')
     expect(JSON.stringify(storage.data[LIVE_TABLE_KEY])).not.toContain('someone')
 

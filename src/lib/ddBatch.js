@@ -11,16 +11,27 @@ export const PACE_MS = 1000
 // rude. A single bad board is skipped and leaves its event marked incomplete.
 const MAX_FAILURES_IN_A_ROW = 3
 
-/** Every board of the event is counted. An event with no boards to analyse (a
- *  daylong, whose boards BBO's History does not list) counts as complete. */
-export function isComplete(tally) {
-  return !!tally && tally.total !== null && Object.keys(tally.b).length >= tally.total
+// A daylong lists no boards while it runs (about a day) and BBO's History drops
+// them again within a few weeks (an Oct 3 daylong was empty on Nov 8, a Nov 5 one
+// full). So an empty answer is asked again while the event is this young, and
+// taken as final after.
+export const EMPTY_FINAL_AFTER_MS = 3 * 24 * 60 * 60 * 1000
+
+/** Every board of the event is counted. An event with no boards counts as complete
+ *  once it is old enough for that to be BBO's last word; `event` ({ started }) and
+ *  `now` decide that, and without them an empty event is complete. */
+export function isComplete(tally, event = null, now = Date.now()) {
+  if (!tally || tally.total === null || tally.total === undefined) return false
+  if (tally.total === 0) {
+    return !(event?.started && now - event.started < EMPTY_FINAL_AFTER_MS)
+  }
+  return Object.keys(tally.b).length >= tally.total
 }
 
 /** The events to run: from `since` (epoch ms, or null for all), not yet complete. */
-export function eventsToRun(events, tallies, since = null) {
+export function eventsToRun(events, tallies, since = null, now = Date.now()) {
   return (events ?? []).filter(
-    (e) => !isComplete(tallies.get(e.tkey)) && (since === null || (e.started ?? 0) >= since)
+    (e) => !isComplete(tallies.get(e.tkey), e, now) && (since === null || (e.started ?? 0) >= since)
   )
 }
 
@@ -67,7 +78,7 @@ export async function analyzeEvents({
 
   for (let i = 0; i < events.length && !finished(); i++) {
     const event = events[i]
-    if (isComplete(tallies.get(event.tkey))) continue
+    if (isComplete(tallies.get(event.tkey), event)) continue
     onProgress({ event, eventIndex: i, eventCount: events.length, done: 0, total: null })
     const list = await ask(() => fetchList(event))
     if (!list) continue
