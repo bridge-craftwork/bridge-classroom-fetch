@@ -1,80 +1,74 @@
 # Privacy Policy — Bridge Craftwork DD
 
-**Last updated:** 1 November 2026
+**Last updated:** 8 November 2026
 
 > The published policy is **<https://bridge-craftwork.com/dd/privacy/>**, the
 > URL the store listings point at, served from `site/dd/privacy/index.html` in
 > bridge-craftwork-site (a copy of `store/dd/privacy-page.html` here). This file
-> is the source; change all three together.
+> is the source; change all three together. It is written for users: what the
+> extension reads, message by message, is in `docs/data-sources.md` § 3.9, and
+> the store reviewers' version is in `store/dd/submission.md`.
 
-## Overview
+## In short
 
-Bridge Craftwork DD is a browser extension that adds double-dummy review to
-the **History** panel of Bridge Base Online's web client
-(`www.bridgebase.com/v3/`). For each board you open there, it marks the cards
-that cost a trick, shows what should have been played, and totals the errors
-for the event.
+Bridge Craftwork DD follows the boards you play and look back at on Bridge Base
+Online, and works out the double-dummy errors on your own device. Nothing
+leaves your browser unless you ask: **DD Details** sends one board to be shown
+in more detail, and **DD all** asks Bridge Base for an event's boards.
 
-It can be hidden or shown from the menu on BBO's deal view
-("Hide / Show Bridge Craftwork DD").
+## What it does
+
+- **While you play**, it analyses each board as it ends and tags it in My Table
+  with the errors by you, your partner and the opponents.
+- **When you look back** at past events in History, it analyses the boards you
+  open, from what Bridge Base's page has already loaded.
+- **If you choose DD all**, it asks Bridge Base for the rest of an event's boards
+  itself, the way Bridge Base's own page does: one request a second, without your
+  login.
+
+It can be hidden or shown from the menu on Bridge Base's deal view.
 
 ## What it reads
 
-Only the History panel's own data: when you open the list of tournaments, an
-event or a board, Bridge Base's page loads them from Bridge Base's servers, and
-the extension reads a copy of those three responses — your recent events, the
-event's list of boards, and each board's deal and play. It reads nothing else
-on the page.
+Only Bridge Base's own record of your boards: the deal, the auction, the play,
+the result and the players' Bridge Base usernames, as Bridge Base's page
+receives them. It does not read chat, your login or password, or anything else
+on the page or in your browser.
 
-**It asks Bridge Base for anything itself only when you choose DD all**, on an
-event or from the DD menu on the list of tournaments. It then requests that
-event's board list and boards from the same public addresses Bridge Base's page
-uses, one request a second, with your Bridge Base username in the board-list
-request as Bridge Base's page sends it. No cookies or login go with them. Opening
-boards yourself never causes a request from the extension.
+## What it keeps
 
-It does not read your Bridge Base login or password.
+On your device only, and never sent anywhere:
 
-## Where the analysis happens
+- the analysis of each board, so going back to an event does not repeat the work
+  (when storage runs short, about 3,500 boards, the oldest go);
+- a tally of errors for each event, for the list of tournaments;
+- a short note of the event you are playing, so its tags survive a reload,
+  discarded after twelve hours;
+- your display settings.
 
-On your device. The double-dummy solver runs inside the extension, in your
-browser. No deal, result or name is sent anywhere for analysis.
+None of this names any player. Removing the extension deletes all of it.
 
-## What it stores, and for how long
+## When anything leaves your browser
 
-Two things are kept in the extension's storage, on your device, and never sent
-anywhere:
+- **DD Details**, when you click it, sends that one board — deal, auction, play
+  and the players' usernames — to a Bridge Classroom page (bridge-classroom.org
+  or bridge-classroom.com), which passes it to the double-dummy viewer at
+  bridge-craftwork.com/bridge-solver. The
+  [Bridge Classroom privacy policy](https://bridge-classroom.org/privacy#extension)
+  covers it from there.
+- **DD all**, when you choose it, sends requests to Bridge Base, with your
+  username, as Bridge Base's own page does.
 
-- **The analysis of each board**: the contract, the cards played and what each
-  cost, so that going back to an event does not repeat the work. There is no
-  time limit. When storage runs short, about 3,500 boards, the oldest are deleted.
-- **A tally for each event**: how many errors you, your partner and the opponents
-  made on each board, and the event's key. It is small and is kept, so your list
-  of tournaments keeps its numbers.
-
-Neither names any player. Bridge Base keeps these games, so anything deleted can
-be analysed again. Removing the extension deletes all of it at once.
-
-Whether the display is shown or hidden is also kept, so your choice holds.
-
-## Where results go
-
-Nowhere, unless you click the **DD Details** button on a board. That sends that
-one deal, its auction and play, and the players' Bridge Base usernames to a
-Bridge Classroom page (bridge-classroom.org or bridge-classroom.com), which
-passes them on to the double-dummy viewer at bridge-craftwork.com/bridge-solver.
-The [Bridge Classroom privacy policy](https://bridge-classroom.org/privacy#extension)
-governs them from there.
-
-There are no analytics, no telemetry, no advertising and no tracking.
+Nothing else. No analytics, no telemetry, no advertising, no tracking, and
+nothing is sold or shared.
 
 ## Permissions
 
 | Permission | Why |
 |---|---|
-| `storage` | The analyses, the event tallies and the show/hide setting |
-| `scripting` | Adds a small script to Bridge Base's page that passes the History panel's data to the extension as Bridge Base loads it. That script makes no request of its own |
-| Site access to `www.bridgebase.com/v3/*` | The page the review is drawn on |
+| `storage` | Keeps the analyses and your settings on your device |
+| `scripting` | Lets it see your boards as Bridge Base's page receives them, and briefly speed up Bridge Base's card animation when you jump to an error |
+| Site access to `www.bridgebase.com/v3/*` | The page it works on |
 
 ## Source code
 
