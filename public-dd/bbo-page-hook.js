@@ -55,20 +55,6 @@
 
   const kindOf = (url) => KINDS[WANTED.exec(String(url ?? ''))?.[1]] ?? null
 
-  // TEMPORARY, 6 Nov 2026: requests counted by server and path, no query, to
-  // find where My Table's boards come from. Remove before release.
-  function noteHttp(url) {
-    try {
-      const u = new URL(url)
-      const seen = (window.__bcLiveSeen ??= { installed: Date.now(), types: {}, tags: {} })
-      const key = u.host + u.pathname
-      seen.http = seen.http ?? {}
-      seen.http[key] = (seen.http[key] ?? 0) + 1
-    } catch {
-      // Diagnostic only.
-    }
-  }
-
   // ── Fast steps ──────────────────────────────────────────────────────────────
   //
   // BBO animates a trick as a chain of setTimeout(…, 750) calls, one per card,
@@ -105,7 +91,6 @@
     return open.apply(this, arguments)
   }
   xhr.send = function (body) {
-    noteHttp(this.__bcUrl)
     const kind = kindOf(this.__bcUrl)
     if (kind) {
       this.addEventListener('load', () => {
@@ -132,43 +117,7 @@
     // BBO writes this one's closing tag with a space: </sc_board_details >.
     { kind: 'live-hand', open: /<sc_board_details[\s/>]/, close: /<\/sc_board_details\s*>/ },
   ]
-  // TEMPORARY, 6 Nov 2026: what kinds of frames arrive and the name of each
-  // message's outer tag, counted — never its contents — to learn the shape of
-  // the connection from a live event. `copy(__bcLiveSeen)`. Remove before release.
-  const seen = (window.__bcLiveSeen ??= { installed: Date.now(), types: {}, tags: {} })
-  // A JSON message by its field names and the value of any type-like field,
-  // never other values; anything else by its first few characters' shape.
-  const KIND_FIELDS = ['type', 'event', 'cmd', 'command', 'action', 'op', 't', 'name', 'msg_type']
-  function shapeOf(text) {
-    if (!text) return null
-    if (text[0] === '{' || text[0] === '[') {
-      try {
-        const v = JSON.parse(text)
-        const o = Array.isArray(v)
-          ? typeof v[0] === 'object' && v[0]
-            ? v[0]
-            : { '[array]': 1 }
-          : v
-        const keys = Object.keys(o ?? {})
-          .sort()
-          .slice(0, 12)
-          .join(',')
-        const kind = KIND_FIELDS.map((k) =>
-          typeof o?.[k] === 'string' && o[k].length <= 40 ? `${k}=${o[k]}` : null
-        )
-          .filter(Boolean)
-          .join(' ')
-        const big = text.length > 2000 ? ' BIG' : ''
-        return `json{${keys}}${kind ? ' ' + kind : ''}${big}`
-      } catch {
-        return `(json? ${text.length} chars)`
-      }
-    }
-    return `(${text.slice(0, 6).replace(/[^<?!\w]/g, '.')}… ${text.length} chars)`
-  }
   function frame(data, state) {
-    const type = typeof data === 'string' ? 'string' : (data?.constructor?.name ?? typeof data)
-    seen.types[type] = (seen.types[type] ?? 0) + 1
     if (typeof data === 'string') return tap(data, state)
     // Streamed, so a character split between frames still decodes.
     if (data instanceof ArrayBuffer) return tap(state.decoder.decode(data, { stream: true }), state)
@@ -184,21 +133,15 @@
   // (<sc_…), so nothing else is ever taken in. `state` is one connection's.
   const MAX_PIECES = 64
   function finish(state) {
-    const { kind, body, done } = state.collecting
+    const { kind, body } = state.collecting
     state.collecting = null
     pass(kind, null, null, body)
-    // TEMPORARY, 6 Nov 2026: kept where `copy(__bcLive)` in the console can
-    // reach them, to read their layout from a live event. Remove before release.
-    ;(window.__bcLive ??= []).push(done ? body : `${body}  [INCOMPLETE]`)
   }
   function tap(data, state) {
     if (typeof data !== 'string') return
     // A frame may hold several messages, separated by NULs.
     for (const part of data.split('\0')) {
       if (!part) continue
-      const tag = /^\s*<([\w:.-]{1,40})/.exec(part)?.[1] ?? shapeOf(part.trim())
-      if (tag) seen.tags[tag] = (seen.tags[tag] ?? 0) + 1
-
       // Who signed in: the user attribute of BBO's login message, and nothing
       // else from it (it also carries a session password).
       if (/^\s*<sc_loginok[\s/>]/.test(part)) {
@@ -245,13 +188,6 @@
     window.WebSocket = class extends NativeWebSocket {
       constructor(...args) {
         super(...args)
-        try {
-          const host = new URL(String(args[0])).host
-          seen.sockets = seen.sockets ?? {}
-          seen.sockets[host] = (seen.sockets[host] ?? 0) + 1
-        } catch {
-          // Diagnostic only.
-        }
         const state = { collecting: null, decoder: new TextDecoder() }
         this.addEventListener('message', (e) => {
           try {
@@ -269,7 +205,6 @@
     const result = nativeFetch.apply(this, arguments)
     try {
       const url = typeof input === 'string' ? input : input?.url
-      noteHttp(url && new URL(url, window.location.href).href)
       const kind = kindOf(url && new URL(url, window.location.href).href)
       if (kind) {
         result
