@@ -340,6 +340,55 @@ this is what BBO's own panel shows as each board finishes. Not yet seen during
 a live event — whether the auto-loaded board arrives through `mh_hand.php`, as a
 click does, or over the websocket is the open question.
 
+**Seated at a table, two viewers are on screen.** The table's comes first in the
+page, then History's. 1.1.0 as first built drew on the first visible one, so a
+player seated at a table saw tags and totals but nothing on the board, not even
+DD Details (6 Nov 2026, found by reading the page from DevTools during a live
+event). The overlay now tries every visible viewer, and takes the trick buttons
+nearest History's.
+
+**When both fit, the last viewer wins.** A board just finished stays at the
+table, as its last few cards or as the whole deal for review, and fits the
+board as well as History's does. Preferring the viewer showing the most cards
+looked right and was wrong twice on 8 Nov: the review ties History at 52, and
+once the player steps into the play History shows fewer. Page order is what
+holds — the table's first, History's after — so `matchPanels` takes the last.
+
+**My Table must not borrow another event's tags.** No board list we see arrives
+for the event being played. On 6 Nov My Table carried #33873's tags and totals,
+because the overlay fell back to the last list loaded. Tags and totals are now
+drawn only when the results on screen agree with the list's (`listOnScreen`).
+
+**My Table, pairs and teams: `sc_board_details` on the game connection.** Opening
+a board sends `cs_get_board`; the answer is `<sc_board_details request_id=
+"d~t~52031~1~16~0">` holding `<sc_deal>` (hands, dealer, vulnerability, names),
+each `<sc_call_made>` and each `<sc_card_played>`, closed by
+`</sc_board_details >` — with a space, so the close is matched by pattern. Most
+frames are binary and a long message arrives in pieces. `parseBoardDetails`
+(`src/adapters/bbo/parsers/liveXml.js`) turns it into LIN; its key is
+`live:` + the request id. Checked against BBO's own `mh_hand.php` for the same
+board: identical but for rank order. Working live, 8 Nov 2026.
+
+A board is sent only when opened, so the overlay keeps a short record of the
+event in progress (`ddl:table`: board number, key, result, the user's seat — no
+names, latest event only, twelve hours) to put My Table's tags back after a
+reload. The marks on the cards still wait for a click, since the deal is not
+stored.
+
+**My Table, daylongs: `ard.php`.** A robot game is not played over the game
+connection. The deal comes from `bboardapi.bridgebase.com/ard_v1/deal` and each
+robot move from `ard_v1/poll` (`<events>` holding `sc_call_made`,
+`sc_card_played`, `sc_claim_accept`, and at the end `sc_player_holds` and
+`sc_deal_complete result="4CS-1"`). History's My Table is filled from
+`webutil.bridgebase.com/v2/ard.php`, whose `<deals tid="…">` answer holds every
+board so far, each `dealstring` a LIN with `result` and the four names as
+attributes — read by `parseArdDeals`, key `ard:<tid>:<round>:<board>`. The hook
+copies `ard.php` only when the answer is `<deals>`. BBO asks for it on load but
+not after each board, nor on Refresh, so a board finished since the page loaded
+appears only after a reload. Reading the polls is the open item; it needs one
+`deal` answer and a poll after the player's own card, still to capture. A
+passed-out board is `P` there and `Pass` on screen.
+
 **Why registered at runtime, not in the manifest.** crxjs loads every manifest
 content script through a dynamic `import()` of an extension URL. In the page's
 own world that import is subject to BBO's CSP, whose `script-src *` admits no

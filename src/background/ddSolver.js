@@ -21,6 +21,12 @@ import { buildPlayRequest, summarizeTrace } from '../lib/ddPlay.js'
 
 export const CACHE_PREFIX = 'dd:'
 export const TALLY_PREFIX = 'ddt:'
+// The event being played: which of its boards have been seen, so My Table's tags
+// survive a reload. One record, for the latest event only, and short-lived.
+export const LIVE_TABLE_KEY = 'ddl:table'
+const LIVE_TABLE_TTL = 12 * 60 * 60 * 1000
+const LIVE_EVENT_RE = /^[\w~.-]{1,80}$/
+const LIVE_RESULT_RE = /^[\w=+-]{1,20}$/
 export const MAX_BOARDS = 3500
 const PRUNE_TO = 3000
 const PRUNE_EVERY = 200
@@ -30,9 +36,15 @@ const TALLY_VERSION = 1
 // A resultkey looks like "h/4748677413/33873-1793548800-50407802/2026-11-01 16:04:55".
 // It comes from the page, so it is checked before it becomes a storage key.
 const RESULTKEY_RE = /^h\/\d+\/[\w-]+\/[\d :-]+$/
+// The event being played has no such key yet, so its boards carry one made from
+// what BBO sent: "live:d~t~52031~1~16~0" from the game connection (the request's
+// own id), "ard:<tid>:<round>:<board>" from a daylong's ard.php.
+const LIVE_KEY_RE = /^(live:[\w~]+|ard:[\w-]+:\d*:\d+)$/
 
 export function isResultKey(key) {
-  return typeof key === 'string' && key.length < 200 && RESULTKEY_RE.test(key)
+  return (
+    typeof key === 'string' && key.length < 200 && (RESULTKEY_RE.test(key) || LIVE_KEY_RE.test(key))
+  )
 }
 
 // An event's key: "33873-1793548800", or for a daylong
@@ -229,7 +241,43 @@ export function createDdSolver({ loadSolver, storage, now = () => Date.now() }) 
     }
   }
 
-  return { trace, event, tallies, lookup, alternatives }
+  /** A board of the event being played has been seen: remember its number, key,
+   *  result and the user's seat, and nothing else (no names). A board from
+   *  another event starts the record afresh. */
+  let liveTurn = Promise.resolve()
+  function noteLive(liveEvent, board) {
+    const number = board?.number
+    if (!LIVE_EVENT_RE.test(liveEvent ?? '')) return Promise.reject(new Error('not an event'))
+    if (!Number.isInteger(number) || number < 1 || number > 999 || !isResultKey(board.resultkey)) {
+      return Promise.reject(new Error('not a board'))
+    }
+    const run = liveTurn.then(async () => {
+      const held = (await storage.get(LIVE_TABLE_KEY))[LIVE_TABLE_KEY]
+      const record = held?.event === liveEvent ? held : { event: liveEvent, t: now(), boards: {} }
+      record.boards[number] = {
+        resultkey: board.resultkey,
+        result: LIVE_RESULT_RE.test(board.result ?? '') ? board.result : null,
+        mySeat: ['N', 'E', 'S', 'W'].includes(board.mySeat) ? board.mySeat : null,
+      }
+      record.t = now()
+      await save({ [LIVE_TABLE_KEY]: record })
+    })
+    liveTurn = run.catch(() => {})
+    return run
+  }
+
+  /** What noteLive remembered, with the analyses already cached: { event,
+   *  boards: [{ number, resultkey, result, mySeat }], entries }, or null when
+   *  nothing was seen in the last twelve hours. */
+  async function liveTable() {
+    const held = (await storage.get(LIVE_TABLE_KEY))[LIVE_TABLE_KEY]
+    if (!held?.boards || !(now() - (held.t ?? 0) < LIVE_TABLE_TTL)) return null
+    const boards = Object.entries(held.boards).map(([n, b]) => ({ number: Number(n), ...b }))
+    const entries = await lookup(boards.map((b) => b.resultkey))
+    return { event: held.event, boards, entries }
+  }
+
+  return { trace, event, tallies, lookup, alternatives, noteLive, liveTable }
 }
 
 function strip({ v, t, ...entry }) {

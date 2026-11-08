@@ -8,7 +8,13 @@
 // nothing BBO receives: every call goes through untouched, and the copy is
 // taken after the response has arrived.
 //
+// A daylong (robot game) fills My Table with one more: ard.php, whose <deals>
+// answer is every board of the event so far. Only that answer is copied.
+//
 // Everything else BBO requests is ignored. See docs/data-sources.md § 3.9.
+//
+// The same goes for BBO's game connection, where My Table's list and boards
+// arrive: two message types are copied, nothing else (see "The game connection").
 //
 // It also does one other thing, and only on request: while the extension steps
 // BBO's viewer to an error's trick, it shortens BBO's animation delays so the
@@ -18,13 +24,17 @@
   window.__bridgeClassroomHook = true
 
   const TAG = 'bridge-classroom-bbo'
-  const WANTED = /^https:\/\/webutil\.bridgebase\.com\/v2\/(tfind|mh_list|mh_hand)\.php/
-  const KINDS = { tfind: 'events', mh_list: 'list', mh_hand: 'hand' }
+  const WANTED = /^https:\/\/webutil\.bridgebase\.com\/v2\/(tfind|mh_list|mh_hand|ard)\.php/
+  const KINDS = { tfind: 'events', mh_list: 'list', mh_hand: 'hand', ard: 'ard' }
+  // ard.php answers several questions for a daylong; only its list of the
+  // event's boards, <deals>, is copied.
+  const ARD_DEALS = /^\s*(<\?xml[^>]*\?>\s*)?<deals[\s>]/
   const MAX_BODY = 256 * 1024
   const recent = []
 
   function pass(kind, url, requestBody, body) {
     if (typeof body !== 'string' || body.length > MAX_BODY) return
+    if (kind === 'ard' && !ARD_DEALS.test(body)) return
     const msg = {
       source: TAG,
       kind,
@@ -44,6 +54,20 @@
   })
 
   const kindOf = (url) => KINDS[WANTED.exec(String(url ?? ''))?.[1]] ?? null
+
+  // TEMPORARY, 6 Nov 2026: requests counted by server and path, no query, to
+  // find where My Table's boards come from. Remove before release.
+  function noteHttp(url) {
+    try {
+      const u = new URL(url)
+      const seen = (window.__bcLiveSeen ??= { installed: Date.now(), types: {}, tags: {} })
+      const key = u.host + u.pathname
+      seen.http = seen.http ?? {}
+      seen.http[key] = (seen.http[key] ?? 0) + 1
+    } catch {
+      // Diagnostic only.
+    }
+  }
 
   // ── Fast steps ──────────────────────────────────────────────────────────────
   //
@@ -81,6 +105,7 @@
     return open.apply(this, arguments)
   }
   xhr.send = function (body) {
+    noteHttp(this.__bcUrl)
     const kind = kindOf(this.__bcUrl)
     if (kind) {
       this.addEventListener('load', () => {
@@ -96,11 +121,155 @@
     return send.apply(this, arguments)
   }
 
+  // ── The game connection ────────────────────────────────────────────────────
+  //
+  // My Table, the event being played, is filled over BBO's WebSocket rather than
+  // by History's requests: sc_boards is its list of boards (with the event's
+  // tkey), sc_board_details one board, sent when the player opens it. Only those
+  // two messages are copied; chat and everything else on the connection is
+  // never looked at past its opening tag. Nothing sent is touched.
+  const LIVE = [
+    // BBO writes this one's closing tag with a space: </sc_board_details >.
+    { kind: 'live-hand', open: /<sc_board_details[\s/>]/, close: /<\/sc_board_details\s*>/ },
+  ]
+  // TEMPORARY, 6 Nov 2026: what kinds of frames arrive and the name of each
+  // message's outer tag, counted — never its contents — to learn the shape of
+  // the connection from a live event. `copy(__bcLiveSeen)`. Remove before release.
+  const seen = (window.__bcLiveSeen ??= { installed: Date.now(), types: {}, tags: {} })
+  // A JSON message by its field names and the value of any type-like field,
+  // never other values; anything else by its first few characters' shape.
+  const KIND_FIELDS = ['type', 'event', 'cmd', 'command', 'action', 'op', 't', 'name', 'msg_type']
+  function shapeOf(text) {
+    if (!text) return null
+    if (text[0] === '{' || text[0] === '[') {
+      try {
+        const v = JSON.parse(text)
+        const o = Array.isArray(v)
+          ? typeof v[0] === 'object' && v[0]
+            ? v[0]
+            : { '[array]': 1 }
+          : v
+        const keys = Object.keys(o ?? {})
+          .sort()
+          .slice(0, 12)
+          .join(',')
+        const kind = KIND_FIELDS.map((k) =>
+          typeof o?.[k] === 'string' && o[k].length <= 40 ? `${k}=${o[k]}` : null
+        )
+          .filter(Boolean)
+          .join(' ')
+        const big = text.length > 2000 ? ' BIG' : ''
+        return `json{${keys}}${kind ? ' ' + kind : ''}${big}`
+      } catch {
+        return `(json? ${text.length} chars)`
+      }
+    }
+    return `(${text.slice(0, 6).replace(/[^<?!\w]/g, '.')}… ${text.length} chars)`
+  }
+  function frame(data, state) {
+    const type = typeof data === 'string' ? 'string' : (data?.constructor?.name ?? typeof data)
+    seen.types[type] = (seen.types[type] ?? 0) + 1
+    if (typeof data === 'string') return tap(data, state)
+    // Streamed, so a character split between frames still decodes.
+    if (data instanceof ArrayBuffer) return tap(state.decoder.decode(data, { stream: true }), state)
+    if (typeof Blob !== 'undefined' && data instanceof Blob)
+      data.text().then(
+        (t) => tap(t, state),
+        () => {}
+      )
+  }
+  // A long message can arrive in pieces: its opening tag in one, the rest in
+  // those that follow. A message being collected takes every following piece
+  // until its closing tag, and gives up on any piece that starts a new message
+  // (<sc_…), so nothing else is ever taken in. `state` is one connection's.
+  const MAX_PIECES = 64
+  function finish(state) {
+    const { kind, body, done } = state.collecting
+    state.collecting = null
+    pass(kind, null, null, body)
+    // TEMPORARY, 6 Nov 2026: kept where `copy(__bcLive)` in the console can
+    // reach them, to read their layout from a live event. Remove before release.
+    ;(window.__bcLive ??= []).push(done ? body : `${body}  [INCOMPLETE]`)
+  }
+  function tap(data, state) {
+    if (typeof data !== 'string') return
+    // A frame may hold several messages, separated by NULs.
+    for (const part of data.split('\0')) {
+      if (!part) continue
+      const tag = /^\s*<([\w:.-]{1,40})/.exec(part)?.[1] ?? shapeOf(part.trim())
+      if (tag) seen.tags[tag] = (seen.tags[tag] ?? 0) + 1
+
+      // Who signed in: the user attribute of BBO's login message, and nothing
+      // else from it (it also carries a session password).
+      if (/^\s*<sc_loginok[\s/>]/.test(part)) {
+        const user = /\suser="([^"]{1,40})"/.exec(part)?.[1]
+        if (user) pass('live-user', null, null, user)
+        continue
+      }
+
+      const c = state.collecting
+      if (c) {
+        if (/^\s*<sc_/.test(part) || c.pieces >= MAX_PIECES || c.body.length > MAX_BODY) {
+          finish(state)
+        } else {
+          c.pieces++
+          const m = c.close.exec(part)
+          c.body += m ? part.slice(0, m.index + m[0].length) : part
+          if (m) {
+            c.done = true
+            finish(state)
+          }
+          continue
+        }
+      }
+      for (const { kind, open, close } of LIVE) {
+        const m = open.exec(part)
+        if (!m) continue
+        const shut = close.exec(part.slice(m.index))
+        const end = shut ? m.index + shut.index + shut[0].length : -1
+        const selfClosed = /\/>\s*$/.test(part.slice(m.index, part.indexOf('>', m.index) + 1))
+        state.collecting = {
+          kind,
+          close,
+          pieces: 1,
+          body: end >= 0 ? part.slice(m.index, end) : part.slice(m.index),
+          done: end >= 0 || selfClosed,
+        }
+        if (state.collecting.done) finish(state)
+        break
+      }
+    }
+  }
+  const NativeWebSocket = window.WebSocket
+  if (NativeWebSocket) {
+    window.WebSocket = class extends NativeWebSocket {
+      constructor(...args) {
+        super(...args)
+        try {
+          const host = new URL(String(args[0])).host
+          seen.sockets = seen.sockets ?? {}
+          seen.sockets[host] = (seen.sockets[host] ?? 0) + 1
+        } catch {
+          // Diagnostic only.
+        }
+        const state = { collecting: null, decoder: new TextDecoder() }
+        this.addEventListener('message', (e) => {
+          try {
+            frame(e.data, state)
+          } catch {
+            // Never let our copy disturb BBO's connection.
+          }
+        })
+      }
+    }
+  }
+
   const nativeFetch = window.fetch
   window.fetch = function (input, init) {
     const result = nativeFetch.apply(this, arguments)
     try {
       const url = typeof input === 'string' ? input : input?.url
+      noteHttp(url && new URL(url, window.location.href).href)
       const kind = kindOf(url && new URL(url, window.location.href).href)
       if (kind) {
         result

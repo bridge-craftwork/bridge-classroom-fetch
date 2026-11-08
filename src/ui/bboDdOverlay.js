@@ -21,6 +21,7 @@
 // something wrong.
 
 import { parseMhList, parseMhHand, parseTfind } from '../adapters/bbo/parsers/mhXml.js'
+import { parseArdDeals, parseBoardDetails, resultOfLin } from '../adapters/bbo/parsers/liveXml.js'
 import { parseLin, parseLinPlayers } from '../adapters/bbo/parsers/lin.js'
 import { summarizeTrace, seatOf, solverCard, trumpOf } from '../lib/ddPlay.js'
 import {
@@ -125,9 +126,17 @@ function firstText(el) {
   return s
 }
 
-/** The four visible hands, each tied to its seat in `deal` (parseLin's deal).
- *  Returns [{ seat, cards }] or null unless every visible card sits in the hand
- *  the LIN gives it — the check that we are drawing on the board we solved. */
+/** The visible hands of the viewer showing `deal` (parseLin's deal), each tied
+ *  to its seat. Returns { viewer, hands: [{ seat, cards }] }, or null unless every
+ *  visible card in some viewer sits in the hand the LIN gives it — the check that
+ *  we are drawing on the board we solved.
+ *
+ *  Every visible viewer is tried: a player seated at a table has two on screen,
+ *  the table's and History's, and the table's comes first (seen 6 Nov 2026).
+ *  When more than one fits, the last wins, which is History's: a board just
+ *  finished stays at the table, as its last few cards or as the whole deal for
+ *  review, and fits too. Counting cards does not tell them apart, since History
+ *  shows fewer once the player steps into the play (seen 8 Nov 2026). */
 export function matchPanels(doc, deal, isVisible = defaultVisible) {
   const seatOfCard = {}
   for (const seat of ['N', 'E', 'S', 'W']) {
@@ -135,8 +144,16 @@ export function matchPanels(doc, deal, isVisible = defaultVisible) {
       for (const r of deal[seat][suit]) seatOfCard[solverCard(suit + r)] = seat
     }
   }
-  const viewer = [...doc.querySelectorAll('deal-viewer')].find(isVisible)
-  if (!viewer) return null
+  let last = null
+  for (const viewer of doc.querySelectorAll('deal-viewer')) {
+    if (!isVisible(viewer)) continue
+    const hands = viewerHands(viewer, seatOfCard, isVisible)
+    if (hands) last = { viewer, hands }
+  }
+  return last
+}
+
+function viewerHands(viewer, seatOfCard, isVisible) {
   const out = []
   for (const panel of viewer.querySelectorAll('hand-diagram-panel')) {
     if (!isVisible(panel)) continue
@@ -147,7 +164,7 @@ export function matchPanels(doc, deal, isVisible = defaultVisible) {
     if (seats.size !== 1 || seats.has(undefined)) return null
     out.push({ seat: [...seats][0], cards })
   }
-  return out.length ? { viewer, hands: out } : null
+  return out.length ? out : null
 }
 
 // ── Drawing ──────────────────────────────────────────────────────────────────
@@ -410,15 +427,24 @@ function restoreTableCard(card) {
   card.removeAttribute('title')
 }
 
-/** BBO's own Previous trick / Next trick buttons, or null. */
-export function trickButtons(doc, isVisible = defaultVisible) {
-  const find = (label) =>
-    [...doc.querySelectorAll('button')].find(
-      (b) => isVisible(b) && b.textContent.trim() === label
-    ) ?? null
-  const prev = find('Previous trick')
-  const next = find('Next trick')
-  return prev && next ? { prev, next } : null
+/** BBO's own Previous trick / Next trick buttons, or null. With `viewer`, the
+ *  pair nearest it: they sit outside the viewer, and a player seated at a table
+ *  has a second viewer on screen. */
+export function trickButtons(doc, isVisible = defaultVisible, viewer = null) {
+  const pair = (root) => {
+    const find = (label) =>
+      [...root.querySelectorAll('button')].find(
+        (b) => isVisible(b) && b.textContent.trim() === label
+      ) ?? null
+    const prev = find('Previous trick')
+    const next = find('Next trick')
+    return prev && next ? { prev, next } : null
+  }
+  for (let el = viewer?.parentElement; el; el = el.parentElement) {
+    const found = pair(el)
+    if (found) return found
+  }
+  return pair(doc)
 }
 
 /** Step BBO's viewer to the end of trick `trick`, by pressing its own buttons.
@@ -521,6 +547,55 @@ function rowHeight(row, cell) {
   return Number.isFinite(h) && h > 0 ? h : cell.clientHeight || 46
 }
 
+// A result as BBO writes it in mh_list ("4HW=", "3NS+2") and as the list on
+// screen shows it ("4♥W=", "3NTS+2"), brought to one form. A passed-out board
+// is "P" in a daylong's ard.php and "Pass" on screen.
+const resultKey = (text) =>
+  String(text ?? '')
+    .replace(/\s+/g, '')
+    .toUpperCase()
+    .replace('NT', 'N')
+    .replace('♠', 'S')
+    .replace('♥', 'H')
+    .replace('♦', 'D')
+    .replace('♣', 'C')
+    .replace(/^PASS$/, 'P')
+
+/** Whether the visible board list is `list`: every row's board is in it, and
+ *  the results agree. BBO draws My Table, Recent tournaments' events and others
+ *  in the same component, and My Table is filled over the game connection,
+ *  not by a list we see, so the last list loaded may belong to another event
+ *  entirely (seen 6 Nov 2026). A board still being played shows no result on
+ *  screen, which counts as disagreeing.
+ *
+ *  One disagreement in ten is let through: the two spellings have only been
+ *  compared for ordinary contracts, and a passed-out board, say, may be
+ *  written differently. Another event's list disagrees on nearly every row. */
+export function listOnScreen(doc, list, isVisible = defaultVisible, { partial = false } = {}) {
+  if (!list) return false
+  const byNumber = new Map(list.boards.map((b) => [b.number, b]))
+  let compared = 0
+  let agreed = 0
+  for (const row of doc.querySelectorAll('result-list-item')) {
+    if (!isVisible(row)) continue
+    const cells = row.querySelectorAll('.cellClass')
+    if (cells.length < 2) continue
+    const number = Number.parseInt(cells[0].textContent.trim(), 10)
+    if (!Number.isInteger(number)) continue
+    const board = byNumber.get(number)
+    if (!board) {
+      // My Table's list is built a board at a time, as each is opened.
+      if (partial) continue
+      return false
+    }
+    if (!board.result) continue
+    const inner = cells[1].querySelector('.innerClass') ?? cells[1]
+    compared++
+    if (resultKey(inner.textContent) === resultKey(board.result)) agreed++
+  }
+  return compared > 0 && agreed >= compared * 0.9
+}
+
 /** One tag per analysed board in the visible board list, at the right of the
  *  Result cell. */
 export function drawIndex(doc, list, entries, username, isVisible = defaultVisible) {
@@ -534,7 +609,7 @@ export function drawIndex(doc, list, entries, username, isVisible = defaultVisib
     const entry = board && entries.get(board.resultkey)
     let chip = null
     if (entry?.contract) {
-      const mySeat = seatOf(board.players, username)
+      const mySeat = board.mySeat ?? seatOf(board.players, username)
       const { counts } = summarizeTrace(entry.trace, { declarer: entry.declarer, mySeat })
       chip = chipFor(counts, entry.trace.filter((t) => t.cost > 0).length)
     }
@@ -622,7 +697,7 @@ export function drawTotals(doc, list, entries, username, isVisible = defaultVisi
     sum.all += entry.trace.filter((t) => t.cost > 0).length
     const { counts } = summarizeTrace(entry.trace, {
       declarer: entry.declarer,
-      mySeat: seatOf(board.players, username),
+      mySeat: board.mySeat ?? seatOf(board.players, username),
     })
     if (!counts) continue
     any = true
@@ -750,11 +825,12 @@ export function syncPopout(doc, viewer, onClick) {
 }
 
 /** "Restart": back to the start of the play, so error cards already played
- *  are in the hands again to click. Shown only once play has moved on. */
+ *  are in the hands again to click. Shown only once play has moved on, in DD
+ *  Details' place. */
 export function syncRestart(doc, viewer, onClick) {
   return syncMenuButton(doc, viewer, {
     id: RESTART_ID,
-    row: 1,
+    row: 0,
     label: '⟲ Restart',
     title: 'Back to the start of the play',
     onClick,
@@ -781,6 +857,10 @@ export function startDdOverlay({
     current: null, // the board BBO loaded last: { hk, lin, deal }
     hands: new Map(), // every board seen this visit, by resultkey
     entries: new Map(), // resultkey → background's analysis
+    // My Table, the event being played: the boards opened so far, by number,
+    // and which event they belong to ("52031~1").
+    live: new Map(),
+    liveEvent: null,
   }
 
   // BBO fetches a board once per visit and keeps it: going back to a board it
@@ -826,10 +906,18 @@ export function startDdOverlay({
       return
     }
     const shownEvent = eventOnScreen()
-    const list = shownEvent ? (state.lists.get(shownEvent.tkey) ?? state.list) : state.list
+    const loaded = shownEvent ? (state.lists.get(shownEvent.tkey) ?? state.list) : state.list
+    const live = state.live.size ? { tkey: null, boards: [...state.live.values()] } : null
+    const list = listOnScreen(doc, loaded)
+      ? loaded
+      : listOnScreen(doc, live, defaultVisible, { partial: true })
+        ? live
+        : null
     if (list) {
       drawIndex(doc, list, state.entries, state.username)
       drawTotals(doc, list, state.entries, state.username)
+    } else {
+      for (const el of doc.querySelectorAll(`.${CHIP_CLASS}, .${TOTALS_CLASS}`)) el.remove()
     }
     drawHistory(shownEvent)
     const shown = onScreen()
@@ -855,12 +943,13 @@ export function startDdOverlay({
       entry?.contract ? alternativesShown(cur, entry, matched.viewer) : null
     )
     drawTable(matched.viewer, summary)
-    syncPopout(doc, matched.viewer, () => popOut(cur.lin))
-    syncRestart(
-      doc,
-      matched.viewer,
+    // One place under BBO's menu: DD Details at the start of the play, Restart
+    // once it has moved on. A second button below would cover the par box
+    // another extension draws there (seen 8 Nov 2026).
+    const restart =
       summary && cardsPlayed(matched.viewer) > 0 ? () => jumpTo(matched.viewer, 0) : null
-    )
+    syncPopout(doc, restart ? null : matched.viewer, () => popOut(cur.lin))
+    syncRestart(doc, matched.viewer, restart)
   }
 
   // A click on an error card steps BBO's viewer to that card's trick. BBO
@@ -894,7 +983,7 @@ export function startDdOverlay({
   let jumping = false
   const fast = (on) => win.postMessage({ source: `${TAG}:fast`, on }, win.location.origin)
   function jumpTo(viewer, trick) {
-    const buttons = trickButtons(doc)
+    const buttons = trickButtons(doc, defaultVisible, viewer)
     if (!buttons || jumping) return
     jumping = true
     // BBO animates each trick for about two seconds. The page hook cuts its
@@ -1077,6 +1166,57 @@ export function startDdOverlay({
   }
 
   async function handle(msg) {
+    if (msg.kind === 'live-user') {
+      // Who is signed in, from BBO's login message: the seat to count as "me" on
+      // My Table, where no History request names the player.
+      state.liveUser = typeof msg.body === 'string' && msg.body ? msg.body : null
+      state.username ??= state.liveUser
+      return
+    }
+    if (msg.kind === 'live-hand') {
+      const { hk, lin, number } = parseBoardDetails(msg.body)
+      const players = parseLinPlayers(lin)
+      state.current = { hk, lin, deal: parseLin(lin).deal, players }
+      state.hands.set(hk, state.current)
+      // My Table's own boards only, not another table's that the player looked
+      // at: those share the board number.
+      const me = state.liveUser ?? state.username
+      if (!me || seatOf(players, me)) {
+        const event = hk.split('~').slice(2, 4).join('~')
+        if (event !== state.liveEvent) {
+          state.live.clear()
+          state.liveEvent = event
+        }
+        const board = { number, resultkey: hk, result: resultOfLin(lin), players }
+        state.live.set(number, board)
+        // Kept, without names, so a reload does not lose My Table's tags.
+        sendMessage({
+          type: 'dd-live-note',
+          event,
+          board: { number, resultkey: hk, result: board.result, mySeat: seatOf(players, me) },
+        }).catch(() => {})
+      }
+      schedule()
+      if (enabled) await solve(state.current)
+      return
+    }
+    if (msg.kind === 'ard') {
+      // A daylong's My Table: every board of the event so far, in one answer.
+      // Everyone else at the table is a robot, so every board is the user's own.
+      const { tid, boards } = parseArdDeals(msg.body)
+      if (tid !== state.liveEvent) {
+        state.live.clear()
+        state.liveEvent = tid
+      }
+      for (const b of boards) {
+        const hand = { hk: b.hk, lin: b.lin, deal: parseLin(b.lin).deal, players: b.players }
+        state.hands.set(b.hk, hand)
+        state.live.set(b.number, { number: b.number, resultkey: b.hk, result: b.result, players: b.players })
+      }
+      schedule()
+      if (enabled) for (const b of boards) await solve(state.hands.get(b.hk))
+      return
+    }
     if (msg.kind === 'events') {
       state.events = parseTfind(msg.body)
       if (enabled) await refreshTallies(state.events.map((e) => e.tkey))
@@ -1102,6 +1242,20 @@ export function startDdOverlay({
   })
   // In case BBO loaded something before this script started.
   win.postMessage({ source: `${TAG}:replay` }, win.location.origin)
+
+  // After a reload, My Table's boards seen before it: the game connection sends a
+  // board only when it is opened, so without this their tags would wait for a
+  // click each. Shown only where the results on screen agree (listOnScreen).
+  sendMessage({ type: 'dd-live-table' })
+    .then((res) => {
+      const table = res?.table
+      if (!table || state.live.size) return
+      state.liveEvent = table.event
+      for (const b of table.boards) state.live.set(b.number, { ...b, players: null })
+      for (const [k, v] of Object.entries(table.entries ?? {})) state.entries.set(k, v)
+      schedule()
+    })
+    .catch(() => {})
 
   return { render: schedule, setEnabled, state }
 }

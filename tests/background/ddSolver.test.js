@@ -7,6 +7,7 @@ import {
   CACHE_PREFIX,
   TALLY_PREFIX,
   MAX_BOARDS,
+  LIVE_TABLE_KEY,
 } from '../../src/background/ddSolver.js'
 import { parseMhHand } from '../../src/adapters/bbo/parsers/mhXml.js'
 
@@ -211,6 +212,42 @@ describe('createDdSolver', () => {
   it('refuses a key that is not a BBO resultkey', async () => {
     await expect(solver.trace('../../etc', board(1).lin)).rejects.toThrow('resultkey')
     expect(isResultKey('h/4748677413/33873-1793548800-50407802/2026-11-01 16:04:55')).toBe(true)
+  })
+
+  it("accepts the event being played: the game connection's and a daylong's keys, seen 7 Nov 2026", () => {
+    expect(isResultKey('live:d~t~52031~1~16~0')).toBe(true)
+    expect(isResultKey('ard:9ca06e6d-da89-11f1-8901-ac1f6b5a106e:1:4')).toBe(true)
+    expect(isResultKey('ard:../x:1:4')).toBe(false)
+    expect(isResultKey('live:a/b')).toBe(false)
+  })
+
+  it("remembers the event being played, without names, so My Table's tags survive a reload", async () => {
+    const key = 'live:d~t~52031~1~16~0'
+    await solver.trace(key, board(1).lin)
+    await solver.noteLive('52031~1', {
+      number: 16,
+      resultkey: key,
+      result: '2SSx+1',
+      mySeat: 'E',
+      players: { N: 'someone' },
+    })
+    const table = await solver.liveTable()
+    expect(table.event).toBe('52031~1')
+    expect(table.boards).toEqual([{ number: 16, resultkey: key, result: '2SSx+1', mySeat: 'E' }])
+    expect(table.entries[key].contract).toBe('3NT')
+    expect(JSON.stringify(storage.data[LIVE_TABLE_KEY])).not.toContain('someone')
+
+    // Another event starts afresh; twelve hours on, nothing is offered.
+    await solver.noteLive('52032~1', { number: 1, resultkey: 'live:d~t~52032~1~1~0', result: null })
+    expect((await solver.liveTable()).boards.map((b) => b.number)).toEqual([1])
+    clock += 13 * 60 * 60 * 1000
+    expect(await solver.liveTable()).toBeNull()
+  })
+
+  it('refuses a live board with a bad event or key', async () => {
+    await expect(solver.noteLive('../x', { number: 1, resultkey: 'live:a~b' })).rejects.toThrow()
+    await expect(solver.noteLive('52031~1', { number: 1, resultkey: '../x' })).rejects.toThrow()
+    expect(storage.data[LIVE_TABLE_KEY]).toBeUndefined()
   })
 
   it('caches a passed-out board as having nothing to analyse', async () => {

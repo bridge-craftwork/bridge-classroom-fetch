@@ -88,6 +88,18 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse,
         'dd-tallies'
       )
+    case 'dd-live-note':
+      return reply(
+        ddSolver.noteLive(message.event, message.board).then(() => ({})),
+        sendResponse,
+        'dd-live-note'
+      )
+    case 'dd-live-table':
+      return reply(
+        ddSolver.liveTable().then((table) => ({ table })),
+        sendResponse,
+        'dd-live-table'
+      )
     case 'dd-lookup':
       return reply(
         ddSolver.lookup(message.resultkeys).then((entries) => ({ entries })),
