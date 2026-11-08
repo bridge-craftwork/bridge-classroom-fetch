@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<events request_id="" err="0" errmsg="OK">
+    
+    <sc_claim_accept tricks="11" />
+    <sc_player_holds north="SKQ3H9842DT6532C4" south="S75HKQJT7DA7CAT83" east="SJT98HA3DKQJ98C92" west="SA642H65D4CKQJ765" />
+    <sc_deal_complete result="4HS+1" />
+</events>
