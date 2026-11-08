@@ -410,7 +410,7 @@ captured from a live daylong on 8 Nov 2026:
 |---|---|
 | `ard_v1/deal`, answer | `<sc_deal>`: board, dealer, `vul`, and the user's hand only (the others `SHDC`); `dealid="HAND/<tid>/<round>/<board>/<user>"` |
 | `ard_v1/poll`, request | form fields `dealid` and `actions`, the user's own moves: `[{"t":"b","b":"2C","e":"…","a":"n"}]` a call, `[{"t":"p","c":"SA"},{"t":"p","c":"H9"}]` cards, `[]` nothing |
-| `ard_v1/poll`, answer | the robots' moves: `<sc_call_made call="2H" explain="…"/>`, `<sc_card_played card="SK"/>`; at the end `<sc_claim_accept tricks="11"/>`, `<sc_player_holds north=… south=…/>` (all four hands) and `<sc_deal_complete result="4HS+1"/>`, sometimes in separate polls. Earlier, at the lead, an `sc_player_holds` with dummy's hand alone, which is not the end |
+| `ard_v1/poll`, answer | the robots' moves: `<sc_call_made call="2H" explain="…"/>`, `<sc_card_played card="SK"/>`; at the end `<sc_claim_accept tricks="11"/>`, `<sc_player_holds north=… south=…/>` (all four hands) and `<sc_deal_complete result="4HS+1"/>`, sometimes in separate polls. Earlier, at the lead, an `sc_player_holds` with dummy's hand alone, which is not the end. A board played to the last card gets no `sc_player_holds` at all: its hands are worked out from the play |
 
 The user's moves go out in a poll and the robots' come back in its answer, so a
 board is the two interleaved. When the user's side declares, the user's actions

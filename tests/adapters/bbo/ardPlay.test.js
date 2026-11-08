@@ -8,7 +8,8 @@ import {
   parseArdDeal,
   parseArdEvents,
 } from '../../../src/adapters/bbo/parsers/ardPlay.js'
-import { parseArdDeals } from '../../../src/adapters/bbo/parsers/liveXml.js'
+import { parseArdDeals, resultOfLin } from '../../../src/adapters/bbo/parsers/liveXml.js'
+import { parseMhHand } from '../../../src/adapters/bbo/parsers/mhXml.js'
 import { startDdOverlay } from '../../../src/ui/bboDdOverlay.js'
 import { parseLin, deriveContract } from '../../../src/adapters/bbo/parsers/lin.js'
 
@@ -234,6 +235,37 @@ describe('building a board from the polls', () => {
       else out = builder.poll(r.dealid, p.actions ?? '[]', p.text ?? '') ?? out
     }
     expect(parseLin(out.lin).auction).toEqual(parseLin(board.lin).auction)
+  })
+
+  it('works out the hands of a board played to the last card, which come with no holds', () => {
+    // Every daylong board in the fixture ended on a claim; this one is played out.
+    const { lin } = parseMhHand(fixture('mh-hand-33873-board1.xml'))
+    const board = { number: 1, lin, result: resultOfLin(lin) }
+    const r = replay(board)
+    const polls = [...r.polls]
+    polls[polls.length - 1] = {
+      text: polls.at(-1).text.replace(/<sc_player_holds[^>]*\/>/, ''),
+    }
+    const dropped = []
+    const built = run(createArdBoardBuilder({ onDrop: (e) => dropped.push(e.message) }), {
+      ...r,
+      polls,
+    })
+    expect(dropped).toEqual([])
+    const a = parseLin(built.lin)
+    const b = parseLin(board.lin)
+    const sorted = (deal) =>
+      Object.fromEntries(
+        Object.entries(deal).map(([seat, hand]) => [
+          seat,
+          Object.fromEntries(
+            Object.entries(hand).map(([suit, ranks]) => [suit, [...ranks].sort()])
+          ),
+        ])
+      )
+    expect(sorted(a.deal)).toEqual(sorted(b.deal))
+    expect(a.play).toEqual(b.play)
+    expect(built.result).toBe(board.result)
   })
 
   it('drops a board joined halfway, rather than guess', () => {

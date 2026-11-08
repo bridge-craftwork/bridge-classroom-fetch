@@ -155,7 +155,7 @@ export function parseArdActions(json) {
 
 // A call as LIN writes it: p, d, r, or a bid with N for notrump.
 function linCall(call) {
-  const c = call.trim().toUpperCase()
+  const c = call.trim().replace(/!+$/, '').toUpperCase()
   if (c === 'P' || c === 'PASS') return 'p'
   if (c === 'X' || c === 'D' || c === 'DBL') return 'd'
   if (c === 'XX' || c === 'R' || c === 'RDBL') return 'r'
@@ -198,6 +198,51 @@ export function isFullDeal(holds) {
   })
 }
 
+// A board played to the last card ends with no sc_player_holds (seen 8 Nov
+// 2026): every card has been seen. Each card's seat follows from the play
+// itself — declarer's left-hand opponent leads, each trick's winner leads the
+// next — so the four hands are the cards each seat played. Null when the
+// auction names no contract.
+function handsFromPlay(calls, cards, dealer) {
+  const auction = calls.map((c) => AUCTION_CALL[c.call] ?? c.call.replace(/N$/, 'NT'))
+  const { contract, declarer } = deriveContract(auction, dealer)
+  if (!contract) return null
+  const strain = /^[1-7](NT|[CDHS])/.exec(contract)[1]
+  const trump = strain === 'NT' ? null : strain
+  const played = { N: [], E: [], S: [], W: [] }
+  let leader = NEXT[declarer]
+  for (let i = 0; i < 52; i += 4) {
+    const trick = cards.slice(i, i + 4)
+    let seat = leader
+    const seats = []
+    for (const card of trick) {
+      played[seat].push(card)
+      seats.push(seat)
+      seat = NEXT[seat]
+    }
+    let best = 0
+    for (let j = 1; j < 4; j++) {
+      const [a, b] = [trick[best], trick[j]]
+      if (b[0] === a[0] ? RANKS.indexOf(b[1]) < RANKS.indexOf(a[1]) : b[0] === trump) best = j
+    }
+    leader = seats[best]
+  }
+  const hands = {}
+  for (const s of SEATS) {
+    hands[s] = ['S', 'H', 'D', 'C']
+      .map(
+        (suit) =>
+          suit +
+          played[s]
+            .filter((c) => c[0] === suit)
+            .map((c) => c[1])
+            .join('')
+      )
+      .join('')
+  }
+  return hands
+}
+
 /** One finished board → { number, hk, lin, result, players }, the shape
  *  parseArdDeals gives, or throws (ParseError) saying what did not check out. */
 export function assembleArdBoard(deal, moves) {
@@ -212,14 +257,15 @@ export function assembleArdBoard(deal, moves) {
     else if (m.call !== undefined) {
       const call = linCall(m.call)
       if (!call) throw new ParseError(`ard board: unknown call ${m.call}`)
-      calls.push({ call, explain: clean(m.explain), alert: m.alert })
+      calls.push({ call, explain: clean(m.explain), alert: m.alert || /!$/.test(m.call.trim()) })
     } else if (m.card !== undefined) {
       if (!CARD_RE.test(m.card ?? '')) throw new ParseError(`ard board: unknown card ${m.card}`)
       cards.push(m.card)
     }
   }
-  if (!end.holds) throw new ParseError('ard board: no hands shown at the end')
   if (end.result === undefined) throw new ParseError('ard board: no result')
+  if (!end.holds && cards.length === 52) end.holds = handsFromPlay(calls, cards, deal.dealer)
+  if (!end.holds) throw new ParseError('ard board: no hands shown at the end')
 
   const holder = {}
   for (const s of SEATS) {
@@ -266,7 +312,12 @@ export function assembleArdBoard(deal, moves) {
       const trick = cards.slice(i, i + 4)
       let seat = leader
       for (const [j, card] of trick.entries()) {
-        if (left[card] !== seat) throw new ParseError(`ard board: ${card} is not ${seat}'s to play`)
+        if (left[card] !== seat) {
+          throw new ParseError(
+            `ard board: ${card} is not ${seat}'s to play (trick ${i / 4 + 1}, led by ${leader}: ` +
+              `${trick.join(' ')}; before it ${cards.slice(Math.max(0, i - 4), i).join(' ') || 'nothing'})`
+          )
+        }
         const led = trick[0][0]
         if (j > 0 && card[0] !== led) {
           const couldFollow = Object.entries(left).some(([c, s]) => s === seat && c[0] === led)
@@ -354,11 +405,13 @@ export function createArdBoardBuilder({ onDrop = () => {} } = {}) {
       if (!board) return null
       board.moves.push(...parseArdActions(actions))
       if (text) board.moves.push(...parseArdEvents(text))
-      // The result and the four hands can come in separate polls (a board played
-      // to the last card, 8 Nov 2026), so the board waits for both.
+      // The result and the four hands can come in separate polls, so the board
+      // waits for both; but a board played to the last card gets no hands at
+      // all, and is worked out from the play (8 Nov 2026).
       const ended = board.moves.some((m) => m.result !== undefined)
       const shown = board.moves.some((m) => m.holds && isFullDeal(m.holds))
-      if (!ended || !shown) return null
+      const playedOut = board.moves.filter((m) => m.card !== undefined).length === 52
+      if (!ended || !(shown || playedOut)) return null
       boards.delete(id.key)
       try {
         return assembleArdBoard(board.deal, board.moves)

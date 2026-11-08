@@ -58,15 +58,20 @@
 
   const noToken = (text) => text.replace(/\stoken="[^"]*"/g, '')
 
-  function pass(kind, url, requestBody, body) {
+  // `sent` is true for a copy taken as the request goes out, before any answer.
+  function pass(kind, url, requestBody, body, sent = false) {
     if (typeof body !== 'string' || body.length > MAX_BODY) return
     if (kind === 'ard' && !ARD_DEALS.test(body)) return
     let request = typeof requestBody === 'string' ? requestBody : null
     if (kind === 'ard' || kind === 'ard-deal') request = null
     if (kind === 'ard-deal' || kind === 'ard-poll') body = noToken(body)
     if (kind === 'ard-poll') {
+      // The user's moves are copied as the poll goes out, the robots' as its
+      // answer comes back. Taken together at the answer, a robot's move from
+      // another poll answering later could land after the user's, which it
+      // came before (seen 8 Nov 2026: two polls open at once).
       const dealid = formField(requestBody, 'dealid')
-      const actions = formField(requestBody, 'actions') ?? '[]'
+      const actions = sent ? (formField(requestBody, 'actions') ?? '[]') : '[]'
       // Most polls only wait for the robots, and carry nothing either way.
       if (!dealid || (actions.trim() === '[]' && !/<sc_/.test(body))) return
       request = JSON.stringify({ dealid, actions })
@@ -131,6 +136,13 @@
   }
   xhr.send = function (body) {
     const kind = kindOf(this.__bcUrl)
+    if (kind === 'ard-poll') {
+      try {
+        pass(kind, this.__bcUrl, body, '', true)
+      } catch {
+        // Never let our copy disturb BBO's request.
+      }
+    }
     if (kind) {
       this.addEventListener('load', () => {
         try {
@@ -245,6 +257,7 @@
     try {
       const url = typeof input === 'string' ? input : input?.url
       const kind = kindOf(url && new URL(url, window.location.href).href)
+      if (kind === 'ard-poll') pass(kind, url, init?.body, '', true)
       if (kind) {
         result
           .then((r) => (r.ok ? r.clone().text() : null))
