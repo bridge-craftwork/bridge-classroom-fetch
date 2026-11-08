@@ -15,6 +15,10 @@
 // Use a COPY of the profile, never the one in use. The script refuses unless
 // BBO's own `invisible` flag is set. Players' names are blurred throughout, on
 // BBO and on the Bridge Classroom page DD Details opens.
+//
+// The list's tallies come from what the profile has already analysed: run
+// tools/capture-dd.mjs on it first, or the opening shot has nothing to show. The
+// event being recorded is forgotten here, so it starts blank and DD all has work.
 
 import { chromium } from '@playwright/test'
 import { execFileSync } from 'node:child_process'
@@ -57,6 +61,15 @@ await page.waitForLoadState('networkidle').catch(() => {})
 if ((await page.evaluate(() => localStorage.getItem('invisible'))) !== 'y') {
   throw new Error('BBO invisible flag not set in this profile; refusing to sign in visibly')
 }
+// The event's boards and tally, and the other events' boards, which nothing here
+// opens. Their tallies stay, for the list.
+const worker =
+  ctx.serviceWorkers().find((w) => w.url().startsWith('chrome-extension://')) ??
+  (await ctx.waitForEvent('serviceworker'))
+await worker.evaluate(async (tally) => {
+  const keys = Object.keys(await chrome.storage.local.get(null))
+  await chrome.storage.local.remove(keys.filter((k) => k.startsWith('dd:') || k.startsWith(tally)))
+}, `ddt:${EVENT.replace(/^#/, '')}-`)
 // Give the History panel most of the frame, as tools/capture-dd.mjs does.
 await page.evaluate(() => {
   const k = Object.keys(localStorage).find((key) => key.endsWith('_hDividePixels'))
@@ -103,6 +116,25 @@ async function dress(target, { captionBox }) {
     const caption = document.createElement('div')
     caption.id = 'demo-caption'
     document.documentElement.appendChild(caption)
+    // BBO's pop-ups name friends as they log in, and show the account's balance.
+    // Hidden as they are added, so no frame has them.
+    const PRIVATE = /have just logged in|Award symbol/
+    const hide = (el) => {
+      while (el.parentElement && el.parentElement !== document.body && el.parentElement.getBoundingClientRect().width < 600) el = el.parentElement
+      el.style.setProperty('visibility', 'hidden', 'important')
+    }
+    const check = (node) => {
+      const el = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement
+      if (el && el !== document.body && PRIVATE.test(node.textContent)) hide(el)
+    }
+    const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
+    for (let n = walk.nextNode(); n; n = walk.nextNode()) check(n)
+    new MutationObserver((records) => {
+      for (const r of records) {
+        check(r.target.nodeType === Node.TEXT_NODE ? r.target : document.createTextNode(''))
+        r.addedNodes.forEach(check)
+      }
+    }).observe(document.body, { childList: true, subtree: true, characterData: true })
     addEventListener('mousemove', (e) => {
       cursor.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`
     }, true)
@@ -154,6 +186,8 @@ const errorCard = (trick) =>
 const hamburger = () =>
   centre(() => [...document.querySelectorAll('.moreClass')].find((e) => e.getClientRects().length))
 const byId = (id) => centre((i) => document.getElementById(i), id)
+const ddHeader = () =>
+  centre(() => [...document.querySelectorAll('.bc-dd-history-header')].find((e) => e.getClientRects().length))
 const cardsLeft = () =>
   page.evaluate(() => {
     const v = [...document.querySelectorAll('deal-viewer')].find((e) => e.getClientRects().length)
@@ -166,12 +200,27 @@ async function untilCards(n) {
   while (Date.now() - t0 < 15000 && (await cardsLeft()) !== n) await page.waitForTimeout(80)
 }
 
+// BBO announces live vugraphs in a box over the list, for several seconds.
+await page
+  .getByText(/vugraph broadcast has just started/i)
+  .waitFor({ state: 'hidden', timeout: 30000 })
+  .catch(() => console.log('a BBO announcement is still showing: check the opening'))
+
 // ── The demo ────────────────────────────────────────────────────────────────
 const start = Date.now() - pageBorn
 await page.mouse.move(640, 400)
 
-await say("Bridge Base Online's History panel. Bridge Craftwork DD adds a double-dummy review to it. Opening an event…")
-await page.waitForTimeout(3000)
+await say("Bridge Base Online's History panel. Bridge Craftwork DD adds a double-dummy review to it.")
+await page.waitForTimeout(3500)
+await say('Each event analysed shows its errors in the last column: me-partner-opponents. A * means some of its boards are still to do.')
+await page.waitForTimeout(6000)
+await say('The DD menu analyses a date range, or everything listed.')
+await clickAt(await ddHeader())
+await page.waitForTimeout(4000)
+await clickAt(await ddHeader())
+await page.waitForTimeout(800)
+await say('Opening an event…')
+await page.waitForTimeout(1500)
 const eventPt = await centre(
   (ev) => [...document.querySelectorAll('historic-tournament-list-item')].find((e) => e.getClientRects().length && e.textContent.includes(ev)),
   EVENT
@@ -187,6 +236,16 @@ for (const i of [1, 2]) {
 }
 await say('A board with no errors says “clean”, so it can be told from one not yet opened.')
 await page.waitForTimeout(3500)
+
+await say('DD all does the rest of the event. It asks BBO’s public History pages for the boards, one a second, without your login.')
+await page.waitForTimeout(2500)
+await clickAt(await byId('bridge-craftwork-dd-all'))
+{
+  const t0 = Date.now()
+  while (Date.now() - t0 < 60000 && (await byId('bridge-craftwork-dd-all'))) await page.waitForTimeout(250)
+}
+await page.waitForTimeout(1500)
+
 await clickAt(await rowCentre(0))
 await page.waitForTimeout(2200)
 
@@ -223,7 +282,7 @@ await page.waitForTimeout(1500)
 await clickAt(await byId('bridge-craftwork-dd-toggle'))
 await page.waitForTimeout(3000)
 
-await say('DD Details sends this one board to Bridge Classroom, the only time anything leaves the device.')
+await say('DD Details sends this one board to Bridge Classroom, the only time a board leaves your device.')
 await page.waitForTimeout(4000)
 // Scrub the names from every page from here on, before any of it is drawn: the
 // new tab's recording starts as it opens, so anything shown even briefly would
