@@ -172,6 +172,70 @@ describe('building a board from the polls', () => {
     expect(built?.hk).toBe(`ard:tid-1:1:${board.number}`)
   })
 
+  it("ignores dummy's hand shown at the lead, and waits for all four", () => {
+    // Board 5 of a Robot Individual, 8 Nov 2026: dummy's hand came alone after
+    // the lead, the result in one poll and the four hands in the next.
+    const board = daylong.find((b) => (b.lin.match(/pc\|/g)?.length ?? 0) >= 4)
+    const r = replay(board, { claim: claimOf(board) })
+    const parsed = parseLin(board.lin)
+    const { declarer } = deriveContract(parsed.auction, parsed.dealer)
+    const dummy = PARTNER[declarer]
+    const name = { N: 'north', E: 'east', S: 'south', W: 'west' }[dummy]
+    const dummyHand = /<sc_player_holds[^>]*>/
+      .exec(r.polls.at(-1).text)[0]
+      .match(new RegExp(`${name}="([^"]*)"`))[1]
+    const firstCard = r.polls.findIndex((p) => /card|"p"/.test((p.text ?? '') + (p.actions ?? '')))
+    const last = r.polls.at(-1).text
+    const holds = /<sc_player_holds[^>]*\/>/.exec(last)[0]
+    const polls = [
+      ...r.polls.slice(0, firstCard + 1),
+      { text: `<events><sc_player_holds ${name}="${dummyHand}" /></events>` },
+      ...r.polls.slice(firstCard + 1, -1),
+      { text: last.replace(holds, '') },
+      { text: `<events>${holds}</events>` },
+    ]
+    const dropped = []
+    const built = run(createArdBoardBuilder({ onDrop: (e) => dropped.push(e.message) }), {
+      ...r,
+      polls,
+    })
+    expect(dropped).toEqual([])
+    expect(parseLin(built.lin).play).toEqual(parsed.play)
+  })
+
+  it("takes the robots' calls made before the user's turn from the deal's answer", () => {
+    // Dealer two seats before the user: both robots have called by the time the
+    // deal is fetched, and their calls come with it (8 Nov 2026).
+    const board = daylong.find((b) => {
+      const p = parseLin(b.lin)
+      return p.dealer === 'N' && p.auction.length > 4
+    })
+    expect(board).toBeTruthy()
+    const r = replay(board, { claim: claimOf(board) })
+    const early = r.polls.slice(0, 2).map((p) => /<sc_call_made[^>]*\/>/.exec(p.text)[0])
+    const deal = r.deal.replace('</deal>', `${early.join('')}</deal>`)
+    const built = run(createArdBoardBuilder({ onDrop: (e) => console.error(e.message) }), {
+      ...r,
+      deal,
+      polls: r.polls.slice(2),
+    })
+    expect(parseLin(built.lin).auction).toEqual(parseLin(board.lin).auction)
+  })
+
+  it('keeps the moves when BBO asks for the same deal again', () => {
+    const board = daylong.find((b) => b.lin.includes('pc|'))
+    const r = replay(board, { claim: claimOf(board) })
+    const polls = [...r.polls.slice(0, 3), { redeal: true }, ...r.polls.slice(3)]
+    const builder = createArdBoardBuilder()
+    builder.deal(r.deal)
+    let out = null
+    for (const p of polls) {
+      if (p.redeal) builder.deal(r.deal)
+      else out = builder.poll(r.dealid, p.actions ?? '[]', p.text ?? '') ?? out
+    }
+    expect(parseLin(out.lin).auction).toEqual(parseLin(board.lin).auction)
+  })
+
   it('drops a board joined halfway, rather than guess', () => {
     const board = daylong.find((b) => b.lin.includes('pc|'))
     const r = replay(board, { claim: claimOf(board) })
@@ -195,6 +259,21 @@ describe('building a board from the polls', () => {
       run(createArdBoardBuilder({ onDrop: (e) => dropped.push(e.message) }), { ...r, polls })
     ).toBeNull()
     expect(dropped[0]).toMatch(/not .*'s to play|revokes/)
+  })
+
+  it('says so when a board is given up unfinished', () => {
+    const [a, b, c] = daylong
+    const dropped = []
+    const builder = createArdBoardBuilder({ onDrop: (e) => dropped.push(e.message) })
+    const ra = replay(a, { claim: claimOf(a), tid: 't' })
+    builder.deal(ra.deal)
+    builder.poll(ra.dealid, ra.polls[0].actions ?? '[]', ra.polls[0].text ?? '')
+    builder.deal(replay(b, { tid: 't' }).deal)
+    expect(dropped).toEqual([])
+    builder.deal(replay(c, { tid: 't' }).deal)
+    expect(dropped).toEqual([
+      `ard board ${a.number} never finished: 1 calls, 0 cards, no result, no full hands`,
+    ])
   })
 
   it('ignores polls for a board it never saw dealt', () => {

@@ -189,6 +189,15 @@ function parseResult(result) {
   }
 }
 
+// All four hands, thirteen cards each. BBO also sends sc_player_holds with
+// dummy's hand alone once the lead is made (seen 8 Nov 2026): that is not the end.
+export function isFullDeal(holds) {
+  return ['N', 'E', 'S', 'W'].every((s) => {
+    const m = HAND_RE.exec(holds?.[s] ?? '')
+    return !!m && m.slice(1).join('').length === 13
+  })
+}
+
 /** One finished board → { number, hk, lin, result, players }, the shape
  *  parseArdDeals gives, or throws (ParseError) saying what did not check out. */
 export function assembleArdBoard(deal, moves) {
@@ -196,8 +205,9 @@ export function assembleArdBoard(deal, moves) {
   const calls = []
   const cards = []
   for (const m of moves) {
-    if (m.holds) end.holds = m.holds
-    else if (m.result !== undefined) end.result = m.result
+    if (m.holds) {
+      if (isFullDeal(m.holds)) end.holds = m.holds
+    } else if (m.result !== undefined) end.result = m.result
     else if (m.claim !== undefined) end.claim = m.claim
     else if (m.call !== undefined) {
       const call = linCall(m.call)
@@ -240,7 +250,8 @@ export function assembleArdBoard(deal, moves) {
     const expected = `${result.level}${result.strain}${result.doubled}`
     if (contract !== expected || declarer !== result.declarer) {
       throw new ParseError(
-        `ard board: the auction gives ${contract} by ${declarer}, BBO says ${end.result}`
+        `ard board: the auction gives ${contract} by ${declarer}, BBO says ${end.result}` +
+          ` (dealer ${deal.dealer}, calls ${calls.map((c) => c.call).join(' ')})`
       )
     }
   }
@@ -314,9 +325,27 @@ export function createArdBoardBuilder({ onDrop = () => {} } = {}) {
   return {
     deal(text) {
       const deal = parseArdDeal(text)
-      boards.set(deal.key, { deal, moves: [] })
-      // A daylong is one board at a time; anything older was abandoned.
-      for (const k of boards.keys()) if (k !== deal.key && boards.size > 4) boards.delete(k)
+      // Robots who call before the user has a turn have done so by the time the
+      // deal is asked for, and their calls come in its answer beside <sc_deal>
+      // (seen 8 Nov 2026: a board's dealer's pass, then two calls, missing).
+      // Asked again for a board under way, the moves so far are kept as they are.
+      if (!boards.has(deal.key)) boards.set(deal.key, { deal, moves: parseArdEvents(text) })
+      // One board at a time, so a board two deals back is not going to finish.
+      // Say so, and what it had, rather than let it go quietly.
+      for (const [k, b] of boards) {
+        if (k === deal.key || boards.size <= 2) continue
+        boards.delete(k)
+        const calls = b.moves.filter((m) => m.call !== undefined).length
+        const cards = b.moves.filter((m) => m.card !== undefined).length
+        const result = b.moves.some((m) => m.result !== undefined)
+        const hands = b.moves.some((m) => m.holds && isFullDeal(m.holds))
+        onDrop(
+          new ParseError(
+            `ard board ${b.deal.number} never finished: ${calls} calls, ${cards} cards, ` +
+              `${result ? 'a result' : 'no result'}, ${hands ? 'all four hands' : 'no full hands'}`
+          )
+        )
+      }
       return deal
     },
     poll(dealid, actions, text) {
@@ -328,7 +357,7 @@ export function createArdBoardBuilder({ onDrop = () => {} } = {}) {
       // The result and the four hands can come in separate polls (a board played
       // to the last card, 8 Nov 2026), so the board waits for both.
       const ended = board.moves.some((m) => m.result !== undefined)
-      const shown = board.moves.some((m) => m.holds)
+      const shown = board.moves.some((m) => m.holds && isFullDeal(m.holds))
       if (!ended || !shown) return null
       boards.delete(id.key)
       try {
