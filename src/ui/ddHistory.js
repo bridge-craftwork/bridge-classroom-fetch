@@ -10,7 +10,15 @@
 
 const TALLY_CLASS = 'bc-dd-tally'
 const HEADER_CLASS = 'bc-dd-history-header'
+const DATE_CLASS = 'bc-dd-date'
+const DATE_HEADER_CLASS = 'bc-dd-date-header'
+const SUMMARY_CLASS = 'bc-dd-summary'
+// Elements of ours that stand in for a BBO cell's own text, which is hidden
+// meanwhile and shown again when they go.
+const STANDS_IN = [HEADER_CLASS, DATE_CLASS, DATE_HEADER_CLASS]
 export const MENU_ID = 'bridge-craftwork-dd-menu'
+// Extension storage: true when the first column shows dates.
+export const DATES_KEY = 'dd-history-dates'
 export const EVENT_BUTTON_ID = 'bridge-craftwork-dd-all'
 const COLUMNS = 6
 
@@ -40,6 +48,30 @@ export function tallySummary(tally) {
 
 function visibleList(doc, isVisible) {
   return [...doc.querySelectorAll('historic-tournament-list')].find(isVisible) ?? null
+}
+
+// A cell's own text, BBO's, whatever of ours sits beside it.
+const ownText = (cell) => (cell.querySelector('.innerClass') ?? cell).textContent.trim()
+
+function listRows(list) {
+  return [...list.querySelectorAll('historic-tournament-list-item')]
+    .map((row) => ({ row, cells: row.querySelectorAll('celled-rectangle .cellClass') }))
+    .filter((r) => r.cells.length === COLUMNS)
+}
+
+/** Each row's event, or null. By position when the rows are BBO's list in order,
+ *  which they are: every Weekly Free Instant Tournament is number 1, so the
+ *  number alone cannot tell them apart. The rows may be fewer than the events,
+ *  never out of step. Otherwise by a number only one event has. */
+export function rowEvents(rows, events) {
+  const all = events ?? []
+  if (rows.length <= all.length && rows.every((r, i) => ownText(r.cells[0]) === all[i].number)) {
+    return all.slice(0, rows.length)
+  }
+  const counts = new Map()
+  for (const e of all) counts.set(e.number, (counts.get(e.number) ?? 0) + 1)
+  const byNumber = new Map(all.filter((e) => counts.get(e.number) === 1).map((e) => [e.number, e]))
+  return rows.map((r) => byNumber.get(ownText(r.cells[0])) ?? null)
 }
 
 function titleFor(summary) {
@@ -82,14 +114,11 @@ function fillTally(doc, el, summary) {
 export function drawTallies(doc, events, tallies, isVisible = shown) {
   const list = visibleList(doc, isVisible)
   if (!list) return
-  const counts = new Map()
-  for (const e of events) counts.set(e.number, (counts.get(e.number) ?? 0) + 1)
-  const byNumber = new Map(events.filter((e) => counts.get(e.number) === 1).map((e) => [e.number, e]))
+  const rows = listRows(list)
+  const byRow = rowEvents(rows, events)
 
-  for (const row of list.querySelectorAll('historic-tournament-list-item')) {
-    const cells = row.querySelectorAll('celled-rectangle .cellClass')
-    if (cells.length !== COLUMNS) continue
-    const event = byNumber.get(cells[0].textContent.trim())
+  for (const [i, { cells }] of rows.entries()) {
+    const event = byRow[i]
     const last = cells[COLUMNS - 1]
     const inner = last.querySelector('.innerClass')
     const existing = last.querySelector(`.${TALLY_CLASS}`)
@@ -270,11 +299,221 @@ export function syncEventButton(doc, { text = 'DD all', title = '', onClick }, i
   return btn
 }
 
+// ── Dates in place of the event number ───────────────────────────────────────
+
+const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+/** "Sun" within the past week, "8-Nov" within the past year, "8-Nov-2025" before
+ *  that. By the user's own calendar. */
+export function formatEventDate(ms, now = new Date()) {
+  const d = new Date(ms)
+  const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6).getTime()
+  if (ms >= weekStart) return DAYS[d.getDay()]
+  const dayMonth = `${d.getDate()}-${MONTHS[d.getMonth()]}`
+  const yearStart = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate() + 1).getTime()
+  return ms >= yearStart ? dayMonth : `${dayMonth}-${d.getFullYear()}`
+}
+
+// Our element in `cell`, standing in for BBO's text; null `text` takes it away.
+function standIn(doc, cell, className, text, title = '') {
+  const inner = cell.querySelector('.innerClass')
+  let el = cell.querySelector(`.${className}`)
+  if (text === null || !inner) {
+    el?.remove()
+    if (inner) inner.style.display = ''
+    return null
+  }
+  if (!el) {
+    el = doc.createElement('div')
+    el.className = className
+    el.style.marginLeft = inner.style.marginLeft
+    el.style.marginRight = inner.style.marginRight
+    el.style.whiteSpace = 'nowrap'
+    inner.style.display = 'none'
+    cell.appendChild(el)
+  }
+  if (el.textContent !== text) el.textContent = text
+  el.title = title
+  return el
+}
+
+/** The first column: BBO's event number, or with `dates` each event's date. Its
+ *  header cell switches between the two; `onToggle` null puts it all back. */
+export function syncDates(doc, events, { dates, onToggle, now = new Date() }, isVisible = shown) {
+  const list = visibleList(doc, isVisible)
+  if (!list) return
+  const head = list.querySelectorAll('.headerClass .cellClass')
+  if (head.length === COLUMNS) {
+    const label = onToggle ? (dates ? 'Date ⇄' : '# ⇄') : null
+    const el = standIn(
+      doc,
+      head[0],
+      DATE_HEADER_CLASS,
+      label,
+      dates ? 'Show event numbers' : 'Show dates'
+    )
+    if (el) {
+      el.style.cursor = 'pointer'
+      el.onclick = (e) => {
+        e.stopPropagation()
+        onToggle()
+      }
+    }
+  }
+  const rows = listRows(list)
+  const byRow = rowEvents(rows, events)
+  for (const [i, { cells }] of rows.entries()) {
+    const started = byRow[i]?.started
+    const show = onToggle && dates && started
+    standIn(
+      doc,
+      cells[0],
+      DATE_CLASS,
+      show ? formatEventDate(started, now) : null,
+      show ? new Date(started).toLocaleString() : ''
+    )
+  }
+}
+
+// ── The summary row ──────────────────────────────────────────────────────────
+
+const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length
+
+/** What the summary row says, from the rows listed and the tallies:
+ *  { count, imps, pct, impEvents, pctEvents, rank, points, dd, ddEvents }, imps
+ *  and pct unrounded (scoreText rounds them). Each
+ *  average is over the events that have that figure; dd only over events whose
+ *  every board is analysed, so a half-done event does not pull it down. */
+export function summarizeList(rows, events, tallies) {
+  const byRow = rowEvents(rows, events)
+  const imps = []
+  const pct = []
+  const ranks = []
+  let points = 0
+  const dd = []
+  for (const [i, { cells }] of rows.entries()) {
+    const score = ownText(cells[2])
+    const imp = /^(-?\d+(?:\.\d+)?)\s*IMP/i.exec(score)
+    const mp = /^(-?\d+(?:\.\d+)?)\s*%$/.exec(score)
+    if (imp) imps.push(Number(imp[1]))
+    else if (mp) pct.push(Number(mp[1]))
+    const rank = Number.parseInt(ownText(cells[3]), 10)
+    if (Number.isFinite(rank)) ranks.push(rank)
+    const pts = Number.parseFloat(ownText(cells[4]))
+    if (Number.isFinite(pts)) points += pts
+    const s = byRow[i] ? tallySummary(tallies.get(byRow[i].tkey)) : null
+    if (s && s.total > 0 && !s.partial) dd.push(s)
+  }
+  return {
+    count: rows.length,
+    imps: imps.length ? mean(imps) : null,
+    impEvents: imps.length,
+    pct: pct.length ? mean(pct) : null,
+    pctEvents: pct.length,
+    rank: ranks.length ? Math.round(mean(ranks)) : null,
+    points,
+    dd: dd.length
+      ? {
+          me: Math.round(mean(dd.map((s) => s.me))),
+          partner: Math.round(mean(dd.map((s) => s.partner))),
+          opps: Math.round(mean(dd.map((s) => s.opps))),
+        }
+      : null,
+    ddEvents: dd.length,
+  }
+}
+
+/** The average score: "3 IMP / 51%" when the list holds both kinds, whole
+ *  numbers to fit; one decimal when it holds only one, "53.4%" or "2.7 IMP". */
+export function scoreText(imps, pct) {
+  if (imps !== null && pct !== null) return `${Math.round(imps)} IMP / ${Math.round(pct)}%`
+  if (imps !== null) return `${imps.toFixed(1)} IMP`
+  if (pct !== null) return `${pct.toFixed(1)}%`
+  return ''
+}
+
+/** A row under the header with the count and averages of the events listed. */
+export function drawSummary(doc, events, tallies, isVisible = shown) {
+  const list = visibleList(doc, isVisible)
+  const header = list?.querySelector('.headerClass')
+  const head = header?.querySelectorAll('.cellClass')
+  let el = list?.querySelector(`.${SUMMARY_CLASS}`)
+  const rows = list ? listRows(list) : []
+  if (!header || head.length !== COLUMNS || !rows.length) {
+    el?.remove()
+    return null
+  }
+  const s = summarizeList(rows, events, tallies)
+  const score = scoreText(s.imps, s.pct)
+  const cellsOut = [
+    { text: 'Avg' },
+    { text: `${s.count} event${s.count === 1 ? '' : 's'}` },
+    {
+      text: score,
+      title: [
+        s.imps !== null
+          ? `${s.imps.toFixed(2)} IMPs on average over ${s.impEvents} IMP events`
+          : null,
+        s.pct !== null
+          ? `${s.pct.toFixed(2)}% on average over ${s.pctEvents} matchpoint events`
+          : null,
+      ]
+        .filter(Boolean)
+        .join('\n'),
+    },
+    { text: s.rank !== null ? String(s.rank) : '', title: 'Average rank' },
+    { text: s.points ? s.points.toFixed(2) : '', title: 'Total points' },
+    {
+      dd: s.dd,
+      title: s.dd
+        ? `Double-dummy errors per event, you-partner-opponents: the average over the ${s.ddEvents} events fully analysed.`
+        : 'No event fully analysed yet',
+    },
+  ]
+  const key = JSON.stringify(cellsOut)
+  if (el?.dataset.bcDdSummary === key && el.previousElementSibling === header) return el
+  el?.remove()
+  el = doc.createElement('div')
+  el.className = SUMMARY_CLASS
+  el.dataset.bcDdSummary = key
+  Object.assign(el.style, {
+    display: 'flex',
+    background: 'rgb(226, 236, 226)',
+    color: 'rgb(20, 20, 20)',
+    borderBottom: '1px solid gray',
+  })
+  for (const [i, out] of cellsOut.entries()) {
+    const cell = doc.createElement('div')
+    cell.style.cssText = head[i].style.cssText
+    cell.style.fontWeight = '600'
+    cell.style.overflow = 'hidden'
+    cell.style.whiteSpace = 'nowrap'
+    const inner = doc.createElement('div')
+    const theirs = head[i].querySelector('.innerClass')
+    inner.style.marginLeft = theirs?.style.marginLeft ?? '3px'
+    inner.style.marginRight = theirs?.style.marginRight ?? '3px'
+    if (out.dd) {
+      fillTally(doc, inner, { ...out.dd, total: 1, partial: false })
+    } else {
+      inner.textContent = out.text
+    }
+    if (out.title) cell.title = out.title
+    cell.appendChild(inner)
+    el.appendChild(cell)
+  }
+  header.after(el)
+  return el
+}
+
 export function clearHistory(doc) {
   closeMenu(doc)
   doc.getElementById(EVENT_BUTTON_ID)?.remove()
-  for (const el of doc.querySelectorAll(`.${TALLY_CLASS}, .${HEADER_CLASS}`)) {
-    const inner = el.classList.contains(HEADER_CLASS)
+  doc.querySelector(`.${SUMMARY_CLASS}`)?.remove()
+  for (const el of doc.querySelectorAll(
+    [TALLY_CLASS, ...STANDS_IN].map((c) => `.${c}`).join(', ')
+  )) {
+    const inner = STANDS_IN.some((c) => el.classList.contains(c))
       ? el.parentElement?.querySelector('.innerClass')
       : null
     if (inner) inner.style.display = ''

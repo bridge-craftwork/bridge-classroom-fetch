@@ -35,6 +35,9 @@ import {
   clearHistory,
   closeMenu,
   drawTallies,
+  drawSummary,
+  syncDates,
+  DATES_KEY,
   menuRanges,
   MENU_ID,
   openMenu,
@@ -851,6 +854,7 @@ export function startDdOverlay({
   sendMessage,
   onError = () => {},
   fetchImpl = (...args) => globalThis.fetch(...args),
+  storage = null, // extension storage.local, for the date column's setting
 }) {
   const state = {
     list: null,
@@ -859,6 +863,7 @@ export function startDdOverlay({
     events: null, // BBO's list of recent events
     tallies: new Map(), // tkey → the event's tally
     run: null, // DD-all in progress: { stop, text, tkey }
+    dates: false, // the first column shows dates rather than event numbers
     username: null,
     current: null, // the board BBO loaded last: { hk, lin, deal }
     hands: new Map(), // every board seen this visit, by resultkey
@@ -1047,6 +1052,8 @@ export function startDdOverlay({
   function drawHistory(shownEvent) {
     if (!state.events) return
     drawTallies(doc, state.events, state.tallies)
+    syncDates(doc, state.events, { dates: state.dates, onToggle: toggleDates })
+    drawSummary(doc, state.events, state.tallies)
     syncHeader(doc, {
       text: state.run ? `${state.run.text} ✕` : 'DD ▾',
       title: state.run
@@ -1068,6 +1075,20 @@ export function startDdOverlay({
             : () => runEvents([shownEvent]),
     })
   }
+
+  // The first column: event numbers or dates, switched from its header and kept.
+  function toggleDates() {
+    state.dates = !state.dates
+    storage?.set({ [DATES_KEY]: state.dates }).catch(() => {})
+    schedule()
+  }
+  storage
+    ?.get(DATES_KEY)
+    .then((got) => {
+      state.dates = got?.[DATES_KEY] === true
+      schedule()
+    })
+    .catch(() => {})
 
   function showMenu(anchor) {
     if (doc.getElementById(MENU_ID)) return closeMenu(doc)
