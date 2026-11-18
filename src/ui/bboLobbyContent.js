@@ -19,23 +19,31 @@ const PRESETS = [
 
 // ── Username resolution ──────────────────────────────────────────────────────
 
-// Try to resolve the BBO username in priority order:
-//   1. Cached value from a prior tview extraction (stored by the tview content script)
-//   2. span.username on the current page (appears on some BBO pages)
-//   3. Ask the service worker (which may have seen a tview URL recently)
-async function resolveUsername(sendMessage, { pollMs = 0, onWait } = {}) {
-  // Synchronous reads (DOM + cached). Tries DOM first, then cache.
-  function tryNow() {
-    const wrapper = document.querySelector('name-tag span.mat-button-wrapper')
-    if (wrapper) {
-      for (const node of wrapper.childNodes) {
-        if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) {
-          return node.textContent.trim()
-        }
-      }
-    }
-    return null
+/** The signed-in player's BBO username, from the name tag in BBO's top bar, or
+ *  null. Only that one tag will do: the page holds dozens of `name-tag`s that
+ *  are not the user — every History row's host ("ACBL", "BBOFest") and every
+ *  player in Who's Online — all with the same class. On 18 Nov 2026 the top
+ *  bar's was the first of 54, but relying on order is how this ends up running
+ *  a batch for "ACBL".
+ *
+ *  The label's own text node is read, not textContent: BBO puts a <style>
+ *  inside the tag, so textContent is "kemistry  .level { stroke-width… }".
+ *  `mdc-button__label` is current Angular Material; `mat-button-wrapper` is
+ *  the older version this was first written against, which silently stopped
+ *  matching when BBO upgraded. */
+export function findBboUsername(doc) {
+  const tag = doc.querySelector('nav-bar .logoutBlock name-tag')
+  const label = tag?.querySelector('.mdc-button__label, .mat-button-wrapper')
+  for (const node of label?.childNodes ?? []) {
+    if (node.nodeType === 3 && node.textContent.trim()) return node.textContent.trim()
   }
+  return null
+}
+
+// Resolve the BBO username: the top bar first, then a value cached from a
+// prior tview extraction (which expires).
+async function resolveUsername(sendMessage, { pollMs = 0, onWait } = {}) {
+  const tryNow = () => findBboUsername(document)
 
   // First: try DOM right now.
   let name = tryNow()
@@ -269,7 +277,7 @@ export function injectHistoryButton(sendMessage, storage) {
 
       const username = await resolveUsername(sendMessage)
       if (!username) {
-        setState(btn, 'error', 'Could not find BBO username')
+        setState(btn, 'error', 'Could not find your BBO username — are you signed in?')
         return
       }
 
