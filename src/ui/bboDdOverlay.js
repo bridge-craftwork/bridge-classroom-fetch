@@ -157,6 +157,54 @@ export function matchPanels(doc, deal, isVisible = defaultVisible) {
   return last
 }
 
+// How deep the closest element holding both `viewer` and the board list is:
+// History's viewer shares the History panel with its list, the table's shares
+// only the page with it. -1 when no list is showing.
+function depthWithList(viewer, list) {
+  if (!list) return -1
+  const around = new Set()
+  for (let el = list; el; el = el.parentElement) around.add(el)
+  for (let el = viewer; el; el = el.parentElement) {
+    if (around.has(el)) {
+      let depth = 0
+      for (let up = el.parentElement; up; up = up.parentElement) depth++
+      return depth
+    }
+  }
+  return -1
+}
+
+function seatsOf(deal) {
+  const seatOfCard = {}
+  for (const seat of ['N', 'E', 'S', 'W']) {
+    for (const suit of ['S', 'H', 'D', 'C']) {
+      for (const r of deal[seat][suit]) seatOfCard[solverCard(suit + r)] = seat
+    }
+  }
+  return seatOfCard
+}
+
+/** Which of `tried` (boards with a parsed deal) is on screen, and where:
+ *  { hand, matched: { viewer, hands } }, or null. The viewer that shares the
+ *  smallest part of the page with the board list is looked at first, so History's wins over the table's: in a speedball
+ *  the board just finished stays at the table, and taking the first board that
+ *  fitted anywhere left every earlier board opened in History unmarked (seen
+ *  11 Nov 2026). Within a viewer, boards are tried in `tried`'s order. */
+export function boardOnScreen(doc, tried, isVisible = defaultVisible) {
+  const list = [...doc.querySelectorAll('result-list')].find(isVisible) ?? null
+  const viewers = [...doc.querySelectorAll('deal-viewer')]
+    .filter(isVisible)
+    .map((viewer, i) => ({ viewer, i, depth: depthWithList(viewer, list) }))
+    .sort((a, b) => b.depth - a.depth || b.i - a.i)
+  for (const { viewer } of viewers) {
+    for (const hand of tried) {
+      const hands = viewerHands(viewer, seatsOf(hand.deal), isVisible)
+      if (hands) return { hand, matched: { viewer, hands } }
+    }
+  }
+  return null
+}
+
 function viewerHands(viewer, seatOfCard, isVisible) {
   const out = []
   for (const panel of viewer.querySelectorAll('hand-diagram-panel')) {
@@ -889,11 +937,7 @@ export function startDdOverlay({
     const tried = state.current
       ? [state.current, ...state.hands.values()]
       : [...state.hands.values()]
-    for (const hand of tried) {
-      const matched = matchPanels(doc, hand.deal)
-      if (matched) return { hand, matched }
-    }
-    return null
+    return boardOnScreen(doc, tried)
   }
 
   let queued = false
