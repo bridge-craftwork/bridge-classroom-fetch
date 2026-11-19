@@ -1202,6 +1202,20 @@ export function startDdOverlay({
     schedule()
   }
 
+  // The event just played, counted in its row from the boards analysed while it
+  // was played: no click into the event, and nothing asked of BBO.
+  async function attachLive() {
+    if (!state.events) return
+    const events = state.events.map(({ tkey, started, ended }) => ({ tkey, started, ended }))
+    const res = await sendMessage({ type: 'dd-live-attach', events })
+    if (res?.tkey) await refreshTallies([res.tkey])
+  }
+
+  async function refreshEvents() {
+    await attachLive().catch(() => {})
+    await refreshTallies(state.events.map((e) => e.tkey))
+  }
+
   // ── Boards ─────────────────────────────────────────────────────────────────
 
   // A board list has been seen, from BBO or from DD-all: remember whose seat is
@@ -1224,6 +1238,7 @@ export function startDdOverlay({
       tkey: list.tkey,
       boards: list.boards.map((b) => ({
         resultkey: b.resultkey,
+        result: b.result ?? null,
         ...state.boards.get(b.resultkey),
       })),
     })
@@ -1249,7 +1264,7 @@ export function startDdOverlay({
 
   // Shown again after being hidden: pick up whatever BBO loaded meanwhile.
   async function catchUp() {
-    if (state.events) await refreshTallies(state.events.map((e) => e.tkey))
+    if (state.events) await refreshEvents()
     if (state.list) await noteList(state.list, state.username)
     for (const hand of state.hands.values()) await solve(hand)
   }
@@ -1294,7 +1309,8 @@ export function startDdOverlay({
       // My Table's own boards only, not another table's that the player looked
       // at: those share the board number.
       const me = state.liveUser ?? state.username
-      if (!me || seatOf(players, me)) {
+      const own = !me || !!seatOf(players, me)
+      if (own) {
         const event = hk.split('~').slice(2, 4).join('~')
         if (event !== state.liveEvent) {
           state.live.clear()
@@ -1316,7 +1332,11 @@ export function startDdOverlay({
         }).catch(() => {})
       }
       schedule()
-      if (enabled) await solve(state.current)
+      if (enabled) {
+        await solve(state.current)
+        // Opened after the event's row was listed: count it there too.
+        if (own) await attachLive()
+      }
       return
     }
     if (msg.kind === 'ard') {
@@ -1340,7 +1360,7 @@ export function startDdOverlay({
     }
     if (msg.kind === 'events') {
       state.events = parseTfind(msg.body)
-      if (enabled) await refreshTallies(state.events.map((e) => e.tkey))
+      if (enabled) await refreshEvents()
       schedule()
     } else if (msg.kind === 'list') {
       const list = parseMhList(msg.body)

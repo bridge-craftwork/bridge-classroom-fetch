@@ -266,6 +266,76 @@ describe('createDdSolver', () => {
     expect(await solver.liveTable()).toBeNull()
   })
 
+  describe("the event just played, in its row (18 Nov 2026: today's row was blank)", () => {
+    const tkey = '33873-1793548800'
+    const live = 'live:d~t~52031~1~1~0'
+    const started = Date.UTC(2026, 10, 1, 15, 0)
+    const row = { tkey, started, ended: started + 56 * 60000 }
+    const older = {
+      tkey: '33870-1793500000',
+      started: started - 4 * 3600000,
+      ended: started - 3 * 3600000,
+    }
+
+    async function play() {
+      clock = started + 5 * 60000
+      await solver.trace(live, board(1).lin)
+      await solver.noteLive('52031~1', { number: 1, resultkey: live, result: '3NS+2', mySeat: 'N' })
+    }
+
+    it('counts the boards analysed while playing in the row whose times hold them', async () => {
+      await play()
+      clock = started + 20 * 3600000 // that evening, past My Table's twelve hours
+      expect(await solver.attachLive([older, row])).toBe(tkey)
+      const tally = (await solver.tallies([tkey]))[tkey]
+      expect(tally.total).toBeNull()
+      expect(tally.b[1]).toEqual([0, 0, 1]) // West's ♠J, an opponent's
+      expect((await solver.tallies([older.tkey]))[older.tkey]).toBeUndefined()
+    })
+
+    it('ties no row when none was running then', async () => {
+      await play()
+      expect(await solver.attachLive([older])).toBeNull()
+      expect(await solver.attachLive([{ ...row, ended: null }])).toBeNull()
+    })
+
+    it('stays with the row it was tied to, and adds boards analysed later', async () => {
+      await play()
+      await solver.attachLive([row])
+      const live2 = 'live:d~t~52031~1~5~0'
+      await solver.trace(live2, board(5).lin)
+      await solver.noteLive('52031~1', { number: 5, resultkey: live2, result: null, mySeat: 'N' })
+      expect(await solver.attachLive([older, row])).toBe(tkey)
+      const tally = (await solver.tallies([tkey]))[tkey]
+      expect(Object.keys(tally.b).sort()).toEqual(['1', '5'])
+    })
+
+    it("carries the analysis to History's key when the board list is seen, solving nothing", async () => {
+      await play()
+      await solver.attachLive([row])
+      const before = loads
+      const { hk } = board(1)
+      const { entries, tally } = await solver.event(tkey, [
+        { number: 1, resultkey: hk, result: '3NS+2', mySeat: 'N' },
+        { number: 2, resultkey: board(5).hk, result: '2SE-1', mySeat: 'N' },
+      ])
+      expect(entries[hk].contract).toBe('3NT')
+      expect(storage.data[CACHE_PREFIX + hk]).toBeDefined()
+      expect(tally).toMatchObject({ total: 2, b: { 1: [0, 0, 1] } })
+      expect(loads).toBe(before)
+    })
+
+    it('carries nothing over when the results disagree', async () => {
+      await play()
+      await solver.attachLive([row])
+      const { hk } = board(1)
+      const { entries } = await solver.event(tkey, [
+        { number: 1, resultkey: hk, result: '4SS=', mySeat: 'N' },
+      ])
+      expect(entries[hk]).toBeUndefined()
+    })
+  })
+
   it('refuses a live board with a bad event or key', async () => {
     await expect(solver.noteLive('../x', { number: 1, resultkey: 'live:a~b' })).rejects.toThrow()
     await expect(solver.noteLive('52031~1', { number: 1, resultkey: '../x' })).rejects.toThrow()

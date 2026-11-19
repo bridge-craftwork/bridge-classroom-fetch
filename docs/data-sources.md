@@ -390,6 +390,17 @@ names, latest event only, twelve hours) to put My Table's tags back after a
 reload. The marks on the cards still wait for a click, since the deal is not
 stored.
 
+**The event just played, in Recent tournaments.** Its boards were analysed under
+`live:` keys, and its row has a `tkey` and History's `h/` keys — no id is shared
+(`52031` live, `#94532` in the list). Left like that, the row stayed blank until
+every board was clicked again (18 Nov 2026). So `ddl:table` also records when its
+first board was seen (`t0`), and when the list loads, `attachLive` ties it to the
+row whose `ustarted`…`ended` holds that moment — one event is played at a time.
+`ended` is BBO's local clock, used only as an offset from `started`'s. The tally is
+counted from the live analyses at once, with total unknown (shown with `*`), and
+notes each board's live key; when the event's board list is seen, `event()` copies
+each analysis to its `h/` key where number and result agree. No request to BBO.
+
 **My Table, daylongs: `ard.php`.** A robot game is not played over the game
 connection. The deal comes from `bboardapi.bridgebase.com/ard_v1/deal` and each
 robot move from `ard_v1/poll` (`<events>` holding `sc_call_made`,

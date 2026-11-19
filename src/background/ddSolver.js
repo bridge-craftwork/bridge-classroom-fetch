@@ -10,7 +10,10 @@
 //   dd:<resultkey>  one board's full analysis: what redraws a board instantly.
 //                   About 2.5 KB. Oldest deleted first when space runs short.
 //   ddt:<tkey>      one event's tally: errors per board by you, your partner and
-//                   the opponents. About 200 bytes, and kept.
+//                   the opponents. About 200 bytes, and kept. An event played
+//                   with the extension running also notes, per board, the key
+//                   its board had while being played (`live`), so the analysis
+//                   done then carries over to History's key for it.
 //
 // Neither names a player. BBO keeps these games for years, so a deleted board
 // costs nothing but a solve the next time it is opened. Chrome allows 10 MB by
@@ -27,6 +30,11 @@ export const LIVE_TABLE_KEY = 'ddl:table'
 const LIVE_TABLE_TTL = 12 * 60 * 60 * 1000
 const LIVE_EVENT_RE = /^[\w~.-]{1,80}$/
 const LIVE_RESULT_RE = /^[\w=+-]{1,20}$/
+// The event being played is tied to its row in Recent tournaments by time: the
+// row whose start and end hold the moment its first board was seen. BBO's
+// minutes are whole, and a board can be opened in History just after the end.
+const LIVE_EARLY = 2 * 60 * 1000
+const LIVE_LATE = 15 * 60 * 1000
 export const MAX_BOARDS = 3500
 const PRUNE_TO = 3000
 const PRUNE_EVERY = 200
@@ -184,6 +192,7 @@ export function createDdSolver({ loadSolver, storage, now = () => Date.now() }) 
     if (!isTkey(tkey)) throw new Error('not a BBO event key')
     const list = (Array.isArray(boards) ? boards : []).filter((b) => isResultKey(b?.resultkey))
     const entries = await lookup(list.map((b) => b.resultkey))
+    await carryLive(tkey, list, entries)
     const tally = await changeTally(tkey, (record) => {
       let changed = record.total !== list.length
       record.total = list.length
@@ -199,6 +208,81 @@ export function createDdSolver({ loadSolver, storage, now = () => Date.now() }) 
       return changed
     })
     return { entries, tally }
+  }
+
+  // Boards of `list` not yet cached under History's key, but analysed while the
+  // event was being played: the same analysis, saved under History's key too, so
+  // the board draws at once and counts in the tally. A result that disagrees
+  // means it is not the same board, and it is left alone.
+  async function carryLive(tkey, list, entries) {
+    const held = (await storage.get(TALLY_PREFIX + tkey))[TALLY_PREFIX + tkey]
+    const live = held?.v === TALLY_VERSION ? (held.live ?? {}) : {}
+    const same = (a, b) => !a || !b || a.toLowerCase() === b.toLowerCase()
+    const missing = list.filter(
+      (b) => !entries[b.resultkey] && live[b.number] && same(b.result, live[b.number].r)
+    )
+    if (!missing.length) return
+    const found = await lookup(missing.map((b) => live[b.number].k))
+    for (const b of missing) {
+      const entry = found[live[b.number].k]
+      if (!entry) continue
+      entries[b.resultkey] = entry
+      await save({ [CACHE_PREFIX + b.resultkey]: { v: CACHE_VERSION, t: now(), ...entry } })
+    }
+  }
+
+  /** The event last played (noteLive), tied to its row among `events` ([{ tkey,
+   *  started, ended }], epoch ms): its boards' analyses counted in that event's
+   *  tally, and each board's live key noted there for `event` to carry over.
+   *  The tally has no total until the event's board list is seen. Resolves to
+   *  the tkey, or null when no row fits. Tied once: later calls use the same row. */
+  function attachLive(events) {
+    const run = liveTurn.then(async () => {
+      // No twelve-hour limit here, as liveTable has: the row's times are the
+      // check, and a list opened the evening after a noon game still counts it.
+      const held = (await storage.get(LIVE_TABLE_KEY))[LIVE_TABLE_KEY]
+      if (!held?.boards) return null
+      const seen = held.t0 ?? held.t
+      const all = (Array.isArray(events) ? events : []).filter((e) => isTkey(e?.tkey))
+      const match = held.tkey
+        ? all.find((e) => e.tkey === held.tkey)
+        : all
+            .filter(
+              (e) =>
+                Number.isFinite(e.started) &&
+                Number.isFinite(e.ended) &&
+                e.started - LIVE_EARLY <= seen &&
+                seen <= e.ended + LIVE_LATE
+            )
+            .sort((a, b) => b.started - a.started)[0]
+      if (!match) return null
+      if (!held.tkey) {
+        held.tkey = match.tkey
+        await save({ [LIVE_TABLE_KEY]: held })
+      }
+      const boards = Object.entries(held.boards)
+      const entries = await lookup(boards.map(([, b]) => b.resultkey))
+      await changeTally(match.tkey, (record) => {
+        record.live ??= {}
+        let changed = false
+        for (const [n, b] of boards) {
+          if (record.live[n]?.k !== b.resultkey) {
+            record.live[n] = { k: b.resultkey, r: b.result }
+            changed = true
+          }
+          const entry = entries[b.resultkey]
+          const counted = entry && !record.b[n] && tallyOf(entry, b.mySeat, b.robotPartner)
+          if (counted) {
+            record.b[n] = counted
+            changed = true
+          }
+        }
+        return changed
+      })
+      return match.tkey
+    })
+    liveTurn = run.catch(() => {})
+    return run
   }
 
   /** The tallies held for these events: { [tkey]: { total, b } }. Events never
@@ -265,7 +349,8 @@ export function createDdSolver({ loadSolver, storage, now = () => Date.now() }) 
     }
     const run = liveTurn.then(async () => {
       const held = (await storage.get(LIVE_TABLE_KEY))[LIVE_TABLE_KEY]
-      const record = held?.event === liveEvent ? held : { event: liveEvent, t: now(), boards: {} }
+      const record =
+        held?.event === liveEvent ? held : { event: liveEvent, t: now(), t0: now(), boards: {} }
       record.boards[number] = {
         resultkey: board.resultkey,
         result: LIVE_RESULT_RE.test(board.result ?? '') ? board.result : null,
@@ -290,7 +375,7 @@ export function createDdSolver({ loadSolver, storage, now = () => Date.now() }) 
     return { event: held.event, boards, entries }
   }
 
-  return { trace, event, tallies, lookup, alternatives, noteLive, liveTable }
+  return { trace, event, tallies, lookup, alternatives, noteLive, liveTable, attachLive }
 }
 
 function strip({ v, t, ...entry }) {

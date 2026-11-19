@@ -30,11 +30,13 @@ const MUTED_FG = 'rgb(110, 110, 110)'
 const shown = (el) => !!el && el.getClientRects().length > 0
 
 /** { me, partner, opps, counted, total, partial }, or null when there is nothing
- *  to say: never opened, or opened with no board yet analysed. */
+ *  to say: never opened, or opened with no board yet analysed. `total` is null
+ *  for an event counted from the boards analysed while it was played, before its
+ *  board list has been seen: partial, since boards never opened are not known. */
 export function tallySummary(tally) {
-  if (!tally || tally.total === null) return null
-  const boards = Object.values(tally.b)
-  if (tally.total > 0 && boards.length === 0) return null
+  if (!tally || tally.total === undefined) return null
+  const boards = Object.values(tally.b ?? {})
+  if (tally.total !== 0 && boards.length === 0) return null
   const sum = (i) => boards.reduce((n, b) => n + b[i], 0)
   return {
     me: sum(0),
@@ -42,7 +44,7 @@ export function tallySummary(tally) {
     opps: sum(2),
     counted: boards.length,
     total: tally.total,
-    partial: boards.length < tally.total,
+    partial: tally.total === null || boards.length < tally.total,
   }
 }
 
@@ -76,6 +78,13 @@ export function rowEvents(rows, events) {
 
 function titleFor(summary) {
   if (summary.total === 0) return "BBO's History has no boards for this event"
+  if (summary.total === null) {
+    return (
+      `Double-dummy errors: you ${summary.me}, partner ${summary.partner}, ` +
+      `opponents ${summary.opps}, over the ${summary.counted} boards analysed while ` +
+      `it was played. The * means the event's own list of boards is still to be read.`
+    )
+  }
   const base =
     `Double-dummy errors: you ${summary.me}, partner ${summary.partner}, ` +
     `opponents ${summary.opps}. ${summary.counted} of ${summary.total} boards analysed.`
