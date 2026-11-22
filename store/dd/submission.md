@@ -32,16 +32,19 @@ Double-dummy review in Bridge Base Online's History panel: every card that cost 
 ```
 See where the tricks went. Bridge Craftwork DD adds double-dummy review to the History panel of Bridge Base Online's web client, right where you already look back over your boards.
 
+While you play, each board is analysed as it ends: open My Table in BBO's History and your boards are already tagged. That works for pairs and teams events, instant tournaments and robot daylongs.
+
 Open an event in BBO's History and, for every board you open:
 • The cards that cost a trick are marked in the hands, with the trick they were played to.
 • Click one and the viewer steps to that trick. The hand that erred shows what it should have played: the double-dummy best cards in green, the rest in red.
 • On the table, the card that led and the card that won each trick are marked, since the hands no longer say who won the trick before.
+• A double-dummy table shows what every seat can make in every strain, with the contract played in green and the par contracts in bold. The result at the table sits beside the deal.
 • Each board in the list is tagged with the errors by you, your partner and the opponents, or "clean". The event's totals sit beside BBO's own score.
 • A DD Details button opens the board in the detailed double-dummy viewer, by way of Bridge Classroom.
 
-On the list of Recent tournaments, each event you have analysed shows its tally as me-partner-opponents, so you can see how your results line up with the errors on each side. A * means some of its boards are still to do. DD all fills in a whole event, and the DD menu fills in today, the last 7 or 30 days, or everything listed.
+On the list of Recent tournaments, each event you have analysed shows its tally as me-partner-opponents, so you can see how your results line up with the errors on each side, including the event you have just played. A * means some of its boards are still to do. DD all fills in a whole event, and the DD menu fills in today, the last 7 or 30 days, or everything listed.
 
-The double-dummy solver runs inside the extension, on your device. Nothing is sent to a server for analysis. Boards you open are read from what BBO's own History panel has already loaded. Only DD all asks BBO for anything: it requests the boards from BBO's public History pages, one a second, without your login. Analyses stay on your device, so going back to an event is instant.
+The double-dummy solver runs inside the extension, on your device. Nothing is sent to a server for analysis. Boards are read from what BBO's own page has already received, in History or at the table. Only DD all asks BBO for anything: it requests the boards from BBO's public History pages, one a second, without your login. Analyses stay on your device, so going back to an event is instant.
 
 Hide or show it any time from the menu on BBO's deal view.
 
@@ -87,7 +90,7 @@ Show a double-dummy review of the boards the user opens in Bridge Base Online's 
 **storage**
 
 ```
-Keeps the double-dummy analysis of each board and a small per-event error tally on the user's device, so returning to an event does not repeat the work and the list of tournaments keeps its numbers. While the user plays a pairs or teams event, it also keeps a short note of that event's boards (number, key, result, the user's seat), discarded after twelve hours, so the tags survive a reload. It remembers whether the user has hidden the display and whether the list shows dates. The oldest analyses are deleted when space runs short. Nothing stored names a player, and nothing stored is transmitted anywhere.
+Keeps the double-dummy analysis of each board and a small per-event error tally on the user's device, so returning to an event does not repeat the work and the list of tournaments keeps its numbers. While the user plays, it also keeps a short note of the event being played (each board's number, key and result, and the user's seat), replaced when the next event starts, so the tags survive a reload and the event can be matched to its row in the list of tournaments. It remembers whether the user has hidden the display and whether the list shows dates. The oldest analyses are deleted when space runs short. Nothing stored names a player, and nothing stored is transmitted anywhere.
 ```
 
 **scripting**
@@ -187,8 +190,10 @@ In Safari, after enabling the extension in Settings > Extensions, also allow it 
 
 ## Release notes — 1.1.0
 
+The update from 1.0.0, which Chrome published early in November 2026.
+
 ```
-Tallies on your Recent tournaments list: errors by you, your partner and the opponents for each event, with * where boards are still to do. DD all analyses a whole event, and the DD menu runs today, the last 7 or 30 days, or everything listed. Analyses now stay on your device with no time limit, and no longer store player names.
+Boards are now analysed while you play: My Table is tagged as each board ends, in pairs and teams events, instant tournaments and robot daylongs. A double-dummy table on each board shows the contract played in green and par in bold, with the result beside the deal. Your Recent tournaments list shows errors by you, your partner and the opponents for each event, the one just played included; DD all analyses a whole event, and the DD menu runs a date range. Analyses stay on your device with no time limit and store no player names.
 ```
 
 ---
@@ -226,3 +231,15 @@ Things only Rick can do, in the order they block:
 7. **Mac App Store**: create the app record for bundle id
    `org.bridge-classroom.bridge-craftwork-dd` (team 8H3FX5B8KD). The bundle id
    is permanent once created; change it in `project.pbxproj` first if needed.
+
+### Before submitting 1.1.0
+
+8. **Screenshots and demo**: retake them to show live My Table, the double-dummy
+   table and the result. The set and the demo predate both. Needs a signed-in
+   BBO account, so never during a tournament.
+9. **Firefox and Safari**: a quick look at the double-dummy table and the result
+   box in each. The 2 Nov passes predate them.
+10. **Republish the privacy page** on bridge-craftwork-site from
+    `store/dd/privacy-page.html`: the note about the event being played no
+    longer says twelve hours, which it never did in practice. The note is
+    replaced by the next event, so it can still match its row later.

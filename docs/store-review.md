@@ -602,8 +602,11 @@ Chrome requires a written justification per permission. Current manifest:
 ### Bridge Craftwork DD — the second extension
 
 Built from this repo with `EXT=dd` (`manifest.dd.json`, output `dist/dd-<browser>`).
-Not yet listed anywhere. What its review will look at, none of which Fetch now
-carries:
+**1.0.0 is published on the Chrome Web Store** (installs from 3 Nov 2026);
+1.1.0 is the first update. Its dashboard shows a steady ~25 installs a day, 92%
+from Romania, against 2–3 weekly users: automated installs that never run, so
+read the weekly-users figure, not installs. What its review looks at, none of
+which Fetch carries:
 
 - **`content_security_policy.extension_pages` with `'wasm-unsafe-eval'`**, so the
   background can compile bridge-solver's WASM and solve on the user's device.

@@ -42,8 +42,9 @@ On your device only, and never sent anywhere:
 - the analysis of each board, so going back to an event does not repeat the work
   (when storage runs short, about 3,500 boards, the oldest go);
 - a tally of errors for each event, for the list of tournaments;
-- a short note of the event you are playing, so its tags survive a reload,
-  discarded after twelve hours;
+- a short note of the event you last played (its boards' numbers and results,
+  and your seat), so its tags survive a reload and it finds its row in your list
+  of tournaments; the next event replaces it;
 - your display settings.
 
 None of this names any player. Removing the extension deletes all of it.
