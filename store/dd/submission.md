@@ -234,9 +234,10 @@ Things only Rick can do, in the order they block:
 
 ### Before submitting 1.1.0
 
-8. **Screenshots and demo**: retake them to show live My Table, the double-dummy
-   table and the result. The set and the demo predate both. Needs a signed-in
-   BBO account, so never during a tournament.
+8. ~~Screenshots~~ — **retaken**, 22 Nov 2026, from event #9428: the double-dummy
+   table and the result are in `dd-1-event.png`. Upload the new set to each
+   store's listing with the package. **Demo**: still the 8 Nov recording, which
+   predates the table; re-record with `tools/record-dd-demo.mjs`.
 9. **Firefox and Safari**: a quick look at the double-dummy table and the result
    box in each. The 2 Nov passes predate them.
 10. **Republish the privacy page** on bridge-craftwork-site from
