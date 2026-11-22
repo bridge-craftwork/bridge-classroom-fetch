@@ -144,10 +144,15 @@ session as the shots.
 
 | Store | Submitted | Status |
 |---|---|---|
-| Chrome Web Store | 11 Aug 2026 | **published** — 1.0.1, ~14 Aug. No approval email arrived; the dashboard said so first |
+| Chrome Web Store | 11 Aug 2026 | **published** — **1.0.0** per the dashboard on 22 Nov, not 1.0.1 as this table said; ~14 Aug. No approval email arrived; the dashboard said so first |
 | Edge Add-ons | 11 Aug 2026 | **published** — **1.0.0**, not 1.0.1 as this table said ([listing](https://microsoftedge.microsoft.com/addons/detail/pjomfmbcmaiikkfcnnpnlblmpokbcdei)); Edge's public API, 22 Nov: version 1.0.0, last updated 11 Aug, 1 active install |
 | addons.mozilla.org | 11 Aug 2026 | **published** — 1.0.1, approved 14 Aug ([listing](https://addons.mozilla.org/en-US/firefox/addon/bridge-classroom-fetch/)); still 1.0.1 on 22 Nov |
 | Mac App Store | — | 1.1.0 build 1 ready; never submitted |
+
+**Corrected 22 Nov 2026:** the stores actually serve **1.0.0 on Chrome and Edge,
+1.0.1 on AMO**, read from the dashboards and Edge's and AMO's public APIs. No store
+has 1.1.0. Both 1.0.x versions carry the ACBL Live date-range batch, so the point
+below stands; only the version numbers in it were wrong.
 
 **All three browser stores now ship 1.0.1, and that changes the order.** As of
 18 August, Chrome and AMO have both published — so every Chrome, Edge and
