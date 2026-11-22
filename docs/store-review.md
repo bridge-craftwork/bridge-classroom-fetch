@@ -420,6 +420,11 @@ to this extension, so it is worth keeping:
   and iOS 16.4 is exactly where the fix landed. Xcode independently recommends
   11.0 for macOS.
 
+**Raised again to macOS 12.0, 22 Nov 2026,** because Xcode 27 refuses anything
+lower ("the range of supported deployment target versions is 12.0 to 27.2"),
+so the macOS target would not build at all. DD was already at 12.0. Big Sur
+users lose the extension; nothing else changes.
+
 A deployment target cannot enforce a Safari version, so a Big Sur user who has
 never updated Safari can still install and find it broken. The floor removes the
 systems that *cannot* work; it cannot remove the ones that merely have not
