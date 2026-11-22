@@ -195,6 +195,14 @@ const cardsLeft = () =>
       .filter((p) => p.getClientRects().length)
       .reduce((k, p) => k + p.querySelectorAll('hand-diagram-card').length, 0)
   })
+// The tricks with an error card on the board shown, after the first, in order:
+// the demo clicks the first two, whatever board it lands on.
+const errorTricks = () =>
+  page.evaluate(() => {
+    const v = [...document.querySelectorAll('deal-viewer')].find((e) => e.querySelector('[data-bc-dd]') && e.getClientRects().length)
+    const t = [...(v?.querySelectorAll('[data-bc-dd]') ?? [])].map((c) => Number.parseInt(c.dataset.bcDd, 10))
+    return [...new Set(t)].filter((n) => n > 1).sort((a, b) => a - b)
+  })
 async function untilCards(n) {
   const t0 = Date.now()
   while (Date.now() - t0 < 15000 && (await cardsLeft()) !== n) await page.waitForTimeout(80)
@@ -249,10 +257,14 @@ await page.waitForTimeout(1500)
 await clickAt(await rowCentre(0))
 await page.waitForTimeout(2200)
 
+await say('Under West, the double-dummy table: what each side makes in each strain, the contract played in green, par in bold. The result sits beside BBO’s menu.')
+await page.waitForTimeout(5500)
 await say('In the hands, each card that cost a trick is marked with the trick it went to. Clicking one goes to that trick.')
 await page.waitForTimeout(4500)
-await clickAt(await errorCard(3))
-await untilCards(40)
+const [firstErr, nextErr] = await errorTricks()
+if (!nextErr) throw new Error('board 1 needs errors in two tricks after the first; try another event')
+await clickAt(await errorCard(firstErr))
+await untilCards(52 - 4 * firstErr)
 await page.waitForTimeout(800)
 
 await say('On the table: the card that led (blue), the winner (green), the error (pink). In the hand that erred, what should have been played: best cards green, the rest red.')
@@ -260,8 +272,8 @@ await page.waitForTimeout(7000)
 
 await say('The next error is one click further on.')
 await page.waitForTimeout(2000)
-await clickAt(await errorCard(4))
-await untilCards(36)
+await clickAt(await errorCard(nextErr))
+await untilCards(52 - 4 * nextErr)
 await page.waitForTimeout(3500)
 
 await say('Restart goes back to the start of the play.')

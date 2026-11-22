@@ -236,8 +236,9 @@ Things only Rick can do, in the order they block:
 
 8. ~~Screenshots~~ — **retaken**, 22 Nov 2026, from event #9428: the double-dummy
    table and the result are in `dd-1-event.png`. Upload the new set to each
-   store's listing with the package. **Demo**: still the 8 Nov recording, which
-   predates the table; re-record with `tools/record-dd-demo.mjs`.
+   store's listing with the package. **Demo** — **re-recorded**, 22 Nov 2026, with a
+   caption for the double-dummy table; live once this reaches `main` (GitHub
+   Pages serves it).
 9. **Firefox and Safari**: a quick look at the double-dummy table and the result
    box in each. The 2 Nov passes predate them.
 10. **Republish the privacy page** on bridge-craftwork-site from
