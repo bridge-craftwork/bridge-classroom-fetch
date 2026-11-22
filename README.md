@@ -44,7 +44,7 @@ comparisons and opens Bridge Classroom with them.
 
 ## Installation
 
-Published on the **Chrome Web Store**, **Microsoft Edge Add-ons** and
+Published on the **Chrome Web Store**, **[Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/pjomfmbcmaiikkfcnnpnlblmpokbcdei)** and
 **[addons.mozilla.org](https://addons.mozilla.org/en-US/firefox/addon/bridge-classroom-fetch/)**.
 
 Its sibling, **Bridge Craftwork DD** (double-dummy review in BBO's History
