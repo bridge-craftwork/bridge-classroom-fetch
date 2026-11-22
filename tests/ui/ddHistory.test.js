@@ -38,6 +38,11 @@ describe('tallySummary', () => {
   it('has nothing to say about an event with no board analysed', () => {
     expect(tallySummary(undefined)).toBeNull()
     expect(tallySummary({ total: 12, b: {} })).toBeNull()
+    expect(tallySummary({ total: null, b: {} })).toBeNull()
+  })
+  it('shows an event counted while it was played, before its board list is seen, as partial', () => {
+    const s = tallySummary({ total: null, b: { 1: [1, 0, 2], 4: [0, 1, 0] } })
+    expect(s).toMatchObject({ me: 1, partner: 1, opps: 2, counted: 2, partial: true })
   })
 })
 
@@ -45,6 +50,14 @@ describe('drawing on the list', () => {
   let doc
   beforeEach(() => {
     doc = new DOMParser().parseFromString(`<!doctype html><body>${html}</body>`, 'text/html')
+  })
+
+  it('writes a tally counted while the event was played, with its *', () => {
+    const tallies = new Map([['33879-1793552400', { total: null, b: { 3: [2, 1, 0] } }]])
+    drawTallies(doc, events, tallies, visible)
+    const cell = lastCell(rowFor(doc, '33879'))
+    expect(cell.textContent.trim()).toBe('2-1-0*')
+    expect(cell.querySelector('.bc-dd-tally').title).toMatch(/while it was played/)
   })
 
   it("writes me-partner-opps into the row's last cell", () => {

@@ -26,10 +26,26 @@ function parseXml(xml, what) {
   return doc
 }
 
+// "2026-11-01 11:00" as minutes, in no particular zone: only differences are used.
+function clockMinutes(text) {
+  const m = /^(\d{4})-(\d\d)-(\d\d) (\d\d):(\d\d)/.exec(text ?? '')
+  return m ? Date.UTC(m[1], m[2] - 1, m[3], m[4], m[5]) / 60000 : null
+}
+
+// tfind gives the end only as BBO's local clock time, beside the start in both
+// that clock and epoch seconds. The difference of the two clock times, added to
+// the epoch start, is the end without knowing BBO's zone. Null when unknown.
+function endedAt(startedMs, startedText, endedText) {
+  const from = clockMinutes(startedText)
+  const to = clockMinutes(endedText)
+  if (startedMs === null || from === null || to === null || to < from) return null
+  return startedMs + (to - from) * 60000
+}
+
 /** tfind.php → the player's recent events, as BBO lists them: [{ tkey, number,
- *  title, teamname, format, username, started, award }]. `started` is epoch
- *  milliseconds; `award` is the prize, a number. A row without a usable key is
- *  left out rather than guessed at. */
+ *  title, teamname, format, username, started, ended, award }]. `started` and
+ *  `ended` are epoch milliseconds, `ended` null when unknown; `award` is the
+ *  prize, a number. A row without a usable key is left out rather than guessed at. */
 export function parseTfind(xml) {
   const doc = parseXml(xml, 'tfind')
   const root = doc.documentElement
@@ -43,6 +59,7 @@ export function parseTfind(xml) {
     if (!tkey || !number) continue
     const started = Number.parseInt(row.getAttribute('ustarted'), 10)
     const award = Number.parseFloat(row.getAttribute('award'))
+    const startedMs = Number.isFinite(started) ? started * 1000 : null
     events.push({
       tkey,
       number,
@@ -50,7 +67,8 @@ export function parseTfind(xml) {
       teamname: row.getAttribute('teamname') || null,
       format: row.getAttribute('format') || null,
       username: row.getAttribute('incoming_username') || null,
-      started: Number.isFinite(started) ? started * 1000 : null,
+      started: startedMs,
+      ended: endedAt(startedMs, row.getAttribute('started'), row.getAttribute('ended')),
       award: Number.isFinite(award) ? award : 0,
     })
   }

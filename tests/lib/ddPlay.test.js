@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import {
+  dealOfLin,
   buildPlayRequest,
   summarizeTrace,
   hasRobotPartner,
@@ -19,6 +20,16 @@ const lin = (n) =>
       'utf8'
     )
   ).lin
+
+describe('dealOfLin', () => {
+  it("gives the deal and vulnerability as the solver's table and par take them", () => {
+    expect(dealOfLin(lin(1))).toEqual({
+      dealstr: 'N:83.93.KT84.AQ982 Q92.J852.J97.T74 AT65.KT64.AQ.KJ3 KJ74.AQ7.6532.65',
+      vulnerable: 'None',
+    })
+    expect(dealOfLin(lin(5)).vulnerable).toBe('NS')
+  })
+})
 
 describe('buildPlayRequest', () => {
   it('board 1: 3NT by South, West on lead, all 52 cards', () => {

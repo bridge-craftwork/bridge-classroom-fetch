@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import {
   readPanel,
   matchPanels,
+  boardOnScreen,
   trickButtons,
   listOnScreen,
   drawDeal,
@@ -23,7 +24,7 @@ import {
 } from '../../src/ui/bboDdOverlay.js'
 import { parseMhList, parseMhHand } from '../../src/adapters/bbo/parsers/mhXml.js'
 import { parseLin } from '../../src/adapters/bbo/parsers/lin.js'
-import { summarizeTrace } from '../../src/lib/ddPlay.js'
+import { summarizeTrace, solverCard } from '../../src/lib/ddPlay.js'
 
 const fx = (name) => readFileSync(join(import.meta.dirname, '../../fixtures/bbo', name), 'utf8')
 
@@ -268,6 +269,55 @@ describe('which list is on screen', () => {
   it('lets one odd spelling through', () => {
     resultCells()[0].textContent = 'Passed out'
     expect(listOnScreen(doc, list, visible)).toBe(true)
+  })
+})
+
+describe('which board is on screen', () => {
+  // The table's viewer, outside History, holding the board just finished.
+  function addTable(doc) {
+    const shown = [...doc.querySelectorAll('deal-viewer')].find(visible)
+    const table = doc.createElement('div')
+    table.className = 'table-area'
+    table.appendChild(shown.cloneNode(true))
+    doc.body.appendChild(table)
+    return { shown, table: table.firstChild }
+  }
+
+  it("draws on History's viewer, not the table's, when both show a known board (11 Nov 2026)", () => {
+    const { shown } = addTable(doc)
+    const hand = { hk: 'h1', deal: deal1 }
+    // The table's copy comes later on the page, which the old rule preferred.
+    const found = boardOnScreen(doc, [hand], visible)
+    expect(found.matched.viewer).toBe(shown)
+  })
+
+  it('takes an earlier board shown in History over the latest board at the table', () => {
+    const { shown, table } = addTable(doc)
+    // `latest` differs from board 1 by a card moved between two hands, and the
+    // table shows only the two hands it does not touch: it fits the table alone.
+    const other = JSON.parse(JSON.stringify(deal1))
+    const suit = ['S', 'H', 'D', 'C'].find((s) => other.N[s].length)
+    other.E[suit].push(other.N[suit].shift())
+    const panels = [...table.querySelectorAll('hand-diagram-panel')]
+    for (const panel of panels) {
+      const first = readPanel(panel)?.[0]?.code
+      const holder =
+        first &&
+        ['N', 'E'].find((s) => deal1[s][first[0]].some((r) => solverCard(first[0] + r) === first))
+      if (holder) panel.remove()
+    }
+    const latest = { hk: 'latest', deal: other }
+    const earlier = { hk: 'earlier', deal: deal1 }
+    const found = boardOnScreen(doc, [latest, earlier], visible)
+    expect(found.hand.hk).toBe('earlier')
+    expect(found.matched.viewer).toBe(shown)
+  })
+
+  it("falls back to the table's viewer when History shows no known board", () => {
+    const { shown, table } = addTable(doc)
+    shown.remove()
+    const found = boardOnScreen(doc, [{ hk: 'h1', deal: deal1 }], visible)
+    expect(found.matched.viewer).toBe(table)
   })
 })
 

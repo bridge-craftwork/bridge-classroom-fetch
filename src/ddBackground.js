@@ -100,6 +100,18 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse,
         'dd-live-table'
       )
+    case 'dd-table':
+      return reply(
+        ddSolver.table(message.resultkey, message.lin).then((table) => ({ table })),
+        sendResponse,
+        'dd-table'
+      )
+    case 'dd-live-attach':
+      return reply(
+        ddSolver.attachLive(message.events).then((tkey) => ({ tkey })),
+        sendResponse,
+        'dd-live-attach'
+      )
     case 'dd-lookup':
       return reply(
         ddSolver.lookup(message.resultkeys).then((entries) => ({ entries })),

@@ -9,15 +9,19 @@
 //
 //   dd:<resultkey>  one board's full analysis: what redraws a board instantly.
 //                   About 2.5 KB. Oldest deleted first when space runs short.
+//                   Gains `table` (the 20-cell table and par) once one is drawn.
 //   ddt:<tkey>      one event's tally: errors per board by you, your partner and
-//                   the opponents. About 200 bytes, and kept.
+//                   the opponents. About 200 bytes, and kept. An event played
+//                   with the extension running also notes, per board, the key
+//                   its board had while being played (`live`), so the analysis
+//                   done then carries over to History's key for it.
 //
 // Neither names a player. BBO keeps these games for years, so a deleted board
 // costs nothing but a solve the next time it is opened. Chrome allows 10 MB by
 // default; MAX_BOARDS keeps boards well inside that, so the hand-off and the
 // settings that share the space are never the ones refused.
 
-import { buildPlayRequest, summarizeTrace } from '../lib/ddPlay.js'
+import { buildPlayRequest, dealOfLin, summarizeTrace } from '../lib/ddPlay.js'
 
 export const CACHE_PREFIX = 'dd:'
 export const TALLY_PREFIX = 'ddt:'
@@ -27,6 +31,11 @@ export const LIVE_TABLE_KEY = 'ddl:table'
 const LIVE_TABLE_TTL = 12 * 60 * 60 * 1000
 const LIVE_EVENT_RE = /^[\w~.-]{1,80}$/
 const LIVE_RESULT_RE = /^[\w=+-]{1,20}$/
+// The event being played is tied to its row in Recent tournaments by time: the
+// row whose start and end hold the moment its first board was seen. BBO's
+// minutes are whole, and a board can be opened in History just after the end.
+const LIVE_EARLY = 2 * 60 * 1000
+const LIVE_LATE = 15 * 60 * 1000
 export const MAX_BOARDS = 3500
 const PRUNE_TO = 3000
 const PRUNE_EVERY = 200
@@ -149,10 +158,48 @@ export function createDdSolver({ loadSolver, storage, now = () => Date.now() }) 
     }
   }
 
+  // The table and par for a full deal: { table, hasPar }, table null when the
+  // deal is incomplete. A solver from before par was exported (v2.1.0) still
+  // draws the table, without par.
+  async function solveTable(lin) {
+    const deal = dealOfLin(lin)
+    if (!deal) return { table: null, hasPar: false }
+    const { Analyzer } = await getSolver()
+    const analyzer = new Analyzer()
+    try {
+      const hasPar = typeof analyzer.par === 'function'
+      const { tricks } = JSON.parse(analyzer.dd_table(deal.dealstr))
+      const par = hasPar ? JSON.parse(analyzer.par(deal.dealstr, deal.vulnerable)) : null
+      const table = {
+        tricks,
+        par: par?.par_contract ?? null,
+        parScore: par?.optimum_score ?? null,
+      }
+      return { table, hasPar }
+    } finally {
+      analyzer.free?.()
+    }
+  }
+
+  // The table solved with the analysis, so a board shows it the moment it is
+  // drawn, whether it was analysed while played, by DD all, or on opening. A
+  // table that fails costs the table, not the analysis.
+  async function tableWith(lin) {
+    try {
+      const { table, hasPar } = await solveTable(lin)
+      // Not kept without par, which a newer solver would then never add.
+      return { table, keep: !!table && hasPar }
+    } catch (err) {
+      console.warn('[bc] double-dummy table:', err?.message ?? err)
+      return { table: null, keep: false }
+    }
+  }
+
   /** The analysis of one board, from cache or solved now.
-   *  Returns { contract, declarer, contract_tricks, trace } — with contract null
-   *  for a board with nothing to analyse (passed out). `place`, when known, is
-   *  { tkey, number, mySeat }: where the board's errors go in its event's tally. */
+   *  Returns { contract, declarer, contract_tricks, trace, table } — with
+   *  contract null for a board with nothing to analyse (passed out), and table
+   *  as table() answers it. `place`, when known, is { tkey, number, mySeat }:
+   *  where the board's errors go in its event's tally. */
   async function trace(resultkey, lin, place = null) {
     if (!isResultKey(resultkey)) throw new Error('not a BBO resultkey')
     const key = CACHE_PREFIX + resultkey
@@ -160,9 +207,16 @@ export function createDdSolver({ loadSolver, storage, now = () => Date.now() }) 
     let entry
     if (hit?.v === CACHE_VERSION) {
       entry = strip(hit)
+      if (!entry.table && lin) {
+        const { table, keep } = await tableWith(lin)
+        if (table) entry = { ...entry, table }
+        if (keep) await save({ [key]: { ...hit, table } })
+      }
     } else {
       entry = await solveBoard(lin)
-      await save({ [key]: { v: CACHE_VERSION, t: now(), ...entry } })
+      const { table, keep } = await tableWith(lin)
+      await save({ [key]: { v: CACHE_VERSION, t: now(), ...entry, ...(keep ? { table } : {}) } })
+      if (table) entry = { ...entry, table }
       if (writes++ % PRUNE_EVERY === 0) {
         prune(MAX_BOARDS).catch(() => {})
       }
@@ -177,6 +231,25 @@ export function createDdSolver({ loadSolver, storage, now = () => Date.now() }) 
     return entry
   }
 
+  /** The board's double-dummy table and par: { tricks, par, parScore }, tricks
+   *  rows N, E, S, W and columns C, D, H, S, NT; par the solver's par_contract
+   *  ("NS 4S="), null when passed out or when the solver has no par. Kept with
+   *  the board's analysis once that is cached. Null when the deal is incomplete.
+   *  For boards analysed before trace() solved the table too. */
+  async function table(resultkey, lin) {
+    if (!isResultKey(resultkey)) throw new Error('not a BBO resultkey')
+    const key = CACHE_PREFIX + resultkey
+    const hit = (await storage.get(key))[key]
+    if (hit?.v === CACHE_VERSION && hit.table) return hit.table
+    const { table: result, hasPar } = await solveTable(lin)
+    // Only beside an analysis already cached, since trace() writes the record
+    // whole; and not without par, which a newer solver would then never add.
+    if (result && hit?.v === CACHE_VERSION && hasPar) {
+      await save({ [key]: { ...hit, table: result } })
+    }
+    return result
+  }
+
   /** An event's board list has been seen: note how many boards it has, tally any
    *  of them already in the cache, and return { entries, tally }. `boards` is
    *  [{ number, resultkey, mySeat }]. */
@@ -184,6 +257,7 @@ export function createDdSolver({ loadSolver, storage, now = () => Date.now() }) 
     if (!isTkey(tkey)) throw new Error('not a BBO event key')
     const list = (Array.isArray(boards) ? boards : []).filter((b) => isResultKey(b?.resultkey))
     const entries = await lookup(list.map((b) => b.resultkey))
+    await carryLive(tkey, list, entries)
     const tally = await changeTally(tkey, (record) => {
       let changed = record.total !== list.length
       record.total = list.length
@@ -199,6 +273,81 @@ export function createDdSolver({ loadSolver, storage, now = () => Date.now() }) 
       return changed
     })
     return { entries, tally }
+  }
+
+  // Boards of `list` not yet cached under History's key, but analysed while the
+  // event was being played: the same analysis, saved under History's key too, so
+  // the board draws at once and counts in the tally. A result that disagrees
+  // means it is not the same board, and it is left alone.
+  async function carryLive(tkey, list, entries) {
+    const held = (await storage.get(TALLY_PREFIX + tkey))[TALLY_PREFIX + tkey]
+    const live = held?.v === TALLY_VERSION ? (held.live ?? {}) : {}
+    const same = (a, b) => !a || !b || a.toLowerCase() === b.toLowerCase()
+    const missing = list.filter(
+      (b) => !entries[b.resultkey] && live[b.number] && same(b.result, live[b.number].r)
+    )
+    if (!missing.length) return
+    const found = await lookup(missing.map((b) => live[b.number].k))
+    for (const b of missing) {
+      const entry = found[live[b.number].k]
+      if (!entry) continue
+      entries[b.resultkey] = entry
+      await save({ [CACHE_PREFIX + b.resultkey]: { v: CACHE_VERSION, t: now(), ...entry } })
+    }
+  }
+
+  /** The event last played (noteLive), tied to its row among `events` ([{ tkey,
+   *  started, ended }], epoch ms): its boards' analyses counted in that event's
+   *  tally, and each board's live key noted there for `event` to carry over.
+   *  The tally has no total until the event's board list is seen. Resolves to
+   *  the tkey, or null when no row fits. Tied once: later calls use the same row. */
+  function attachLive(events) {
+    const run = liveTurn.then(async () => {
+      // No twelve-hour limit here, as liveTable has: the row's times are the
+      // check, and a list opened the evening after a noon game still counts it.
+      const held = (await storage.get(LIVE_TABLE_KEY))[LIVE_TABLE_KEY]
+      if (!held?.boards) return null
+      const seen = held.t0 ?? held.t
+      const all = (Array.isArray(events) ? events : []).filter((e) => isTkey(e?.tkey))
+      const match = held.tkey
+        ? all.find((e) => e.tkey === held.tkey)
+        : all
+            .filter(
+              (e) =>
+                Number.isFinite(e.started) &&
+                Number.isFinite(e.ended) &&
+                e.started - LIVE_EARLY <= seen &&
+                seen <= e.ended + LIVE_LATE
+            )
+            .sort((a, b) => b.started - a.started)[0]
+      if (!match) return null
+      if (!held.tkey) {
+        held.tkey = match.tkey
+        await save({ [LIVE_TABLE_KEY]: held })
+      }
+      const boards = Object.entries(held.boards)
+      const entries = await lookup(boards.map(([, b]) => b.resultkey))
+      await changeTally(match.tkey, (record) => {
+        record.live ??= {}
+        let changed = false
+        for (const [n, b] of boards) {
+          if (record.live[n]?.k !== b.resultkey) {
+            record.live[n] = { k: b.resultkey, r: b.result }
+            changed = true
+          }
+          const entry = entries[b.resultkey]
+          const counted = entry && !record.b[n] && tallyOf(entry, b.mySeat, b.robotPartner)
+          if (counted) {
+            record.b[n] = counted
+            changed = true
+          }
+        }
+        return changed
+      })
+      return match.tkey
+    })
+    liveTurn = run.catch(() => {})
+    return run
   }
 
   /** The tallies held for these events: { [tkey]: { total, b } }. Events never
@@ -265,7 +414,8 @@ export function createDdSolver({ loadSolver, storage, now = () => Date.now() }) 
     }
     const run = liveTurn.then(async () => {
       const held = (await storage.get(LIVE_TABLE_KEY))[LIVE_TABLE_KEY]
-      const record = held?.event === liveEvent ? held : { event: liveEvent, t: now(), boards: {} }
+      const record =
+        held?.event === liveEvent ? held : { event: liveEvent, t: now(), t0: now(), boards: {} }
       record.boards[number] = {
         resultkey: board.resultkey,
         result: LIVE_RESULT_RE.test(board.result ?? '') ? board.result : null,
@@ -290,7 +440,7 @@ export function createDdSolver({ loadSolver, storage, now = () => Date.now() }) 
     return { event: held.event, boards, entries }
   }
 
-  return { trace, event, tallies, lookup, alternatives, noteLive, liveTable }
+  return { trace, event, tallies, lookup, alternatives, noteLive, liveTable, attachLive, table }
 }
 
 function strip({ v, t, ...entry }) {

@@ -87,7 +87,9 @@ describe('createDdSolver', () => {
       },
       storage,
     }).trace(hk, 'unused')
-    expect(again).toEqual(first)
+    // The table is kept only from a solver with par; the analysis always.
+    const analysis = ({ table, ...rest }) => rest
+    expect(analysis(again)).toEqual(analysis(first))
     expect(loads).toBe(1)
   })
 
@@ -266,10 +268,208 @@ describe('createDdSolver', () => {
     expect(await solver.liveTable()).toBeNull()
   })
 
+  describe("the event just played, in its row (18 Nov 2026: today's row was blank)", () => {
+    const tkey = '33873-1793548800'
+    const live = 'live:d~t~52031~1~1~0'
+    const started = Date.UTC(2026, 10, 1, 15, 0)
+    const row = { tkey, started, ended: started + 56 * 60000 }
+    const older = {
+      tkey: '33870-1793500000',
+      started: started - 4 * 3600000,
+      ended: started - 3 * 3600000,
+    }
+
+    async function play() {
+      clock = started + 5 * 60000
+      await solver.trace(live, board(1).lin)
+      await solver.noteLive('52031~1', { number: 1, resultkey: live, result: '3NS+2', mySeat: 'N' })
+    }
+
+    it('counts the boards analysed while playing in the row whose times hold them', async () => {
+      await play()
+      clock = started + 20 * 3600000 // that evening, past My Table's twelve hours
+      expect(await solver.attachLive([older, row])).toBe(tkey)
+      const tally = (await solver.tallies([tkey]))[tkey]
+      expect(tally.total).toBeNull()
+      expect(tally.b[1]).toEqual([0, 0, 1]) // West's ♠J, an opponent's
+      expect((await solver.tallies([older.tkey]))[older.tkey]).toBeUndefined()
+    })
+
+    it('ties no row when none was running then', async () => {
+      await play()
+      expect(await solver.attachLive([older])).toBeNull()
+      expect(await solver.attachLive([{ ...row, ended: null }])).toBeNull()
+    })
+
+    it('stays with the row it was tied to, and adds boards analysed later', async () => {
+      await play()
+      await solver.attachLive([row])
+      const live2 = 'live:d~t~52031~1~5~0'
+      await solver.trace(live2, board(5).lin)
+      await solver.noteLive('52031~1', { number: 5, resultkey: live2, result: null, mySeat: 'N' })
+      expect(await solver.attachLive([older, row])).toBe(tkey)
+      const tally = (await solver.tallies([tkey]))[tkey]
+      expect(Object.keys(tally.b).sort()).toEqual(['1', '5'])
+    })
+
+    it("carries the analysis to History's key when the board list is seen, solving nothing", async () => {
+      await play()
+      await solver.attachLive([row])
+      const before = loads
+      const { hk } = board(1)
+      const { entries, tally } = await solver.event(tkey, [
+        { number: 1, resultkey: hk, result: '3NS+2', mySeat: 'N' },
+        { number: 2, resultkey: board(5).hk, result: '2SE-1', mySeat: 'N' },
+      ])
+      expect(entries[hk].contract).toBe('3NT')
+      expect(storage.data[CACHE_PREFIX + hk]).toBeDefined()
+      expect(tally).toMatchObject({ total: 2, b: { 1: [0, 0, 1] } })
+      expect(loads).toBe(before)
+    })
+
+    it('carries nothing over when the results disagree', async () => {
+      await play()
+      await solver.attachLive([row])
+      const { hk } = board(1)
+      const { entries } = await solver.event(tkey, [
+        { number: 1, resultkey: hk, result: '4SS=', mySeat: 'N' },
+      ])
+      expect(entries[hk]).toBeUndefined()
+    })
+  })
+
   it('refuses a live board with a bad event or key', async () => {
     await expect(solver.noteLive('../x', { number: 1, resultkey: 'live:a~b' })).rejects.toThrow()
     await expect(solver.noteLive('52031~1', { number: 1, resultkey: '../x' })).rejects.toThrow()
     expect(storage.data[LIVE_TABLE_KEY]).toBeUndefined()
+  })
+
+  describe('the table and par', () => {
+    // A stand-in solver, to count solves and to have par or not. The play
+    // analysis is the real one's.
+    function fakeSolver({ withPar }) {
+      const calls = { table: 0, par: 0 }
+      let real = null
+      class Analyzer {
+        constructor() {
+          this.real = new real.Analyzer()
+        }
+        dd_play(request) {
+          return this.real.dd_play(request)
+        }
+        dd_table() {
+          calls.table++
+          return JSON.stringify({
+            tricks: [
+              [1, 2, 3, 4, 5],
+              [6, 7, 8, 9, 10],
+              [1, 2, 3, 4, 5],
+              [6, 7, 8, 9, 10],
+            ],
+            total: 13,
+          })
+        }
+        free() {
+          this.real.free?.()
+        }
+      }
+      if (withPar) {
+        Analyzer.prototype.par = function (dealstr, vul) {
+          calls.par++
+          calls.vul = vul
+          return JSON.stringify({ score_ns: 0, optimum_score: 'NS 430', par_contract: 'NS 3N+1' })
+        }
+      }
+      return {
+        calls,
+        loadSolver: async () => {
+          real ??= await loadSolver()
+          return { Analyzer }
+        },
+      }
+    }
+
+    it('solves the table with the analysis and keeps it there', async () => {
+      const fake = fakeSolver({ withPar: true })
+      const s = createDdSolver({ loadSolver: fake.loadSolver, storage, now: () => clock })
+      const { hk, lin } = board(1)
+      const entry = await s.trace(hk, lin)
+      expect(entry.trace).toHaveLength(52)
+      expect(entry.table).toMatchObject({ par: 'NS 3N+1', parScore: 'NS 430' })
+      expect(storage.data[CACHE_PREFIX + hk].table.par).toBe('NS 3N+1')
+      expect(await s.table(hk, lin)).toEqual(entry.table)
+      expect(fake.calls.table).toBe(1)
+    })
+
+    it('adds the table to an analysis cached without one, when asked again', async () => {
+      const fake = fakeSolver({ withPar: true })
+      const s = createDdSolver({ loadSolver: fake.loadSolver, storage, now: () => clock })
+      const { hk, lin } = board(1)
+      await s.trace(hk, lin)
+      delete storage.data[CACHE_PREFIX + hk].table // as cached before tables were
+      expect((await s.trace(hk, lin)).table.par).toBe('NS 3N+1')
+      expect(storage.data[CACHE_PREFIX + hk].table.par).toBe('NS 3N+1')
+    })
+
+    it('keeps the analysis when the table fails', async () => {
+      const fake = fakeSolver({ withPar: true })
+      const { hk, lin } = board(1)
+      const broken = async () => {
+        const { Analyzer } = await fake.loadSolver()
+        Analyzer.prototype.dd_table = () => {
+          throw new Error('boom')
+        }
+        return { Analyzer }
+      }
+      const s2 = createDdSolver({ loadSolver: broken, storage, now: () => clock })
+      const entry = await s2.trace(hk, lin)
+      expect(entry.trace).toHaveLength(52)
+      expect(entry.table).toBeUndefined()
+      expect(storage.data[CACHE_PREFIX + hk].trace).toHaveLength(52)
+    })
+
+    it("board 1's real table, solved in WASM", async () => {
+      const { hk, lin } = board(1)
+      const t = await solver.table(hk, lin)
+      expect(t.tricks).toEqual([
+        [10, 10, 9, 8, 10],
+        [3, 3, 4, 5, 3],
+        [10, 10, 9, 8, 10],
+        [3, 3, 4, 5, 3],
+      ])
+    })
+
+    it("adds the table and par to the board's cached analysis, then answers from it", async () => {
+      const fake = fakeSolver({ withPar: true })
+      const s = createDdSolver({ loadSolver: fake.loadSolver, storage, now: () => clock })
+      const { hk, lin } = board(1)
+      await solver.trace(hk, lin) // the real analysis, cached
+      delete storage.data[CACHE_PREFIX + hk].table // as cached before tables were
+      expect(await s.table(hk, lin)).toEqual({
+        tricks: expect.any(Array),
+        par: 'NS 3N+1',
+        parScore: 'NS 430',
+      })
+      expect(fake.calls.vul).toBe('None')
+      expect(storage.data[CACHE_PREFIX + hk].table.par).toBe('NS 3N+1')
+      expect(storage.data[CACHE_PREFIX + hk].trace).toHaveLength(52)
+      await s.table(hk, lin)
+      expect(fake.calls.table).toBe(1)
+    })
+
+    it('draws without par on a solver that has none, and does not keep that', async () => {
+      const fake = fakeSolver({ withPar: false })
+      const s = createDdSolver({ loadSolver: fake.loadSolver, storage, now: () => clock })
+      const { hk, lin } = board(1)
+      await solver.trace(hk, lin)
+      delete storage.data[CACHE_PREFIX + hk].table
+      expect((await s.table(hk, lin)).par).toBeNull()
+      expect(storage.data[CACHE_PREFIX + hk].table).toBeUndefined()
+    })
+
+    it('refuses a bad key', async () => {
+      await expect(solver.table('../x', board(1).lin)).rejects.toThrow()
+    })
   })
 
   it('caches a passed-out board as having nothing to analyse', async () => {

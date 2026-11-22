@@ -81,8 +81,16 @@ describe('parseTfind', () => {
       format: 'pairs',
       username: 'kemistry',
       started: 1793552400000,
+      // ended="2026-11-01 11:56", 56 minutes after started="2026-11-01 11:00"
+      ended: 1793552400000 + 56 * 60000,
       award: 0,
     })
+  })
+
+  it('has no end when BBO gives none', () => {
+    const xml =
+      '<tourneys><tourney tkey="1-2" tourney_number="1" ustarted="2" started="2026-11-01 11:00" ended=""/></tourneys>'
+    expect(parseTfind(xml)[0].ended).toBeNull()
   })
 
   it('reads a daylong, whose key and number look different', () => {
