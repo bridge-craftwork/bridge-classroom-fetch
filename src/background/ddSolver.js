@@ -9,6 +9,7 @@
 //
 //   dd:<resultkey>  one board's full analysis: what redraws a board instantly.
 //                   About 2.5 KB. Oldest deleted first when space runs short.
+//                   Gains `table` (the 20-cell table and par) once one is drawn.
 //   ddt:<tkey>      one event's tally: errors per board by you, your partner and
 //                   the opponents. About 200 bytes, and kept. An event played
 //                   with the extension running also notes, per board, the key
@@ -20,7 +21,7 @@
 // default; MAX_BOARDS keeps boards well inside that, so the hand-off and the
 // settings that share the space are never the ones refused.
 
-import { buildPlayRequest, summarizeTrace } from '../lib/ddPlay.js'
+import { buildPlayRequest, dealOfLin, summarizeTrace } from '../lib/ddPlay.js'
 
 export const CACHE_PREFIX = 'dd:'
 export const TALLY_PREFIX = 'ddt:'
@@ -157,10 +158,48 @@ export function createDdSolver({ loadSolver, storage, now = () => Date.now() }) 
     }
   }
 
+  // The table and par for a full deal: { table, hasPar }, table null when the
+  // deal is incomplete. A solver from before par was exported (v2.1.0) still
+  // draws the table, without par.
+  async function solveTable(lin) {
+    const deal = dealOfLin(lin)
+    if (!deal) return { table: null, hasPar: false }
+    const { Analyzer } = await getSolver()
+    const analyzer = new Analyzer()
+    try {
+      const hasPar = typeof analyzer.par === 'function'
+      const { tricks } = JSON.parse(analyzer.dd_table(deal.dealstr))
+      const par = hasPar ? JSON.parse(analyzer.par(deal.dealstr, deal.vulnerable)) : null
+      const table = {
+        tricks,
+        par: par?.par_contract ?? null,
+        parScore: par?.optimum_score ?? null,
+      }
+      return { table, hasPar }
+    } finally {
+      analyzer.free?.()
+    }
+  }
+
+  // The table solved with the analysis, so a board shows it the moment it is
+  // drawn, whether it was analysed while played, by DD all, or on opening. A
+  // table that fails costs the table, not the analysis.
+  async function tableWith(lin) {
+    try {
+      const { table, hasPar } = await solveTable(lin)
+      // Not kept without par, which a newer solver would then never add.
+      return { table, keep: !!table && hasPar }
+    } catch (err) {
+      console.warn('[bc] double-dummy table:', err?.message ?? err)
+      return { table: null, keep: false }
+    }
+  }
+
   /** The analysis of one board, from cache or solved now.
-   *  Returns { contract, declarer, contract_tricks, trace } — with contract null
-   *  for a board with nothing to analyse (passed out). `place`, when known, is
-   *  { tkey, number, mySeat }: where the board's errors go in its event's tally. */
+   *  Returns { contract, declarer, contract_tricks, trace, table } — with
+   *  contract null for a board with nothing to analyse (passed out), and table
+   *  as table() answers it. `place`, when known, is { tkey, number, mySeat }:
+   *  where the board's errors go in its event's tally. */
   async function trace(resultkey, lin, place = null) {
     if (!isResultKey(resultkey)) throw new Error('not a BBO resultkey')
     const key = CACHE_PREFIX + resultkey
@@ -168,9 +207,16 @@ export function createDdSolver({ loadSolver, storage, now = () => Date.now() }) 
     let entry
     if (hit?.v === CACHE_VERSION) {
       entry = strip(hit)
+      if (!entry.table && lin) {
+        const { table, keep } = await tableWith(lin)
+        if (table) entry = { ...entry, table }
+        if (keep) await save({ [key]: { ...hit, table } })
+      }
     } else {
       entry = await solveBoard(lin)
-      await save({ [key]: { v: CACHE_VERSION, t: now(), ...entry } })
+      const { table, keep } = await tableWith(lin)
+      await save({ [key]: { v: CACHE_VERSION, t: now(), ...entry, ...(keep ? { table } : {}) } })
+      if (table) entry = { ...entry, table }
       if (writes++ % PRUNE_EVERY === 0) {
         prune(MAX_BOARDS).catch(() => {})
       }
@@ -183,6 +229,25 @@ export function createDdSolver({ loadSolver, storage, now = () => Date.now() }) 
       })
     }
     return entry
+  }
+
+  /** The board's double-dummy table and par: { tricks, par, parScore }, tricks
+   *  rows N, E, S, W and columns C, D, H, S, NT; par the solver's par_contract
+   *  ("NS 4S="), null when passed out or when the solver has no par. Kept with
+   *  the board's analysis once that is cached. Null when the deal is incomplete.
+   *  For boards analysed before trace() solved the table too. */
+  async function table(resultkey, lin) {
+    if (!isResultKey(resultkey)) throw new Error('not a BBO resultkey')
+    const key = CACHE_PREFIX + resultkey
+    const hit = (await storage.get(key))[key]
+    if (hit?.v === CACHE_VERSION && hit.table) return hit.table
+    const { table: result, hasPar } = await solveTable(lin)
+    // Only beside an analysis already cached, since trace() writes the record
+    // whole; and not without par, which a newer solver would then never add.
+    if (result && hit?.v === CACHE_VERSION && hasPar) {
+      await save({ [key]: { ...hit, table: result } })
+    }
+    return result
   }
 
   /** An event's board list has been seen: note how many boards it has, tally any
@@ -375,7 +440,7 @@ export function createDdSolver({ loadSolver, storage, now = () => Date.now() }) 
     return { event: held.event, boards, entries }
   }
 
-  return { trace, event, tallies, lookup, alternatives, noteLive, liveTable, attachLive }
+  return { trace, event, tallies, lookup, alternatives, noteLive, liveTable, attachLive, table }
 }
 
 function strip({ v, t, ...entry }) {

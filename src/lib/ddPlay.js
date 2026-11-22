@@ -20,6 +20,32 @@ export function solverCard(card) {
   return card.length === 3 ? card[0] + 'T' : card
 }
 
+// The deal as the solver reads it: "N:<N> <E> <S> <W>", each hand S.H.D.C.
+function dealString(deal) {
+  const hand = (seat) =>
+    SUITS.map((s) =>
+      deal[seat][s]
+        .map(solverRank)
+        .sort((a, b) => RANK_ORDER.indexOf(a) - RANK_ORDER.indexOf(b))
+        .join('')
+    ).join('.')
+  return 'N:' + SEATS.map(hand).join(' ')
+}
+
+/** A LIN → what the solver's dd_table and par take: { dealstr, vulnerable },
+ *  vulnerable as None, NS, EW or Both. Null unless all four hands are dealt.
+ *  Throws (ParseError) on a LIN that does not parse. */
+export function dealOfLin(lin) {
+  const parsed = parseLin(lin)
+  // Thirteen each, not just 52 in all: a LIN naming three hands leaves the
+  // fourth holding whatever is left.
+  const full = SEATS.every(
+    (seat) => SUITS.reduce((m, s) => m + parsed.deal[seat][s].length, 0) === 13
+  )
+  if (!full) return null
+  return { dealstr: dealString(parsed.deal), vulnerable: parsed.vulnerability }
+}
+
 /** A LIN → bridge-solver's PlayRequest, plus who sat where.
  *
  *  Returns null when there is nothing to analyse: a passed-out board, or one
@@ -30,17 +56,10 @@ export function buildPlayRequest(lin) {
   if (!contract || !declarer || parsed.play.length === 0) return null
 
   const strain = /^[1-7](NT|[CDHS])/.exec(contract)[1]
-  const hand = (seat) =>
-    SUITS.map((s) =>
-      parsed.deal[seat][s]
-        .map(solverRank)
-        .sort((a, b) => RANK_ORDER.indexOf(a) - RANK_ORDER.indexOf(b))
-        .join('')
-    ).join('.')
 
   return {
     request: {
-      dealstr: 'N:' + SEATS.map(hand).join(' '),
+      dealstr: dealString(parsed.deal),
       trump: strain === 'NT' ? 'N' : strain,
       declarer,
       leader: NEXT[declarer],

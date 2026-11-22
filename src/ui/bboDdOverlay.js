@@ -45,6 +45,7 @@ import {
   syncEventButton,
   syncHeader,
 } from './ddHistory.js'
+import { drawDdTable, clearDdTables, syncResult } from './ddTableView.js'
 
 const TAG = 'bridge-classroom-bbo'
 const BADGE_CLASS = 'bc-dd-trick'
@@ -542,6 +543,8 @@ export async function stepToTrick({ prev, next, cards, sleep, trick }) {
 export function clearDeal(doc) {
   for (const card of doc.querySelectorAll('[data-bc-dd-table]')) restoreTableCard(card)
   for (const el of doc.querySelectorAll('[data-bc-dd-mark]')) unmarkCard(el)
+  clearDdTables(doc)
+  syncResult(doc, null, null)
 }
 
 /** Remove everything the overlay draws: deal, table, board tags, totals and
@@ -551,6 +554,7 @@ export function clearAll(doc) {
   for (const el of doc.querySelectorAll(`.${CHIP_CLASS}, .${TOTALS_CLASS}`)) el.remove()
   syncPopout(doc, null)
   syncRestart(doc, null)
+  syncResult(doc, null, null)
   clearHistory(doc)
 }
 
@@ -923,6 +927,8 @@ export function startDdOverlay({
     current: null, // the board BBO loaded last: { hk, lin, deal }
     hands: new Map(), // every board seen this visit, by resultkey
     entries: new Map(), // resultkey → background's analysis
+    failed: new Set(), // resultkeys whose analysis failed this visit
+    results: new Map(), // resultkey → the result as History's list writes it
     // My Table, the event being played: the boards opened so far, by number,
     // and which event they belong to ("52031~1").
     live: new Map(),
@@ -1006,6 +1012,13 @@ export function startDdOverlay({
       entry?.contract ? alternativesShown(cur, entry, matched.viewer) : null
     )
     drawTable(matched.viewer, summary)
+    const { table, pending } = tableFor(cur, entry)
+    drawDdTable(doc, matched.viewer, table, {
+      contract: entry?.contract ?? null,
+      declarer: entry?.declarer ?? null,
+      pending,
+    })
+    syncResult(doc, matched.viewer, resultFor(cur))
     // One place under BBO's menu: DD Details at the start of the play, Restart
     // once it has moved on. A second button below would cover the par box
     // another extension draws there (seen 8 Nov 2026).
@@ -1016,6 +1029,45 @@ export function startDdOverlay({
     const passedOut = !!entry && !entry.contract
     syncPopout(doc, restart || passedOut ? null : matched.viewer, () => popOut(cur.lin))
     syncRestart(doc, matched.viewer, restart)
+  }
+
+  // The board's double-dummy table and par: { table, pending }. It comes with
+  // the board's analysis, which solves it too; an analysis cached before that
+  // gets it solved once, on first showing. `pending` while one is on its way,
+  // so the corner is held for it rather than showing another table first.
+  const tables = new Map() // resultkey → { table, pending }
+  function tableFor(hand, entry) {
+    if (entry?.table) return { table: entry.table, pending: false }
+    // The analysis is still coming, and brings the table.
+    if (!entry && hand.lin && !state.failed.has(hand.hk)) return { table: null, pending: true }
+    if (tables.has(hand.hk)) return tables.get(hand.hk)
+    if (!hand.lin) return { table: null, pending: false }
+    tables.set(hand.hk, { table: null, pending: true })
+    sendMessage({ type: 'dd-table', resultkey: hand.hk, lin: hand.lin })
+      .then((res) => {
+        if (res?.type !== 'dd-table') throw new Error(res?.error ?? 'no table')
+        tables.set(hand.hk, { table: res.table ?? null, pending: false })
+      })
+      // Not asked again this visit: render runs on every change BBO makes.
+      .catch((err) => {
+        tables.set(hand.hk, { table: null, pending: false })
+        console.warn('[bc] double-dummy table:', err?.message ?? err)
+      })
+      .finally(schedule)
+    return tables.get(hand.hk)
+  }
+
+  // The result at this table: as History's list or My Table wrote it, else
+  // worked out from the play (null when it was claimed).
+  function resultFor(hand) {
+    const listed = state.results.get(hand.hk)
+    if (listed) return listed
+    for (const b of state.live.values()) if (b.resultkey === hand.hk && b.result) return b.result
+    try {
+      return hand.lin ? resultOfLin(hand.lin) : null
+    } catch {
+      return null
+    }
   }
 
   // A click on an error card steps BBO's viewer to that card's trick. BBO
@@ -1225,6 +1277,7 @@ export function startDdOverlay({
     if (!list.tkey) return null
     state.lists.set(list.tkey, list)
     for (const b of list.boards) {
+      if (b.result) state.results.set(b.resultkey, b.result) // DD all's lists too
       const mySeat = seatOf(b.players, username)
       state.boards.set(b.resultkey, {
         tkey: list.tkey,
@@ -1250,8 +1303,18 @@ export function startDdOverlay({
 
   async function solveBoard(hand) {
     const place = state.boards.get(hand.hk) ?? null
-    const res = await sendMessage({ type: 'dd-trace', resultkey: hand.hk, lin: hand.lin, place })
-    if (res?.type !== 'dd-trace') throw new Error(res?.error ?? 'no analysis')
+    const res = await sendMessage({
+      type: 'dd-trace',
+      resultkey: hand.hk,
+      lin: hand.lin,
+      place,
+    }).catch((err) => ({ error: err?.message ?? String(err) }))
+    if (res?.type !== 'dd-trace') {
+      // Whatever waited on it (the table's corner) stops waiting.
+      state.failed.add(hand.hk)
+      schedule()
+      throw new Error(res?.error ?? 'no analysis')
+    }
     state.entries.set(hand.hk, res.entry)
     if (place) await refreshTallies([place.tkey])
     schedule()
@@ -1367,6 +1430,7 @@ export function startDdOverlay({
       state.list = list
       state.username = new URLSearchParams(msg.requestBody ?? '').get('username') || list.username
       state.lists.set(list.tkey, list)
+      for (const b of list.boards) if (b.result) state.results.set(b.resultkey, b.result)
       if (enabled) await noteList(list, state.username)
     } else if (msg.kind === 'hand') {
       const { hk, lin } = parseMhHand(msg.body)
