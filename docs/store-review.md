@@ -602,8 +602,10 @@ Chrome requires a written justification per permission. Current manifest:
 ### Bridge Craftwork DD — the second extension
 
 Built from this repo with `EXT=dd` (`manifest.dd.json`, output `dist/dd-<browser>`).
-**1.0.0 is published on the Chrome Web Store** (installs from 3 Nov 2026);
-1.1.0 is the first update. Its dashboard shows a steady ~25 installs a day, 92%
+**1.0.0 is published on the Chrome Web Store** (installs from 3 Nov 2026), at
+<https://chromewebstore.google.com/detail/bridge-craftwork-dd/afaopnjobibdnpfaplcfemliaoejpjgl>
+(id `afaopnjobibdnpfaplcfemliaoejpjgl`). Not on Edge, Firefox or the Mac App
+Store: 1.1.0 is an update on Chrome and a first listing everywhere else. Its dashboard shows a steady ~25 installs a day, 92%
 from Romania, against 2–3 weekly users: automated installs that never run, so
 read the weekly-users figure, not installs. What its review looks at, none of
 which Fetch carries:

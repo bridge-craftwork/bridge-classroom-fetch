@@ -146,7 +146,7 @@ session as the shots.
 |---|---|---|
 | Chrome Web Store | 11 Aug 2026 | **published** — 1.0.1, ~14 Aug. No approval email arrived; the dashboard said so first |
 | Edge Add-ons | 11 Aug 2026 | **published** — 1.0.1 |
-| addons.mozilla.org | 11 Aug 2026 | **published** — 1.0.1, approved 14 Aug |
+| addons.mozilla.org | 11 Aug 2026 | **published** — 1.0.1, approved 14 Aug ([listing](https://addons.mozilla.org/en-US/firefox/addon/bridge-classroom-fetch/)); still 1.0.1 on 22 Nov |
 | Mac App Store | — | 1.1.0 build 1 ready; never submitted |
 
 **All three browser stores now ship 1.0.1, and that changes the order.** As of

@@ -10,6 +10,11 @@ which has been through review once; where this differs, it says why.
 
 **Before submitting, see [Blockers](#blockers) at the end.**
 
+| Store | Status |
+|---|---|
+| Chrome Web Store | **1.0.0 published**, [listing](https://chromewebstore.google.com/detail/bridge-craftwork-dd/afaopnjobibdnpfaplcfemliaoejpjgl); 1.1.0 is an update |
+| Edge, Firefox, Mac App Store | never submitted; 1.1.0 is a first listing |
+
 ---
 
 ## Store listing
