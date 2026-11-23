@@ -5,6 +5,7 @@ import {
   readPanel,
   matchPanels,
   boardOnScreen,
+  boardsToTry,
   trickButtons,
   listOnScreen,
   drawDeal,
@@ -311,6 +312,41 @@ describe('which board is on screen', () => {
     const found = boardOnScreen(doc, [latest, earlier], visible)
     expect(found.hand.hk).toBe('earlier')
     expect(found.matched.viewer).toBe(shown)
+  })
+
+  it('keeps the board already showing when the hands left fit another too (23 Nov 2026)', () => {
+    const shown = [...doc.querySelectorAll('deal-viewer')].find(visible)
+    // `other` differs from board 1 by a card moved from North to East. With
+    // those two hands played out of view, the two seats left fit both deals,
+    // as four single cards did at trick 12.
+    const other = JSON.parse(JSON.stringify(deal1))
+    const suit = ['S', 'H', 'D', 'C'].find((s) => other.N[s].length)
+    other.E[suit].push(other.N[suit].shift())
+    for (const panel of [...shown.querySelectorAll('hand-diagram-panel')]) {
+      const first = readPanel(panel)?.[0]?.code
+      const holder =
+        first &&
+        ['N', 'E'].find((s) => deal1[s][first[0]].some((r) => solverCard(first[0] + r) === first))
+      if (holder) panel.remove()
+    }
+    const board = { hk: 'board', deal: deal1 }
+    const latest = { hk: 'latest', deal: other }
+    // Loaded later, so tried first: the bug.
+    expect(boardOnScreen(doc, boardsToTry(null, latest, [board, latest]), visible).hand.hk).toBe(
+      'latest'
+    )
+    // Shown before the hands ran short: kept.
+    expect(boardOnScreen(doc, boardsToTry(board, latest, [board, latest]), visible).hand.hk).toBe(
+      'board'
+    )
+  })
+
+  it('tries the board shown last, then the last loaded, then the rest, once each', () => {
+    const a = { hk: 'a' }
+    const b = { hk: 'b' }
+    const c = { hk: 'c' }
+    expect(boardsToTry(c, b, [a, b, c]).map((h) => h.hk)).toEqual(['c', 'b', 'a'])
+    expect(boardsToTry(null, null, [a, b]).map((h) => h.hk)).toEqual(['a', 'b'])
   })
 
   it("falls back to the table's viewer when History shows no known board", () => {
