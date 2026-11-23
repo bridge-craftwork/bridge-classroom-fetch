@@ -9,7 +9,8 @@
 //
 // Outputs, all from the one source:
 //   icons/icon-{16,24,32,48,128,300}.png   manifest, toolbar action, Edge listing
-//   safari/…/AppIcon.appiconset/*.png      the macOS app wrapper's icon set
+//   safari/…/AppIcon.appiconset/*.png      the macOS app wrapper's icon set, and
+//                                          icon-ios-1024.png for iOS (Fetch only)
 //
 // Re-run after editing icon.svg and commit the PNGs — they are build inputs the
 // stores consume, not build output, so they are tracked.
@@ -17,6 +18,7 @@
 import { chromium } from 'playwright'
 import fs from 'node:fs'
 import path from 'node:path'
+import { execFileSync } from 'node:child_process'
 
 // --ext dd renders Bridge Craftwork DD's icon instead (icons-dd/).
 const DD = process.argv.includes('--ext') && process.argv[process.argv.indexOf('--ext') + 1] === 'dd'
@@ -63,6 +65,17 @@ function macosSvg() {
 `
 }
 
+// ── The iOS variant ──────────────────────────────────────────────────────────
+//
+// iOS is the reverse of the Mac: the system draws the rounded corners, so the
+// 1024 icon is a full-bleed square, and App Store Connect refuses it outright
+// if it has an alpha channel (error 90717). So: the tile without its corner
+// radius, rendered opaque, then the alpha channel removed (see below).
+function iosSvg() {
+  return svg.replace(/<rect width="64" height="64" rx="13"/, '<rect width="64" height="64"')
+}
+const IOS_FILE = 'icon-ios-1024.png'
+
 async function render(page, size, outPath, source = svg, grid = GLYPH_GRID) {
   await page.setViewportSize({ width: size, height: size })
   await page.setContent(
@@ -97,6 +110,15 @@ if (haveCatalog) {
   for (const size of SAFARI_SIZES) {
     await render(page, size, path.join(SAFARI, `icon-${size}.png`), macos, MACOS_CANVAS)
   }
+  // DD is Mac only; its catalog has no iOS slot.
+  if (!DD) {
+    const ios = iosSvg()
+    if (ios === svg) throw new Error('icon.svg tile changed; iosSvg() no longer squares it')
+    const iosPath = path.join(SAFARI, IOS_FILE)
+    await render(page, 1024, iosPath, ios)
+    // A screenshot PNG keeps an alpha channel even when every pixel is opaque.
+    execFileSync('magick', [iosPath, '-alpha', 'off', '-strip', `PNG24:${iosPath}`])
+  }
 }
 
 await browser.close()
@@ -114,6 +136,11 @@ for (const image of contents.images) {
   // Leave the dark and tinted iOS variants empty: those want their own artwork,
   // and pointing them at the light one would claim a design we have not made.
   if (image.appearances) continue
+  if (image.platform === 'ios') {
+    image.filename = IOS_FILE
+    filled++
+    continue
+  }
   const base = Number.parseInt(image.size, 10)
   const scale = Number.parseInt(image.scale ?? '1', 10)
   const px = base * scale
