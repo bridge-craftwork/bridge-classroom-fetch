@@ -4,6 +4,7 @@
 //
 // USAGE
 //   node scripts/upload-browsers.mjs fetch|dd firefox|edge|both [--submit] [--release-notes]
+//   node scripts/upload-browsers.mjs fetch|dd firefox --images
 //
 // Without --submit nothing reaches a reviewer:
 //   firefox  the package goes through AMO's validator, and its result is shown
@@ -15,6 +16,12 @@
 //            certification"): that is Edge's submission for review
 // --release-notes also sends the version's release notes to AMO (Edge's API
 // has no field for them).
+//
+// --images sets the AMO listing's icon and screenshots instead, and nothing
+// else. AMO shows the icon uploaded to the listing, not the manifest's, so a
+// listing without one shows a puzzle piece. Screenshots are added only to a
+// listing that has none, so a rerun cannot duplicate them. Edge's API has no
+// listing fields at all.
 //
 // Run scripts/package-stores.sh (EXT=dd for DD) first; this reads
 // dist/packages/<name>-<version>-{firefox,edge,source}.zip.
@@ -33,7 +40,7 @@
 
 import { execFileSync } from 'node:child_process'
 import { createHmac, randomUUID } from 'node:crypto'
-import { existsSync, openAsBlob, readFileSync } from 'node:fs'
+import { existsSync, openAsBlob, readdirSync, readFileSync } from 'node:fs'
 import { basename, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -45,6 +52,8 @@ const APPS = {
   fetch: {
     name: 'bridge-classroom-fetch',
     manifest: 'manifest.json',
+    icon: 'icons/icon-128.png',
+    screenshots: 'screenshots/listing-1280',
     guid: 'bridge-classroom-fetch@bridge-classroom.org',
     edgeProduct: '82845df7-c00f-4f0e-98a7-b4d974c9c1c7', // store id 0RDCKDRFVZHS
     doc: 'docs/submission-answers.md',
@@ -55,6 +64,8 @@ const APPS = {
   dd: {
     name: 'bridge-craftwork-dd',
     manifest: 'manifest.dd.json',
+    icon: 'icons-dd/icon-128.png',
+    screenshots: 'store/dd/screenshots/listing-1280',
     guid: 'bridge-craftwork-dd@bridge-classroom.org',
     edgeProduct: 'e333c1ec-a2a4-488a-b3df-78d823995dd7', // store id 0RDCKF299KZ1
     doc: 'store/dd/submission.md',
@@ -70,7 +81,12 @@ const app = APPS[appKey]
 const stores = storeArg === 'both' ? ['firefox', 'edge'] : [storeArg]
 const SUBMIT = flags.includes('--submit')
 const RELEASE_NOTES = flags.includes('--release-notes')
-const unknown = flags.filter((f) => !['--submit', '--release-notes'].includes(f))
+const IMAGES = flags.includes('--images')
+const unknown = flags.filter((f) => !['--submit', '--release-notes', '--images'].includes(f))
+if (IMAGES && (storeArg !== 'firefox' || SUBMIT || RELEASE_NOTES)) {
+  console.error('--images is for firefox alone, without --submit or --release-notes')
+  process.exit(2)
+}
 if (!app || !stores.every((s) => s === 'firefox' || s === 'edge') || unknown.length) {
   console.error('usage: node scripts/upload-browsers.mjs fetch|dd firefox|edge|both [--submit] [--release-notes]')
   process.exit(2)
@@ -129,13 +145,21 @@ function amoAuth() {
 }
 
 async function amo(method, path, body) {
-  const headers = amoAuth()
-  if (body && !(body instanceof FormData)) headers['Content-Type'] = 'application/json'
-  const res = await fetch(`${AMO}${path}`, {
-    method,
-    headers,
-    body: body instanceof FormData ? body : body && JSON.stringify(body),
-  })
+  let res
+  for (let attempt = 0; ; attempt++) {
+    const headers = amoAuth()
+    if (body && !(body instanceof FormData)) headers['Content-Type'] = 'application/json'
+    res = await fetch(`${AMO}${path}`, {
+      method,
+      headers,
+      body: body instanceof FormData ? body : body && JSON.stringify(body),
+    })
+    // AMO throttles bursts of writes, and says how long to wait.
+    if (res.status !== 429 || attempt >= 5) break
+    const wait = Number(/available in (\d+) second/.exec(await res.text())?.[1] ?? 60)
+    console.log(`    throttled; waiting ${wait + 2}s`)
+    await sleep((wait + 2) * 1000)
+  }
   const text = await res.text()
   let json
   try {
@@ -258,4 +282,27 @@ async function edge() {
   console.log('    submitted for review')
 }
 
-for (const store of stores) await (store === 'firefox' ? firefox() : edge())
+async function firefoxImages() {
+  const id = encodeURIComponent(app.guid)
+  console.log(`==> Firefox listing images: ${app.guid}`)
+  const icon = new FormData()
+  icon.append('icon', await openAsBlob(join(ROOT, app.icon)), basename(app.icon))
+  const after = await amo('PATCH', `/addons/addon/${id}/`, icon)
+  console.log(`    icon: ${app.icon} → ${after.icon_url}`)
+  // Resumable: a listing with some already gets the rest, in order. One with
+  // as many as there are files is left alone.
+  const shots = readdirSync(join(ROOT, app.screenshots)).filter((f) => f.endsWith('.png')).sort()
+  const have = after.previews?.length ?? 0
+  if (have) console.log(`    screenshots: the listing has ${have} already`)
+  for (const [i, name] of shots.entries()) {
+    if (i < have) continue
+    const form = new FormData()
+    form.append('image', await openAsBlob(join(ROOT, app.screenshots, name)), name)
+    form.append('position', String(i))
+    await amo('POST', `/addons/addon/${id}/previews/`, form)
+    console.log(`    screenshot ${i + 1}: ${name}`)
+  }
+}
+
+if (IMAGES) await firefoxImages()
+else for (const store of stores) await (store === 'firefox' ? firefox() : edge())
