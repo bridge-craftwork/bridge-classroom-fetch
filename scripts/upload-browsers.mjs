@@ -56,7 +56,7 @@ const APPS = {
     name: 'bridge-craftwork-dd',
     manifest: 'manifest.dd.json',
     guid: 'bridge-craftwork-dd@bridge-classroom.org',
-    edgeProduct: null,
+    edgeProduct: 'e333c1ec-a2a4-488a-b3df-78d823995dd7', // store id 0RDCKF299KZ1
     doc: 'store/dd/submission.md',
     // The section's first block is Chrome's 500-character version.
     notes: { heading: '## Notes for reviewers', block: 1 },
