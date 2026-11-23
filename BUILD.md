@@ -121,7 +121,7 @@ browser download is required to build the extension.
 Not required to build, but they run offline and quickly:
 
 ```bash
-npm test          # 693 unit tests
+npm test          # 691 unit tests
 npm run test:e2e  # 5 end-to-end tests; downloads Chromium on first run
 ```
 
