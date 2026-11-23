@@ -93,6 +93,16 @@ if (!Object.hasOwn(PER_BROWSER_OVERRIDES, BROWSER)) {
 
 const manifest = { ...baseManifest, ...PER_BROWSER_OVERRIDES[BROWSER] }
 
+// App Store Connect rejects a Safari extension whose manifest description is
+// over 112 characters (error 90849, only after the upload); Chrome allows 132,
+// and both base manifests use most of that. scripts/package-stores.sh checks.
+const SAFARI_DESCRIPTION = {
+  fetch:
+    'Send bridge results from ACBL Live, ACBL Live for Clubs and Bridge Base Online to Bridge Classroom in one click.',
+  dd: "Double-dummy review in Bridge Base Online's History panel: every card that cost a trick, and the better play.",
+}
+if (BROWSER === 'safari') manifest.description = SAFARI_DESCRIPTION[EXT]
+
 // Firefox identifies an add-on by its gecko id, so DD needs its own.
 if (EXT === 'dd' && manifest.browser_specific_settings) {
   manifest.browser_specific_settings = {

@@ -58,13 +58,16 @@ guard_shot_mode() {
 # Guard: the Chrome Web Store rejects the upload outright if manifest
 # description exceeds 132 characters. It cost a round-trip at 133, and the
 # message only arrives after the file has uploaded — so check before packaging.
+# App Store Connect's limit for Safari is 112 (error 90849), also only after the
+# upload; vite.config.js gives Safari a shorter description.
 guard_description_length() {
-  local manifest="$1"
-  python3 - "$manifest" <<'EOF'
+  local manifest="$1" limit="${2:-132}"
+  python3 - "$manifest" "$limit" <<'EOF'
 import json, sys
 d = json.load(open(sys.argv[1])).get('description', '')
-if len(d) > 132:
-    print(f"REFUSING: manifest description is {len(d)} chars, limit 132", file=sys.stderr)
+limit = int(sys.argv[2])
+if len(d) > limit:
+    print(f"REFUSING: manifest description is {len(d)} chars, limit {limit}", file=sys.stderr)
     print(f"  {d}", file=sys.stderr)
     sys.exit(1)
 EOF
@@ -90,6 +93,7 @@ SAFARI_DIST="dist/${DIST_PREFIX}safari"
 BROWSER=safari npx vite build --outDir "$SAFARI_DIST" >/dev/null
 guard_test_origins "$SAFARI_DIST/manifest.json"
 guard_shot_mode "$SAFARI_DIST"
+guard_description_length "$SAFARI_DIST/manifest.json" 112
 if [ -d "$SAFARI_RES" ]; then
   rm -rf "${SAFARI_RES:?}/"*
   cp -R "$SAFARI_DIST"/* "$SAFARI_RES/"
@@ -107,9 +111,8 @@ Next steps
   Chrome   upload the -chrome.zip at chrome.google.com/webstore/devconsole
   Edge     upload the -edge.zip at partner.microsoft.com/dashboard/microsoftedge
   Firefox  upload the -firefox.zip AND the -source.zip at addons.mozilla.org
-  Safari   open the .xcodeproj under safari/ (Fetch) or safari-dd/ (DD) in Xcode,
-           bump the build number,
-           then Product > Archive > Distribute App
+  Safari   scripts/upload-apple.sh fetch (or dd): archives, signs and uploads
+           to App Store Connect with a fresh build number
 
 See docs/store-review.md for listing copy, permission justifications and the
 per-store data-use declarations.
