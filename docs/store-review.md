@@ -25,17 +25,18 @@ Verified in a clean browser profile, August 2026 — see the summary table in
 |---|---|
 | **BBO hand viewer** (`tools/handviewer.html?lin=…`) | **No** |
 | **BBO tournament summary** (`tview.php`) | **No** |
-| **ACBL club games** (`my.acbl.org`) | **No** — Cloudflare check, then results |
+| ACBL club games (`my.acbl.org`) | ACBL login, since Nov 2026 |
 | BBO hands list / travellers / history | BBO login |
 | ACBL Live tournaments (`live.acbl.org`) | ACBL login (behind Cloudflare) |
 
-The two ACBL properties differ. `live.acbl.org` shows a Cloudflare check and then
-an ACBL sign-in prompt, so it needs credentials. `my.acbl.org` shows the
-Cloudflare check and then the results — club games are public, so a reviewer can
-test that path with no account.
+Both ACBL properties now need a login. `my.acbl.org` club results were public
+until November 2026, and the reviewer notes leaned on that; on 23 Nov 2026 a club
+game's details page redirected to login.acbl.org, in a private window and on
+both simulators. A club's list of games still opens, but its button fetches the
+games' details pages, so the path needs the login all the same.
 
-**Three of the four sources are therefore reviewable without any login**,
-including one real club game with a full field of results.
+**Two of the four sources are reviewable without any login**, both on BBO: the
+hand viewer and the tournament summary.
 
 ---
 
@@ -90,15 +91,8 @@ is the cheapest possible demonstration that the extension does what it claims.
 
 ### Secondary, still no account required
 
-**A real club game with a full field** — the most representative demonstration:
-
-```
-https://my.acbl.org/club-results/details/1455416
-```
-
-A Cloudflare check appears first for a fresh browser profile; it clears by
-itself. The results then display without a login, and the button appears in the
-page navigation. Clicking it extracts every board and section of that game.
+ACBL club games were the secondary test here until they began asking for a
+login in November 2026 (§ above).
 
 **A public BBO tournament summary:**
 

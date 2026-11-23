@@ -44,7 +44,7 @@ BBO takes three:
 | `live.acbl.org` | Tournaments. **One event, one section** — see the allowance below. Needs an ACBL login | In flow, beside the `h1`; a summary page asks which pair |
 | `live.acbl.org/my-results` | The results listing, pre-filtered to you. One event per row, no batch | A link in each row's Links column |
 | `live.acbl.org/events/<sanction>` | Every event in one tournament. Names nobody, so a row asks which pair | A link in each row's Links column |
-| `my.acbl.org` | Club games. Results are public | The navbar (`ul.navbar-nav`) |
+| `my.acbl.org` | Club games. Needs an ACBL login since Nov 2026; public before | The navbar (`ul.navbar-nav`) |
 | BBO lobby (`/v3/*`) | Multi-event batch. Needs a BBO login | Above the history list |
 | BBO hands list (`hands.php?tourney=`) | One session | Merged into the table's header rows |
 | BBO tournament view (`tview.php?t=`) | Whole-event batch | Floating overlay |

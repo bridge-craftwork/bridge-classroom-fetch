@@ -16,7 +16,7 @@ For what the data means once captured, see
 | Source | Host | Auth | Testable logged out? | Mechanism |
 |---|---|---|---|---|
 | ACBL Live tournaments | `live.acbl.org` | ACBL login | **No** — Cloudflare, then a login prompt | **Fetch inside a same-origin tab** |
-| ACBL club games | `my.acbl.org` | **None** — results are public | **Yes**, after a Cloudflare check | **Fetch inside a same-origin tab** |
+| ACBL club games | `my.acbl.org` | ACBL login, since Nov 2026 (public before) | **No** — a game's details page redirects to login.acbl.org | **Fetch inside a same-origin tab** |
 | BBO hands list | `www.bridgebase.com/myhands/` | BBO login | **No** — redirects to `myhands_login.php` | Service-worker fetch, `credentials: 'include'` |
 | BBO traveller | `www.bridgebase.com/myhands/` | BBO login | **No** | Service-worker fetch, `credentials: 'include'` |
 | BBO event listing | `www.bridgebase.com/myhands/` | BBO login | **No** | **Off-screen minimized popup window** |
