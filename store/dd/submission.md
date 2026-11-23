@@ -193,6 +193,15 @@ second site is easy to miss: on a real Mac, 2 Nov 2026, DD Details failed with
 In Safari, after enabling the extension in Settings > Extensions, also allow it on two websites, using the extension's button in the toolbar on each: www.bridgebase.com, where the review is drawn, and bridge-classroom.org, which receives a board when you click DD Details. Safari asks per website. Until it is granted on www.bridgebase.com, nothing appears, with no error. Until it is granted on bridge-classroom.org, DD Details opens a page saying the extension did not respond; allow it there and reload that page, and the board arrives.
 ```
 
+**For addons.mozilla.org, add** — after the full version, in the same field.
+Its source archive is the whole repository, which builds Fetch by default:
+
+```
+Build: ./build.sh dd (runs npm ci, then EXT=dd BROWSER=firefox npx vite build) — output in dist/dd-firefox. We have verified that this reproduces the uploaded package byte for byte from the attached source archive. The archive also builds our other add-on, Bridge Classroom Fetch; the dd argument selects this one.
+
+The WebAssembly double-dummy solver (assets/bridge_solver_wasm_bg-*.wasm) is not compiled by this build. scripts/fetch-solver-wasm.mjs downloads it from release v2.3.0 of our open-source solver, https://github.com/bridge-craftwork/bridge-solver (MIT OR Apache-2.0), and stops unless its SHA-256 matches scripts/solver-wasm.release.json. Its Rust source is that repository's wasm/ at tag v2.3.0, built by the release workflow with wasm-pack build wasm --release --target web. BUILD.md has the details.
+```
+
 ---
 
 ## Release notes — 1.1.0

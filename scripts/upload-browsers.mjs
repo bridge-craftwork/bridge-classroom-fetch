@@ -60,7 +60,7 @@ const APPS = {
     doc: 'store/dd/submission.md',
     // The section's first block is Chrome's 500-character version.
     notes: { heading: '## Notes for reviewers', block: 1 },
-    amoExtra: null,
+    amoExtra: { heading: '**For addons.mozilla.org, add**', block: 0 },
     releaseNotes: { heading: '## Release notes', block: 0 },
   },
 }
