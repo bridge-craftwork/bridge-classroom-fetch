@@ -70,7 +70,8 @@ https://bridge-classroom.org/privacy#extension
 
 ## Release notes — 1.1.0
 
-**Draft, needs Rick's sign-off before it goes in a console.** Edge Partner
+**Signed off by Rick, 23 Nov 2026**, and sent to addons.mozilla.org with
+1.1.0 by `scripts/upload-browsers.mjs --release-notes`. Edge Partner
 Center and addons.mozilla.org both ask for release notes per version. Chrome
 does not ask. Apple's field is *What's New in This Version*, which a **first**
 submission does not use — 1.1.0 is Apple's 1.0, so it gets the description
@@ -262,25 +263,26 @@ dental and network bridges, and already the first word of three other terms.
 
 ## Additional instructions (Chrome) — 500 char limit
 
-497 characters. The hand viewer URL is ~900 on its own, since the deal is
+487 characters. The hand viewer URL is ~900 on its own, since the deal is
 encoded in it, so `demo/deal` is a self-hosted redirect to it — not a
 third-party shortener, which hides its destination and reads badly beside a
 justification that names every host we touch.
 
 ```
-No account needed for most testing:
+No account needed for these tests:
 
 BBO deal: https://bridge-craftwork.github.io/bridge-classroom-fetch/demo/deal
-ACBL club game: https://my.acbl.org/club-results/details/1455416
+BBO tournament: https://webutil.bridgebase.com/v2/tview.php?t=30567-1785967200&u=kemistry
 
-Click our button on each to extract and open the analysis. A Cloudflare check may appear on the ACBL link and clears itself.
+Click our button on each to extract and open the analysis.
 
-BBO history and ACBL Live need logins we cannot share (BBO allows one session per account). Recordings, and a third test link: https://bridge-craftwork.github.io/bridge-classroom-fetch/demo/
+BBO history, ACBL Live and ACBL club results need logins we cannot share (BBO allows one session per account; an ACBL login is a personal record). Recordings: https://bridge-craftwork.github.io/bridge-classroom-fetch/demo/
 ```
 
-The third test link is the BBO tournament summary, on the demo page. It is left
-out of the box deliberately: it is the weakest of the three tests, and the one
-page showing unblurred real names.
+The BBO tournament summary went into the box on 23 Nov 2026, when ACBL club
+results started asking for a login and the club game stopped being a test a
+reviewer could run. It was left out before as the weakest test and the one page
+showing unblurred real names; it is now the only public test besides the deal.
 
 BBO can mint its own `tinyurl.bridgebase.com` links from the v3 lobby's
 Export ▸ Handviewer menu — that is the mechanism the extension resolves — but
@@ -294,8 +296,14 @@ handles. The test deal uses seat names on purpose.
 Chrome's console has no general reviewer-notes field — its justifications are
 per-permission, above. Firefox and Apple do; paste this there.
 
+`scripts/upload-browsers.mjs` sends this block, and for Firefox the
+addons.mozilla.org block below it, straight from this file. AMO takes **3,000
+characters** of reviewer notes, and this with its block came to 3,420 — the hand
+viewer URL is ~900 on its own — so for AMO the script swaps the URL for
+`demo/deal`, the same redirect Chrome's box uses (2,727 for 1.1.0).
+
 ```
-No account is needed to test this extension end to end. Three of the four supported sources are fully public, including a real club game with a complete field of results. The procedure below takes about a minute and exercises the whole pipeline: injection, extraction, and hand-off.
+No account is needed to test this extension end to end. The procedure below takes about a minute and exercises the whole pipeline: injection, extraction, and hand-off.
 
 1. Open this URL — a complete bridge deal encoded in the URL itself, requiring no network request and no login:
 
@@ -304,13 +312,9 @@ https://www.bridgebase.com/tools/handviewer.html?bbo=y&lin=pn%7CSouth%2CWest%2CN
 2. A "Bridge Classroom" button appears in BBO's row of controls at the bottom of the page, beside Rewind / Previous / Next / Options / DD / Play, which are BBO's own.
 3. Click it. A new tab opens at bridge-classroom.org showing the deal's analysis. No login is requested at any point.
 
-Also public, needing no account:
-• A real club game with a full field: https://my.acbl.org/club-results/details/1455416
-• A BBO tournament summary: https://webutil.bridgebase.com/v2/tview.php?t=30567-1785967200&u=kemistry
+Also public, needing no account, a BBO tournament summary: https://webutil.bridgebase.com/v2/tview.php?t=30567-1785967200&u=kemistry
 
-A Cloudflare check may appear on the ACBL links. It clears by itself and is not part of the extension; if a fetch is refused the extension says so and asks you to reload.
-
-Two further sources need a third-party login (Bridge Base Online, ACBL Live) and we cannot supply credentials. BBO permits only one active session per account, so a shared login would sign reviewers out of one another; and a newly created account has no played history for those features to read. The ACBL login is a personal membership record.
+The other sources need a third-party login (Bridge Base Online, ACBL Live tournaments, ACBL club results) and we cannot supply credentials. BBO permits only one active session per account, so a shared login would sign reviewers out of one another; and a newly created account has no played history for those features to read. The ACBL login is a personal membership record.
 
 Short recordings of both authenticated paths are here:
 https://bridge-craftwork.github.io/bridge-classroom-fetch/demo/
@@ -335,12 +339,11 @@ To grant it:
 3. In that menu, "Bridge Classroom Fetch" appears with a warning indicator beside it. Tap it and choose to allow it on every page.
 4. Reload the page.
 
-The "Analyze in Bridge Classroom" button then appears in the page's own navigation bar. Safari only injects content scripts into pages loaded after permission is granted, so the page open at step 3 needs the reload at step 4.
+A "Bridge Classroom" button then appears in BBO's row of controls at the bottom of the deal. Safari only injects content scripts into pages loaded after permission is granted, so the page open at step 3 needs the reload at step 4.
 
 Note that iPad and iPhone differ here. On iPad, Safari shows a puzzle-piece extensions button directly in the toolbar. On iPhone there is no room for one, and the same controls live inside the page menu described above.
 
-The best test needs no account:
-https://my.acbl.org/club-results/details/1455416
+The best test needs no account: the BBO hand viewer URL above.
 ```
 
 **Why this is worth the space.** The failure is silent and total, and it looks

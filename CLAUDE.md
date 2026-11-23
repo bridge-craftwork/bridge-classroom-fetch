@@ -44,7 +44,7 @@ BBO takes three:
 | `live.acbl.org` | Tournaments. **One event, one section** — see the allowance below. Needs an ACBL login | In flow, beside the `h1`; a summary page asks which pair |
 | `live.acbl.org/my-results` | The results listing, pre-filtered to you. One event per row, no batch | A link in each row's Links column |
 | `live.acbl.org/events/<sanction>` | Every event in one tournament. Names nobody, so a row asks which pair | A link in each row's Links column |
-| `my.acbl.org` | Club games. Results are public | The navbar (`ul.navbar-nav`) |
+| `my.acbl.org` | Club games. Needs an ACBL login since Nov 2026; public before | The navbar (`ul.navbar-nav`) |
 | BBO lobby (`/v3/*`) | Multi-event batch. Needs a BBO login | Above the history list |
 | BBO hands list (`hands.php?tourney=`) | One session | Merged into the table's header rows |
 | BBO tournament view (`tview.php?t=`) | Whole-event batch | Floating overlay |
@@ -101,7 +101,11 @@ Four places carry the version; `docs/store-review.md` § 6a has the table.
 **Xcode's `MARKETING_VERSION` is edited in `project.pbxproj` directly** —
 `agvtool new-marketing-version` substitutes a key the Info.plists do not
 contain, leaves `MARKETING_VERSION` alone, and reports success anyway.
-`CURRENT_PROJECT_VERSION` stays at 1: nothing has ever reached App Store Connect.
+`CURRENT_PROJECT_VERSION` stays at 1 in the project: `scripts/upload-apple.sh`
+stamps each archive with a fresh `yyyymmddHHMM`, since App Store Connect
+rejects a build number it has seen, even from a failed upload. That script
+archives, exports and uploads with the App Store Connect API key from the
+Keychain (`env/personal/ASC_*`, synced from 1Password).
 
 Verified for this release rather than assumed:
 
@@ -144,10 +148,15 @@ session as the shots.
 
 | Store | Submitted | Status |
 |---|---|---|
-| Chrome Web Store | 11 Aug 2026 | **published** — 1.0.1, ~14 Aug. No approval email arrived; the dashboard said so first |
-| Edge Add-ons | 11 Aug 2026 | **published** — 1.0.1 |
-| addons.mozilla.org | 11 Aug 2026 | **published** — 1.0.1, approved 14 Aug |
-| Mac App Store | — | 1.1.0 build 1 ready; never submitted |
+| Chrome Web Store | 11 Aug 2026 | **published** — **1.0.0** per the dashboard on 22 Nov, not 1.0.1 as this table said; ~14 Aug. No approval email arrived; the dashboard said so first. **1.1.0 published 23 Nov**, per the dashboard |
+| Edge Add-ons | 11 Aug 2026 | **published** — **1.0.0**, not 1.0.1 as this table said ([listing](https://microsoftedge.microsoft.com/addons/detail/pjomfmbcmaiikkfcnnpnlblmpokbcdei)); Edge's public API, 22 Nov: version 1.0.0, last updated 11 Aug, 1 active install. **1.1.0 submitted 23 Nov** through the API (`scripts/upload-browsers.mjs`), with notes for certification, and **published the same day** (Edge's public API: 1.1.0); product id 82845df7-c00f-4f0e-98a7-b4d974c9c1c7 |
+| addons.mozilla.org | 11 Aug 2026 | **published** — 1.0.1, approved 14 Aug ([listing](https://addons.mozilla.org/en-US/firefox/addon/bridge-classroom-fetch/)); still 1.0.1 on 22 Nov. **1.1.0 submitted 23 Nov** through the API (`scripts/upload-browsers.mjs`), with source, reviewer notes and release notes; version id 6751818. **Approved and public 23 Nov**; listing icon and five screenshots uploaded through the API (`--images`) |
+| Mac App Store | 23 Nov 2026 | 1.1.0, macOS and iOS, **waiting for review**; a first listing |
+
+**Corrected 22 Nov 2026:** the stores actually serve **1.0.0 on Chrome and Edge,
+1.0.1 on AMO**, read from the dashboards and Edge's and AMO's public APIs. No store
+has 1.1.0. Both 1.0.x versions carry the ACBL Live date-range batch, so the point
+below stands; only the version numbers in it were wrong.
 
 **All three browser stores now ship 1.0.1, and that changes the order.** As of
 18 August, Chrome and AMO have both published — so every Chrome, Edge and

@@ -4,10 +4,19 @@
 # One command, as addons.mozilla.org's source-review checklist asks for. See
 # BUILD.md for requirements and for what each step does.
 #
-#   ./build.sh        →  dist/firefox/
+#   ./build.sh        →  dist/firefox/      Bridge Classroom Fetch
+#   ./build.sh dd     →  dist/dd-firefox/   Bridge Craftwork DD
+#
+# One source tree builds both add-ons; the argument picks which.
 #
 # Requires Node.js 20+ and npm 10+; nothing else, and nothing global.
 set -euo pipefail
+
+case "${1:-fetch}" in
+  fetch) EXT=fetch OUT=dist/firefox ;;
+  dd) EXT=dd OUT=dist/dd-firefox ;;
+  *) echo "usage: ./build.sh [fetch|dd]" >&2; exit 2 ;;
+esac
 
 node --version >/dev/null 2>&1 || { echo "Node.js is required — see BUILD.md" >&2; exit 1; }
 
@@ -18,9 +27,9 @@ echo "==> node $(node --version), npm $(npm --version)"
 echo "==> installing dependencies from package-lock.json"
 npm ci
 
-echo "==> building"
-BROWSER=firefox npx vite build --outDir dist/firefox
+echo "==> building $EXT"
+EXT=$EXT BROWSER=firefox npx vite build --outDir "$OUT"
 
 echo
-echo "Done. The extension is dist/firefox/ — zip its contents to get the"
+echo "Done. The extension is $OUT/ — zip its contents to get the"
 echo "uploaded package."

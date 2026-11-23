@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Bridge Craftwork DD",
   "version": "1.1.0",
-  "description": "Double-dummy review in Bridge Base Online's History panel: every card that cost a trick, and what should have been played instead.",
+  "description": "Double-dummy review in Bridge Base Online's History panel: every card that cost a trick, and the better play.",
   "icons": {
     "16": "icons-dd/icon-16.png",
     "32": "icons-dd/icon-32.png",
@@ -24,7 +24,7 @@
   "content_scripts": [
     {
       "js": [
-        "assets/ddContent.js-loader-DFf7ODus.js"
+        "assets/ddContent.js-loader-Dh14Ziin.js"
       ],
       "matches": [
         "https://www.bridgebase.com/v3/*"
@@ -59,9 +59,9 @@
       ],
       "resources": [
         "assets/preload-helper-ckwbz45p.js",
-        "assets/ddPlay-ChY8iH6g.js",
+        "assets/ddPlay-BxNVjhMX.js",
         "assets/browser-polyfill-CDc_Ui7X.js",
-        "assets/ddContent.js-CYuMZRz2.js"
+        "assets/ddContent.js-Dx9HWtOQ.js"
       ],
       "use_dynamic_url": false
     },

@@ -206,6 +206,25 @@ export function boardOnScreen(doc, tried, isVisible = defaultVisible) {
   return null
 }
 
+/** The order to try known boards against the viewer: the board shown last,
+ *  then the last loaded, then the rest.
+ *
+ *  The board shown last comes first because near the end of the play the hands
+ *  stop telling boards apart. At trick 12 each hand holds one card, and in an
+ *  event of a few dozen boards another deal with those four cards in those four
+ *  seats is likely: one took over the viewer, its result and its table drawn
+ *  and none of this board's marks (seen in Firefox, 23 Nov 2026). Previous trick
+ *  brought eight cards back and the right board with them. Stepping through the
+ *  play never changes the board, and a newly opened board shows its whole deal,
+ *  which no other fits, so the board already showing is the one to keep. */
+export function boardsToTry(lastShown, current, hands) {
+  const order = []
+  for (const hand of [lastShown, current, ...hands]) {
+    if (hand && !order.includes(hand)) order.push(hand)
+  }
+  return order
+}
+
 function viewerHands(viewer, seatOfCard, isVisible) {
   const out = []
   for (const panel of viewer.querySelectorAll('hand-diagram-panel')) {
@@ -939,11 +958,11 @@ export function startDdOverlay({
   // has shown before loads nothing, so "the last board loaded" is not always the
   // board on screen. The one on screen is whichever known deal its panels match,
   // the last loaded tried first.
+  let lastShown = null
   function onScreen() {
-    const tried = state.current
-      ? [state.current, ...state.hands.values()]
-      : [...state.hands.values()]
-    return boardOnScreen(doc, tried)
+    const shown = boardOnScreen(doc, boardsToTry(lastShown, state.current, state.hands.values()))
+    if (shown) lastShown = shown.hand
+    return shown
   }
 
   let queued = false

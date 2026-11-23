@@ -25,17 +25,18 @@ Verified in a clean browser profile, August 2026 — see the summary table in
 |---|---|
 | **BBO hand viewer** (`tools/handviewer.html?lin=…`) | **No** |
 | **BBO tournament summary** (`tview.php`) | **No** |
-| **ACBL club games** (`my.acbl.org`) | **No** — Cloudflare check, then results |
+| ACBL club games (`my.acbl.org`) | ACBL login, since Nov 2026 |
 | BBO hands list / travellers / history | BBO login |
 | ACBL Live tournaments (`live.acbl.org`) | ACBL login (behind Cloudflare) |
 
-The two ACBL properties differ. `live.acbl.org` shows a Cloudflare check and then
-an ACBL sign-in prompt, so it needs credentials. `my.acbl.org` shows the
-Cloudflare check and then the results — club games are public, so a reviewer can
-test that path with no account.
+Both ACBL properties now need a login. `my.acbl.org` club results were public
+until November 2026, and the reviewer notes leaned on that; on 23 Nov 2026 a club
+game's details page redirected to login.acbl.org, in a private window and on
+both simulators. A club's list of games still opens, but its button fetches the
+games' details pages, so the path needs the login all the same.
 
-**Three of the four sources are therefore reviewable without any login**,
-including one real club game with a full field of results.
+**Two of the four sources are reviewable without any login**, both on BBO: the
+hand viewer and the tournament summary.
 
 ---
 
@@ -90,15 +91,8 @@ is the cheapest possible demonstration that the extension does what it claims.
 
 ### Secondary, still no account required
 
-**A real club game with a full field** — the most representative demonstration:
-
-```
-https://my.acbl.org/club-results/details/1455416
-```
-
-A Cloudflare check appears first for a fresh browser profile; it clears by
-itself. The results then display without a login, and the button appears in the
-page navigation. Clicking it extracts every board and section of that game.
+ACBL club games were the secondary test here until they began asking for a
+login in November 2026 (§ above).
 
 **A public BBO tournament summary:**
 
@@ -420,6 +414,11 @@ to this extension, so it is worth keeping:
   and iOS 16.4 is exactly where the fix landed. Xcode independently recommends
   11.0 for macOS.
 
+**Raised again to macOS 12.0, 22 Nov 2026,** because Xcode 27 refuses anything
+lower ("the range of supported deployment target versions is 12.0 to 27.2"),
+so the macOS target would not build at all. DD was already at 12.0. Big Sur
+users lose the extension; nothing else changes.
+
 A deployment target cannot enforce a Safari version, so a Big Sur user who has
 never updated Safari can still install and find it broken. The floor removes the
 systems that *cannot* work; it cannot remove the ones that merely have not
@@ -602,8 +601,13 @@ Chrome requires a written justification per permission. Current manifest:
 ### Bridge Craftwork DD — the second extension
 
 Built from this repo with `EXT=dd` (`manifest.dd.json`, output `dist/dd-<browser>`).
-Not yet listed anywhere. What its review will look at, none of which Fetch now
-carries:
+**1.0.0 is published on the Chrome Web Store** (installs from 3 Nov 2026), at
+<https://chromewebstore.google.com/detail/bridge-craftwork-dd/afaopnjobibdnpfaplcfemliaoejpjgl>
+(id `afaopnjobibdnpfaplcfemliaoejpjgl`). Not on Edge, Firefox or the Mac App
+Store: 1.1.0 is an update on Chrome and a first listing everywhere else. Its dashboard shows a steady ~25 installs a day, 92%
+from Romania, against 2–3 weekly users: automated installs that never run, so
+read the weekly-users figure, not installs. What its review looks at, none of
+which Fetch carries:
 
 - **`content_security_policy.extension_pages` with `'wasm-unsafe-eval'`**, so the
   background can compile bridge-solver's WASM and solve on the user's device.
@@ -812,7 +816,7 @@ same string by default:
 | `manifest.json` | canonical; `PROVIDER.version` reads it, so the payload follows |
 | `package.json` + lock | `npm version 1.1.0 --no-git-tag-version` |
 | Xcode `MARKETING_VERSION` | eight occurrences in `project.pbxproj` — four targets × two configurations |
-| Xcode `CURRENT_PROJECT_VERSION` | build number, at 1; bump per Safari **upload**, not per release |
+| Xcode `CURRENT_PROJECT_VERSION` | build number, at 1 in the project; `scripts/upload-apple.sh` stamps each upload with `yyyymmddHHMM` |
 
 **A minor, not a patch, and the number had to move.** 1.0.0 was the first public
 release; 1.0.1 corrected the Firefox data declaration and went to AMO on 11

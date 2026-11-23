@@ -10,6 +10,13 @@ which has been through review once; where this differs, it says why.
 
 **Before submitting, see [Blockers](#blockers) at the end.**
 
+| Store | Status |
+|---|---|
+| Chrome Web Store | **1.0.0 published**, [listing](https://chromewebstore.google.com/detail/bridge-craftwork-dd/afaopnjobibdnpfaplcfemliaoejpjgl); **1.1.0 submitted 23 Nov**, pending review |
+| Edge | **1.1.0 submitted 23 Nov**, a first listing, published from Partner Center (the API refuses a first submission); product id e333c1ec-a2a4-488a-b3df-78d823995dd7 |
+| Firefox | **1.1.0 submitted 23 Nov**, a first listing, created in the Developer Hub; awaiting review. Listing icon and four screenshots uploaded through the API (`scripts/upload-browsers.mjs dd firefox --images`) |
+| Mac App Store | **1.1.0 build 202611230714 submitted 23 Nov**, in review; a first listing |
+
 ---
 
 ## Store listing
@@ -32,16 +39,19 @@ Double-dummy review in Bridge Base Online's History panel: every card that cost 
 ```
 See where the tricks went. Bridge Craftwork DD adds double-dummy review to the History panel of Bridge Base Online's web client, right where you already look back over your boards.
 
+While you play, each board is analysed as it ends: open My Table in BBO's History and your boards are already tagged. That works for pairs and teams events, instant tournaments and robot daylongs.
+
 Open an event in BBO's History and, for every board you open:
 • The cards that cost a trick are marked in the hands, with the trick they were played to.
 • Click one and the viewer steps to that trick. The hand that erred shows what it should have played: the double-dummy best cards in green, the rest in red.
 • On the table, the card that led and the card that won each trick are marked, since the hands no longer say who won the trick before.
+• A double-dummy table shows what every seat can make in every strain, with the contract played in green and the par contracts in bold. The result at the table sits beside the deal.
 • Each board in the list is tagged with the errors by you, your partner and the opponents, or "clean". The event's totals sit beside BBO's own score.
 • A DD Details button opens the board in the detailed double-dummy viewer, by way of Bridge Classroom.
 
-On the list of Recent tournaments, each event you have analysed shows its tally as me-partner-opponents, so you can see how your results line up with the errors on each side. A * means some of its boards are still to do. DD all fills in a whole event, and the DD menu fills in today, the last 7 or 30 days, or everything listed.
+On the list of Recent tournaments, each event you have analysed shows its tally as me-partner-opponents, so you can see how your results line up with the errors on each side, including the event you have just played. A * means some of its boards are still to do. DD all fills in a whole event, and the DD menu fills in today, the last 7 or 30 days, or everything listed.
 
-The double-dummy solver runs inside the extension, on your device. Nothing is sent to a server for analysis. Boards you open are read from what BBO's own History panel has already loaded. Only DD all asks BBO for anything: it requests the boards from BBO's public History pages, one a second, without your login. Analyses stay on your device, so going back to an event is instant.
+The double-dummy solver runs inside the extension, on your device. Nothing is sent to a server for analysis. Boards are read from what BBO's own page has already received, in History or at the table. Only DD all asks BBO for anything: it requests the boards from BBO's public History pages, one a second, without your login. Analyses stay on your device, so going back to an event is instant.
 
 Hide or show it any time from the menu on BBO's deal view.
 
@@ -87,7 +97,7 @@ Show a double-dummy review of the boards the user opens in Bridge Base Online's 
 **storage**
 
 ```
-Keeps the double-dummy analysis of each board and a small per-event error tally on the user's device, so returning to an event does not repeat the work and the list of tournaments keeps its numbers. While the user plays a pairs or teams event, it also keeps a short note of that event's boards (number, key, result, the user's seat), discarded after twelve hours, so the tags survive a reload. It remembers whether the user has hidden the display and whether the list shows dates. The oldest analyses are deleted when space runs short. Nothing stored names a player, and nothing stored is transmitted anywhere.
+Keeps the double-dummy analysis of each board and a small per-event error tally on the user's device, so returning to an event does not repeat the work and the list of tournaments keeps its numbers. While the user plays, it also keeps a short note of the event being played (each board's number, key and result, and the user's seat), replaced when the next event starts, so the tags survive a reload and the event can be matched to its row in the list of tournaments. It remembers whether the user has hidden the display and whether the list shows dates. The oldest analyses are deleted when space runs short. Nothing stored names a player, and nothing stored is transmitted anywhere.
 ```
 
 **scripting**
@@ -183,12 +193,23 @@ second site is easy to miss: on a real Mac, 2 Nov 2026, DD Details failed with
 In Safari, after enabling the extension in Settings > Extensions, also allow it on two websites, using the extension's button in the toolbar on each: www.bridgebase.com, where the review is drawn, and bridge-classroom.org, which receives a board when you click DD Details. Safari asks per website. Until it is granted on www.bridgebase.com, nothing appears, with no error. Until it is granted on bridge-classroom.org, DD Details opens a page saying the extension did not respond; allow it there and reload that page, and the board arrives.
 ```
 
+**For addons.mozilla.org, add** — after the full version, in the same field.
+Its source archive is the whole repository, which builds Fetch by default:
+
+```
+Build: ./build.sh dd (runs npm ci, then EXT=dd BROWSER=firefox npx vite build) — output in dist/dd-firefox. We have verified that this reproduces the uploaded package byte for byte from the attached source archive. The archive also builds our other add-on, Bridge Classroom Fetch; the dd argument selects this one.
+
+The WebAssembly double-dummy solver (assets/bridge_solver_wasm_bg-*.wasm) is not compiled by this build. scripts/fetch-solver-wasm.mjs downloads it from release v2.3.0 of our open-source solver, https://github.com/bridge-craftwork/bridge-solver (MIT OR Apache-2.0), and stops unless its SHA-256 matches scripts/solver-wasm.release.json. Its Rust source is that repository's wasm/ at tag v2.3.0, built by the release workflow with wasm-pack build wasm --release --target web. BUILD.md has the details.
+```
+
 ---
 
 ## Release notes — 1.1.0
 
+The update from 1.0.0, which Chrome published early in November 2026.
+
 ```
-Tallies on your Recent tournaments list: errors by you, your partner and the opponents for each event, with * where boards are still to do. DD all analyses a whole event, and the DD menu runs today, the last 7 or 30 days, or everything listed. Analyses now stay on your device with no time limit, and no longer store player names.
+Boards are now analysed while you play: My Table is tagged as each board ends, in pairs and teams events, instant tournaments and robot daylongs. A double-dummy table on each board shows the contract played in green and par in bold, with the result beside the deal. Your Recent tournaments list shows errors by you, your partner and the opponents for each event, the one just played included; DD all analyses a whole event, and the DD menu runs a date range. Analyses stay on your device with no time limit and store no player names.
 ```
 
 ---
@@ -223,6 +244,25 @@ Things only Rick can do, in the order they block:
    `tools/record-dd-demo.mjs` after visible changes.
 6. ~~Republish the privacy page~~ — **done**, now names bridge-craftwork.com too
    (bridge-craftwork-site#13, 2 Nov 2026).
-7. **Mac App Store**: create the app record for bundle id
-   `org.bridge-classroom.bridge-craftwork-dd` (team 8H3FX5B8KD). The bundle id
-   is permanent once created; change it in `project.pbxproj` first if needed.
+7. ~~Mac App Store record~~ — **created**, 22 Nov 2026 (app id 6838192935),
+   for `org.bridge-classroom.bridge-craftwork-dd`. Deleting a record takes its
+   bundle id with it; the record can be restored from Apps ▸ ⋯ ▸ Removed Apps,
+   which is how this one came back. Build 202611222231 uploaded by
+   `scripts/upload-apple.sh dd`; the listing filled in by
+   `scripts/app-store-listing.mjs dd` from `store/apple/dd.md`.
+
+### Before submitting 1.1.0
+
+8. ~~Screenshots~~ — **retaken**, 22 Nov 2026, from event #9428: the double-dummy
+   table and the result are in `dd-1-event.png`. Upload the new set to each
+   store's listing with the package. **Demo** — **re-recorded**, 22 Nov 2026, with a
+   caption for the double-dummy table; live once this reaches `main` (GitHub
+   Pages serves it).
+9. **Safari** — **passed**, 22 Nov 2026 (Rick, on a Mac): the double-dummy
+   table, the result, DD all, the DD column and My Table. The first try ran a
+   1 Nov debug build that Safari still had registered and showed none of
+   them; rebuild before testing. **Firefox**: still a quick look to do.
+10. **Republish the privacy page** on bridge-craftwork-site from
+    `store/dd/privacy-page.html`: the note about the event being played no
+    longer says twelve hours, which it never did in practice. The note is
+    replaced by the next event, so it can still match its row later.

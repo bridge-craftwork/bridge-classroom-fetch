@@ -44,8 +44,12 @@ comparisons and opens Bridge Classroom with them.
 
 ## Installation
 
-Published on the **Chrome Web Store**, **Microsoft Edge Add-ons** and
-**addons.mozilla.org**.
+Published on the **Chrome Web Store**, **[Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/pjomfmbcmaiikkfcnnpnlblmpokbcdei)** and
+**[addons.mozilla.org](https://addons.mozilla.org/en-US/firefox/addon/bridge-classroom-fetch/)**.
+
+Its sibling, **Bridge Craftwork DD** (double-dummy review in BBO's History
+panel, built from this repo with `EXT=dd`), is on the
+**[Chrome Web Store](https://chromewebstore.google.com/detail/bridge-craftwork-dd/afaopnjobibdnpfaplcfemliaoejpjgl)**.
 
 The Safari version is built and not submitted yet. It covers **macOS, iPad and
 iPhone** — and Safari is the only browser engine on iPad and iPhone, so it is
