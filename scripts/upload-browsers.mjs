@@ -46,7 +46,7 @@ const APPS = {
     name: 'bridge-classroom-fetch',
     manifest: 'manifest.json',
     guid: 'bridge-classroom-fetch@bridge-classroom.org',
-    edgeProduct: null,
+    edgeProduct: '82845df7-c00f-4f0e-98a7-b4d974c9c1c7', // store id 0RDCKDRFVZHS
     doc: 'docs/submission-answers.md',
     notes: { heading: '## Notes for reviewers', block: 0 },
     amoExtra: { heading: '**For addons.mozilla.org, add**', block: 0 },

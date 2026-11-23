@@ -149,7 +149,7 @@ session as the shots.
 | Store | Submitted | Status |
 |---|---|---|
 | Chrome Web Store | 11 Aug 2026 | **published** — **1.0.0** per the dashboard on 22 Nov, not 1.0.1 as this table said; ~14 Aug. No approval email arrived; the dashboard said so first |
-| Edge Add-ons | 11 Aug 2026 | **published** — **1.0.0**, not 1.0.1 as this table said ([listing](https://microsoftedge.microsoft.com/addons/detail/pjomfmbcmaiikkfcnnpnlblmpokbcdei)); Edge's public API, 22 Nov: version 1.0.0, last updated 11 Aug, 1 active install |
+| Edge Add-ons | 11 Aug 2026 | **published** — **1.0.0**, not 1.0.1 as this table said ([listing](https://microsoftedge.microsoft.com/addons/detail/pjomfmbcmaiikkfcnnpnlblmpokbcdei)); Edge's public API, 22 Nov: version 1.0.0, last updated 11 Aug, 1 active install. **1.1.0 submitted 23 Nov** through the API (`scripts/upload-browsers.mjs`), with notes for certification; product id 82845df7-c00f-4f0e-98a7-b4d974c9c1c7 |
 | addons.mozilla.org | 11 Aug 2026 | **published** — 1.0.1, approved 14 Aug ([listing](https://addons.mozilla.org/en-US/firefox/addon/bridge-classroom-fetch/)); still 1.0.1 on 22 Nov. **1.1.0 submitted 23 Nov** through the API (`scripts/upload-browsers.mjs`), with source, reviewer notes and release notes; version id 6751818 |
 | Mac App Store | — | 1.1.0 build 1 ready; never submitted |
 
