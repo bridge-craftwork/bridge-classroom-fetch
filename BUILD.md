@@ -42,6 +42,15 @@ BROWSER=firefox npx vite build --outDir dist/firefox
 The output is **`dist/firefox/`**, which is the contents of the uploaded
 package — zip that directory and you have the submitted file.
 
+**Bridge Craftwork DD** is built from the same archive with one argument:
+
+```bash
+./build.sh dd     # EXT=dd BROWSER=firefox npx vite build --outDir dist/dd-firefox
+```
+
+Its output is **`dist/dd-firefox/`**. See *Bridge Craftwork DD* below for the
+one thing its build fetches.
+
 `npm ci` rather than `npm install`: it installs precisely what
 `package-lock.json` pins, which is what makes the result reproducible.
 
@@ -54,8 +63,36 @@ package — zip that directory and you have the submitted file.
   form in place of `background.service_worker`. The whole per-browser
   difference is one small literal object in that file.
 
-Nothing is fetched at build time beyond the npm dependencies, and nothing is
-fetched at run time: no remote code, no `eval`, no externally hosted scripts.
+For Bridge Classroom Fetch, nothing is fetched at build time beyond the npm
+dependencies. Neither add-on fetches code at run time: no remote code, no
+`eval`, no externally hosted scripts.
+
+## Bridge Craftwork DD
+
+`EXT=dd` selects `manifest.dd.json`, DD's entry points (`src/ddBackground.js`,
+`src/ui/ddContent.js`) and `public-dd/`, whose `bbo-page-hook.js` is copied
+unbundled. The two add-ons share the parsers in `src/adapters/bbo/parsers/` and
+`src/lib/`.
+
+DD bundles a **double-dummy solver compiled to WebAssembly**
+(`assets/bridge_solver_wasm_bg-*.wasm`, with its wasm-bindgen glue). It is not
+built here. Before bundling, `scripts/fetch-solver-wasm.mjs` downloads
+`bridge-solver-wasm.tar.gz` from a pinned release of the open-source solver and
+refuses it unless its SHA-256 matches the one committed in
+`scripts/solver-wasm.release.json`:
+
+| | |
+|---|---|
+| Project | <https://github.com/bridge-craftwork/bridge-solver> (MIT OR Apache-2.0) |
+| Release | `v2.3.0`, asset `bridge-solver-wasm.tar.gz` |
+| SHA-256 | `afca2f039428b145a98ba2438ee2971c5cf2c7ae838efbc718630ecb4e82840f` |
+| Source | that repository at tag `v2.3.0`; the Rust crate is in `wasm/` |
+| How it is built | by the release workflow, `.github/workflows/release.yml`, job `build-wasm`: `wasm-pack build wasm --release --target web --out-dir pkg` |
+
+So the one network access beyond npm is that download, and the build stops if
+the file differs by a byte. The WebAssembly is compiled at run time under the
+manifest's `'wasm-unsafe-eval'`, which permits WebAssembly compilation only, of
+files inside the package.
 
 ## Source layout
 
@@ -84,7 +121,7 @@ browser download is required to build the extension.
 Not required to build, but they run offline and quickly:
 
 ```bash
-npm test          # 374 unit tests
+npm test          # 693 unit tests
 npm run test:e2e  # 5 end-to-end tests; downloads Chromium on first run
 ```
 
