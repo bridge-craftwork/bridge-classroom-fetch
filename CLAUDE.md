@@ -101,7 +101,11 @@ Four places carry the version; `docs/store-review.md` § 6a has the table.
 **Xcode's `MARKETING_VERSION` is edited in `project.pbxproj` directly** —
 `agvtool new-marketing-version` substitutes a key the Info.plists do not
 contain, leaves `MARKETING_VERSION` alone, and reports success anyway.
-`CURRENT_PROJECT_VERSION` stays at 1: nothing has ever reached App Store Connect.
+`CURRENT_PROJECT_VERSION` stays at 1 in the project: `scripts/upload-apple.sh`
+stamps each archive with a fresh `yyyymmddHHMM`, since App Store Connect
+rejects a build number it has seen, even from a failed upload. That script
+archives, exports and uploads with the App Store Connect API key from the
+Keychain (`env/personal/ASC_*`, synced from 1Password).
 
 Verified for this release rather than assumed:
 

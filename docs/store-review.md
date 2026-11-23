@@ -822,7 +822,7 @@ same string by default:
 | `manifest.json` | canonical; `PROVIDER.version` reads it, so the payload follows |
 | `package.json` + lock | `npm version 1.1.0 --no-git-tag-version` |
 | Xcode `MARKETING_VERSION` | eight occurrences in `project.pbxproj` — four targets × two configurations |
-| Xcode `CURRENT_PROJECT_VERSION` | build number, at 1; bump per Safari **upload**, not per release |
+| Xcode `CURRENT_PROJECT_VERSION` | build number, at 1 in the project; `scripts/upload-apple.sh` stamps each upload with `yyyymmddHHMM` |
 
 **A minor, not a patch, and the number had to move.** 1.0.0 was the first public
 release; 1.0.1 corrected the Firefox data declaration and went to AMO on 11
