@@ -4,8 +4,8 @@
 # One command, as addons.mozilla.org's source-review checklist asks for. See
 # BUILD.md for requirements and for what each step does.
 #
-#   ./build.sh        →  dist/firefox/      Bridge Classroom Fetch
-#   ./build.sh dd     →  dist/dd-firefox/   Bridge Craftwork DD
+#   ./build.sh        →  dist/fetch-firefox/      Bridge Classroom Fetch
+#   ./build.sh dd     →  dist/dd-firefox/         Bridge Craftwork DD
 #
 # One source tree builds both add-ons; the argument picks which.
 #
@@ -13,7 +13,7 @@
 set -euo pipefail
 
 case "${1:-fetch}" in
-  fetch) EXT=fetch OUT=dist/firefox ;;
+  fetch) EXT=fetch OUT=dist/fetch-firefox ;;
   dd) EXT=dd OUT=dist/dd-firefox ;;
   *) echo "usage: ./build.sh [fetch|dd]" >&2; exit 2 ;;
 esac

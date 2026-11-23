@@ -9,9 +9,9 @@ ingester owes older envelopes, see
 
 Three pieces of code:
 
-- **Service worker** (`src/background.js`) — runs the adapter, holds the payload
+- **Service worker** (`src/fetch/background.js`) — runs the adapter, holds the payload
   in `chrome.storage.local` under a UUID for `PENDING_TTL_MS` (1 hour).
-- **Ingest content script** (`src/ui/ingestContent.js`) — matched on the whole
+- **Ingest content script** (`src/shared/ui/ingestContent.js`) — matched on the whole
   origin, bridges the service worker to the page.
 - **Ingest page** (`bridge-classroom.{org,com}/ingest`) — everything after the
   handshake: decode, summarize, persist, sync.
@@ -109,7 +109,7 @@ enormous structured clone — a single oversized payload has already bitten us
 once, silently, in the `#bcdev-mega` export.
 
 `gzip+base64` is what batch items are already stored as
-([handlers.js:78-96](../src/background/handlers.js#L78-L96)); the page decodes
+([handlers.js:78-96](../src/shared/background/handlers.js#L78-L96)); the page decodes
 with `DecompressionStream('gzip')`. Sessions are sent as `json`. Handle both —
 do not assume by `kind`.
 
@@ -301,10 +301,10 @@ this contract changes when it grows into the real archive and backend sync.
 
 ## Notes for the extension side
 
-Not yet implemented. When `src/ui/ingestContent.js` is written it should:
+Not yet implemented. When `src/shared/ui/ingestContent.js` is written it should:
 
 - Match the whole origin, per ADR 0001 Decision 1.
 - Reuse the `begin`/`chunk`/`finish` chunking already proven in
-  `src/ui/bboLobbyContent.js`, rather than a second implementation.
+  `src/fetch/ui/bboLobbyContent.js`, rather than a second implementation.
 - Keep `consume-pending-session` / `consume-pending-batch` unchanged. This is a
   transport change; the service worker's storage and TTL behaviour is untouched.

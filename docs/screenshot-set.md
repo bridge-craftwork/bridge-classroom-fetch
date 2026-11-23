@@ -46,8 +46,8 @@ is being captured before the Apple submission rather than after.
 
 ## The five submitted to the stores
 
-`screenshots/listing/` holds the set actually uploaded, numbered in the order a
-reviewer sees them, with names that say what each is. `screenshots/listing-1280/`
+`store/fetch/screenshots/listing/` holds the set actually uploaded, numbered in the order a
+reviewer sees them, with names that say what each is. `store/fetch/screenshots/listing-1280/`
 is the same five at 1280×800 for Chrome, Edge and AMO; the Mac App Store takes
 the masters.
 
@@ -105,7 +105,7 @@ Anything captured from Chrome DevTools is likely to carry one; check before
 uploading:
 
 ```bash
-for f in screenshots/listing/*.png; do
+for f in store/fetch/screenshots/listing/*.png; do
   printf "%-46s " "$(basename "$f")"; sips -g hasAlpha "$f" | tail -1
 done
 ```
@@ -153,7 +153,7 @@ tools/capture-ios.sh ipad       # 2064x2752
 
 Boots the simulator, sets a clean status bar, opens each page, waits for the
 redactor, captures, strips the alpha, and checks the dimensions. Output lands in
-`screenshots/ios/<device>/`.
+`store/fetch/screenshots/ios/<device>/`.
 
 **Two setup steps per simulator cannot be scripted** — there is no `simctl` verb
 for either, and both persist in that device's data, so it is once per simulator
@@ -229,11 +229,11 @@ redaction existed and was correct; it simply had to be remembered before every
 shot, and once it wasn't.
 
 ```bash
-npm run build:shots      # SHOT_MODE=1 → dist/shots
+npm run build:shots      # SHOT_MODE=1 → dist/fetch-shots
 ```
 
-`dist/shots` is an ordinary extension build **plus** a content script
-(`src/ui/redactContent.js`) that runs [`src/lib/redact.js`](../src/lib/redact.js)
+`dist/fetch-shots` is an ordinary extension build **plus** a content script
+(`src/fetch/ui/redactContent.js`) that runs [`src/fetch/lib/redact.js`](../src/fetch/lib/redact.js)
 on every load, and again on DOM changes — `my.acbl.org` is a Vue SPA and
 `live.acbl.org` rewrites its tables, so rows can arrive after the first pass, and
 a late row is a real name in a screenshot. It logs what it changed:
@@ -251,8 +251,8 @@ a late row is a real name in a screenshot. It logs what it changed:
 **It never ships.** `scripts/package-stores.sh` refuses to package any build
 containing it, the same way it refuses one carrying test origins — a redactor
 rewrites what the user is reading, which is catastrophic outside a capture
-session. Load `dist/shots` unpacked, or install it to a simulator; never
-`dist/chrome`.
+session. Load `dist/fetch-shots` unpacked, or install it to a simulator; never
+`dist/fetch-chrome`.
 
 `SHOT_HIDE_LOGO=1` additionally hides the club logo. Framing, not redaction —
 see below.
@@ -305,7 +305,7 @@ survives a reload.
 ### 1. BBO hand viewer — `bbo-handviewer-after`
 
 Click the button on the deal already used for `-before`; shoot the analyzer tab
-that opens. The URL is in [submission-answers.md](submission-answers.md); it
+that opens. The URL is in [store/fetch/submission.md](../store/fetch/submission.md); it
 carries seat names rather than real handles, so nothing needs blurring.
 
 ### 2. BBO hands list — `bbo-hands-list-after`

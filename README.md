@@ -62,7 +62,7 @@ installed, enabled, and does nothing at all — no button and no error. Open the
 page menu (on iPhone the address bar is usually at the *bottom*), allow
 Bridge Classroom Fetch, and reload.
 
-To run from source, load unpacked from `dist/chrome/` in `chrome://extensions`
+To run from source, load unpacked from `dist/fetch-chrome/` in `chrome://extensions`
 (Developer mode on), having built first:
 
 ```bash
@@ -95,10 +95,10 @@ So a **local target also needs the test build**, which adds localhost,
 the host permissions:
 
 ```bash
-npm run build:test          # INGEST_TEST=1 → dist/test
+npm run build:test          # INGEST_TEST=1 → dist/fetch-test
 ```
 
-Load `dist/test` unpacked rather than `dist/chrome`. Without it the override
+Load `dist/fetch-test` unpacked rather than `dist/fetch-chrome`. Without it the override
 sends the payload to a page that has no content script listening, and the
 hand-off hangs with nothing in the console to say why. `scripts/package-stores.sh`
 refuses to package any build carrying those origins.
@@ -118,7 +118,7 @@ npm run build:edge      # Edge
 npm run build:firefox   # Firefox
 npm run build:safari    # source for the Xcode project
 npm run build:all       # all four
-npm run build:shots     # SHOT_MODE=1 → dist/shots, redacts pages for screenshots
+npm run build:shots     # SHOT_MODE=1 → dist/fetch-shots, redacts pages for screenshots
 ```
 
 Output lands in `dist/<browser>/`. `scripts/package-stores.sh` builds all of

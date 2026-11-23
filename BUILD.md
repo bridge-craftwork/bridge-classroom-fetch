@@ -36,10 +36,10 @@ That script is the whole process. It runs:
 
 ```bash
 npm ci                            # exact dependency versions from package-lock.json
-BROWSER=firefox npx vite build --outDir dist/firefox
+BROWSER=firefox npx vite build --outDir dist/fetch-firefox
 ```
 
-The output is **`dist/firefox/`**, which is the contents of the uploaded
+The output is **`dist/fetch-firefox/`**, which is the contents of the uploaded
 package — zip that directory and you have the submitted file.
 
 **Bridge Craftwork DD** is built from the same archive with one argument:
@@ -69,10 +69,10 @@ dependencies. Neither add-on fetches code at run time: no remote code, no
 
 ## Bridge Craftwork DD
 
-`EXT=dd` selects `manifest.dd.json`, DD's entry points (`src/ddBackground.js`,
-`src/ui/ddContent.js`) and `public-dd/`, whose `bbo-page-hook.js` is copied
-unbundled. The two add-ons share the parsers in `src/adapters/bbo/parsers/` and
-`src/lib/`.
+`EXT=dd` selects `manifests/dd.json`, DD's entry points (`src/dd/background.js`,
+`src/dd/ui/ddContent.js`) and `public/dd/`, whose `bbo-page-hook.js` is copied
+unbundled. The two add-ons share the parsers in `src/shared/adapters/bbo/parsers/` and
+`src/shared/lib/`.
 
 DD bundles a **double-dummy solver compiled to WebAssembly**
 (`assets/bridge_solver_wasm_bg-*.wasm`, with its wasm-bindgen glue). It is not
@@ -98,21 +98,24 @@ files inside the package.
 
 ```
 src/                 all first-party source — plain ES modules, not generated
-  background.js      MV3 background entry point
-  background/        message handling and orchestration
-  ui/                the three content scripts
-  adapters/          one per site: acbl-live, acbl-live-club, bbo
-  lib/               shared utilities
-manifest.json        the base manifest; vite.config.js layers per-browser keys on
+  shared/            used by both add-ons
+    adapters/        one per site: acbl-live, acbl-live-club, bbo
+    background/      message handling and orchestration
+    lib/             shared utilities
+    ui/              the hand-off to Bridge Classroom
+  fetch/             Bridge Classroom Fetch: background.js, its content scripts
+  dd/                Bridge Craftwork DD: background.js, the solver, its content script
+manifests/           fetch.json and dd.json; vite.config.js layers per-browser keys on
+public/dd/           DD's page hook, copied unbundled
+icons/fetch/, icons/dd/  committed PNGs, rasterised from each icon.svg
 vite.config.js       build configuration
-icons/               committed PNGs, rasterised from icons/icon.svg
-tests/               unit tests (vitest) and end-to-end tests (playwright)
+tests/               unit tests (vitest), mirroring src/, and end-to-end tests (playwright)
 fixtures/            saved HTML the parsers are tested against
 docs/                design notes, including the data sources and schema
 ```
 
-`icons/*.png` are committed rather than generated during the build. They are
-produced from `icons/icon.svg` by `node scripts/render-icons.mjs`, which needs
+`icons/*/*.png` are committed rather than generated during the build. They are
+produced from each `icon.svg` by `node scripts/render-icons.mjs`, which needs
 Playwright's Chromium; that step is deliberately kept out of the build so no
 browser download is required to build the extension.
 
@@ -131,7 +134,7 @@ npm run test:e2e  # 5 end-to-end tests; downloads Chromium on first run
 the bundled background chunk. Both are inside **linkedom**, a third-party
 pure-JS DOM implementation, declared in `package.json` and bundled because MV3
 service workers do not expose `DOMParser` and the HTML parsers require one —
-see the top of `src/background.js`, which installs it on `globalThis`.
+see the top of `src/fetch/background.js`, which installs it on `globalThis`.
 
 One flagged site is linkedom's fragment parser; the other is its `Element`
 class *defining the accessor itself*, `set innerHTML(t) {...}`. The linter is

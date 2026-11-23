@@ -310,10 +310,10 @@ Firefox reviewers need to reproduce the build. The source archive is produced by
 
 ### 3bb. Safari: the Xcode project does not track new files
 
-`package-stores.sh` copies `dist/safari/` into
-`safari/…/Shared (Extension)/Resources/`, but **Xcode only bundles what
+`package-stores.sh` copies `dist/fetch-safari/` into
+`safari/fetch/…/Shared (Extension)/Resources/`, but **Xcode only bundles what
 `project.pbxproj` references.** The project lists the extension's resources
-individually — `manifest.json`, `service-worker-loader.js`, and `assets` as a
+individually — `manifests/fetch.json`, `service-worker-loader.js`, and `assets` as a
 folder reference. Anything else on disk is invisible to the build.
 
 This bit us once. `icons/` was added to the extension after the Xcode project
@@ -331,7 +331,7 @@ assume, build and diff:
 ```bash
 xcodebuild -scheme "Bridge Classroom Fetch (macOS)" -configuration Debug \
   -derivedDataPath /tmp/dd build
-diff -rq dist/safari \
+diff -rq dist/fetch-safari \
   "/tmp/dd/Build/Products/Debug/Bridge Classroom Fetch.app/Contents/PlugIns/Bridge Classroom Fetch Extension.appex/Contents/Resources"
 ```
 
@@ -340,14 +340,14 @@ tracks its contents automatically, so files *inside* `icons/` and `assets/` need
 no further action — only new top-level entries do.
 
 **New source files are not new top-level entries.** 1.1.0 added three modules —
-`src/ui/acblResultsList.js`, `pairPicker.js`, `extractProgress.js` — and needed
+`src/fetch/ui/acblResultsList.js`, `pairPicker.js`, `extractProgress.js` — and needed
 no Xcode change, because Vite bundles them into the existing `assets/` chunks:
 they are imported by `sourceContent.js` rather than being fresh entry points.
-Checked rather than assumed — `ls dist/safari` before and after still reports
+Checked rather than assumed — `ls dist/fetch-safari` before and after still reports
 exactly `assets`, `icons`, `manifest.json`, `service-worker-loader.js`.
 
 What *would* need registering is a new **entry point**: another content script
-or an HTML page in `manifest.json`, which @crxjs emits with its own loader
+or an HTML page in `manifests/fetch.json`, which @crxjs emits with its own loader
 beside `service-worker-loader.js`. That is the trigger to watch for, not "a file
 was added to `src/`".
 
@@ -356,7 +356,7 @@ was added to `src/`".
 Checked by archiving rather than by reading, August 2026. `xcodebuild -scheme
 "Bridge Classroom Fetch (macOS)" -configuration Release archive` **succeeds**,
 and the archived app carries 1.1.0 / build 1 with the extension's resources
-byte-identical to `dist/safari`.
+byte-identical to `dist/fetch-safari`.
 
 **Sandboxing is already correct, and there is no `.entitlements` file to look
 for.** Current Xcode synthesises entitlements from build settings, so the
@@ -404,7 +404,7 @@ to this extension, so it is worth keeping:
 - **MV3 alone is not the constraint.** Safari has supported `manifest_version: 3`
   since **Safari 15.4**, not 16.4 — an easy thing to misremember, and it was
   misremembered here first.
-- **The constraint is the service worker's `import`.** `dist/safari/service-worker-loader.js`
+- **The constraint is the service worker's `import`.** `dist/fetch-safari/service-worker-loader.js`
   is one line — `import './assets/background.js-*.js';` — and Safari had a bug
   where a **background service worker failed to import scripts**, fixed in
   **Safari 16.4**. Below that the background worker plausibly never starts, which
@@ -458,7 +458,7 @@ AMO runs Mozilla's `addons-linter` on upload. Run it first:
 
 ```bash
 npm run build:firefox
-npx web-ext lint --source-dir dist/firefox
+npx web-ext lint --source-dir dist/fetch-firefox
 ```
 
 **Current state: 0 errors, 2 warnings**, both expected and both explainable.
@@ -467,7 +467,7 @@ npx web-ext lint --source-dir dist/firefox
 reviewer notes.** Both land in the bundled `background.js` chunk, and both are
 inside **linkedom's own DOM implementation** — its `innerHTML` accessor and its
 fragment parser. We bundle linkedom because MV3 service workers do not expose
-`DOMParser` and the parsers need one (`src/background.js`). Nothing in our
+`DOMParser` and the parsers need one (`src/fetch/background.js`). Nothing in our
 source assigns to `innerHTML` at all; `grep -rn innerHTML src/` returns nothing.
 The linter is flagging a vendored library implementing the DOM, not this
 extension writing markup into a page.
@@ -483,7 +483,7 @@ off-device to `bridge-classroom.org` whenever the source is ACBL. There is no
 server and no telemetry here, which is what made `none` feel right; but
 "collect" in every store's sense means *leaves the device*, not *reaches us*.
 The same mistake was made on Chrome's disclosure and corrected there too — see
-[submission-answers.md](submission-answers.md) § Data use, which is the longer
+[store/fetch/submission.md](../store/fetch/submission.md) § Data use, which is the longer
 version of this note. Keep the three in step.
 
 That key set the version floors. It landed in Firefox 140 and Firefox for
@@ -528,7 +528,7 @@ fingerprint evasion, which is not worth it for a screenshot.
 So take **2, 3 and 4 in ordinary Chrome**, where the check passes as it does for
 any user:
 
-1. Load `dist/chrome` unpacked at `chrome://extensions`
+1. Load `dist/fetch-chrome` unpacked at `chrome://extensions`
 2. **⌘⇧M** → **Responsive** → **1280 × 800**; the **⋮** menu → *Add device pixel
    ratio* → **2**
 3. **⌘⇧P** → *Capture screenshot* → saves the viewport only, at 2560×1600
@@ -596,11 +596,11 @@ Chrome requires a written justification per permission. Current manifest:
 | Host: `tinyurl.bridgebase.com` | BBO's lobby mints a short link rather than handing over a deal — its Export ▸ Handviewer menu produces one — so the redirect must be followed to reach what it points at. Used only to resolve those links. |
 | Content script on `bridge-classroom.{org,com}` | Delivering the results to the page the user is taken to, which then forwards them to the chosen tool. No host permission is requested for these domains — the content-script match is sufficient. |
 
-**Paste-ready wording for every field is in [submission-answers.md](submission-answers.md)**, kept in step with this table.
+**Paste-ready wording for every field is in [store/fetch/submission.md](../store/fetch/submission.md)**, kept in step with this table.
 
 ### Bridge Craftwork DD — the second extension
 
-Built from this repo with `EXT=dd` (`manifest.dd.json`, output `dist/dd-<browser>`).
+Built from this repo with `EXT=dd` (`manifests/dd.json`, output `dist/dd-<browser>`).
 **1.0.0 is published on the Chrome Web Store** (installs from 3 Nov 2026), at
 <https://chromewebstore.google.com/detail/bridge-craftwork-dd/afaopnjobibdnpfaplcfemliaoejpjgl>
 (id `afaopnjobibdnpfaplcfemliaoejpjgl`). Not on Edge, Firefox or the Mac App
@@ -613,13 +613,13 @@ which Fetch carries:
   background can compile bridge-solver's WASM and solve on the user's device.
   The narrow directive: WebAssembly only, not `eval`.
 - **`scripting`**, for `registerContentScripts` with `world: 'MAIN'`: the page
-  hook (`public-dd/bbo-page-hook.js`) that copies three responses BBO's own History
+  hook (`public/dd/bbo-page-hook.js`) that copies three responses BBO's own History
   panel loads, and requests nothing. Only DD all requests anything, from the
   content script; see § 3.9. [data-sources.md](data-sources.md) § 3.9
   says why it is registered at runtime.
 - **`storage`** for analysed boards and per-event tallies, with no time limit and
   no player names. Oldest boards deleted past `MAX_BOARDS`. Local only. Its policy draft is
-  [PRIVACY-DD.md](../PRIVACY-DD.md).
+  [store/dd/privacy.md](../store/dd/privacy.md).
 - **One host**, `www.bridgebase.com/v3/*`; no `tabs` (the hand-off only creates
   a tab).
 
@@ -727,7 +727,7 @@ the main document, not this section.
 
 The section is live at **https://bridge-classroom.org/privacy#extension**, in
 `docs/privacy.html` of the `Bridge-Classroom` repo. That URL is what goes in every
-listing. `PRIVACY.md` at this repo's root stays as the extension-side detail and
+listing. `store/fetch/privacy.md` at this repo's root stays as the extension-side detail and
 links to it; the site document is canonical.
 
 It ships wider than the draft above, because back-end storage *has* since shipped
@@ -765,8 +765,8 @@ way they are. Keep that boundary if either is edited.
 
 **~~Icons — nothing exists yet~~ — drawn, wired, and rendered.** A mortarboard
 in white on the `#1a73e8` tile that matches the injected button. Source is
-`icons/icon.svg`; `node scripts/render-icons.mjs` rasterises every size below
-via Chromium and fills the Safari asset catalog. `manifest.json` now has both
+`icons/fetch/icon.svg`; `node scripts/render-icons.mjs` rasterises every size below
+via Chromium and fills the Safari asset catalog. `manifests/fetch.json` now has both
 `icons` and an `action`, so there is a toolbar button where there was none.
 
 The Mac app gets its own canvas, because a toolbar icon and a Dock icon are not
@@ -813,7 +813,7 @@ same string by default:
 
 | Where | Note |
 |---|---|
-| `manifest.json` | canonical; `PROVIDER.version` reads it, so the payload follows |
+| `manifests/fetch.json` | canonical; `PROVIDER.version` reads it, so the payload follows |
 | `package.json` + lock | `npm version 1.1.0 --no-git-tag-version` |
 | Xcode `MARKETING_VERSION` | eight occurrences in `project.pbxproj` — four targets × two configurations |
 | Xcode `CURRENT_PROJECT_VERSION` | build number, at 1 in the project; `scripts/upload-apple.sh` stamps each upload with `yyyymmddHHMM` |
@@ -843,7 +843,7 @@ over `project.pbxproj` is what actually moves it; expect eight hits.
 The **build** number is agvtool's, and that command does work:
 
 ```bash
-cd "safari/Bridge Classroom Fetch"
+cd "safari/fetch/Bridge Classroom Fetch"
 xcrun agvtool new-version -all 2      # what-version -terse to check
 ```
 
@@ -855,7 +855,7 @@ marketing version. Only `project.pbxproj` changes.
 Connect. Connect refuses a second upload reusing a build number, so bump to 2
 only when re-uploading against 1.1.0 after a rejection.
 
-`safari/…/Shared (Extension)/Resources/manifest.json` also carries it, but that
+`safari/fetch/…/Shared (Extension)/Resources/manifest.json` also carries it, but that
 is packaging output — re-run `package-stores.sh` rather than editing it.
 
 ---
@@ -888,7 +888,7 @@ journey on the two devices, which is what made it confusing:
 
 Someone who has granted it on an iPad will look for a puzzle-piece on the phone
 and not find one, and reasonably conclude the extension did not install. The
-Apple reviewer notes in [submission-answers.md](submission-answers.md) walk
+Apple reviewer notes in [store/fetch/submission.md](../store/fetch/submission.md) walk
 through the iPhone route explicitly for exactly this reason.
 
 **The extension appears to do nothing on unsupported pages.** By design: the

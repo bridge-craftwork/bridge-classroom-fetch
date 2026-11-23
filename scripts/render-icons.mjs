@@ -1,4 +1,4 @@
-// Rasterise icons/icon.svg into every size the four stores want.
+// Rasterise icons/fetch/icon.svg into every size the four stores want.
 //
 //   node scripts/render-icons.mjs
 //
@@ -8,8 +8,8 @@
 // will display it. There is no other build-time dependency to add.
 //
 // Outputs, all from the one source:
-//   icons/icon-{16,24,32,48,128,300}.png   manifest, toolbar action, Edge listing
-//   safari/…/AppIcon.appiconset/*.png      the macOS app wrapper's icon set, and
+//   icons/fetch/icon-{16,24,32,48,128,300}.png   manifest, toolbar action, Edge listing
+//   safari/fetch/…/AppIcon.appiconset/*.png      the macOS app wrapper's icon set, and
 //                                          icon-ios-1024.png for iOS (Fetch only)
 //
 // Re-run after editing icon.svg and commit the PNGs — they are build inputs the
@@ -20,13 +20,13 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { execFileSync } from 'node:child_process'
 
-// --ext dd renders Bridge Craftwork DD's icon instead (icons-dd/).
+// --ext dd renders Bridge Craftwork DD's icon instead (icons/dd/).
 const DD = process.argv.includes('--ext') && process.argv[process.argv.indexOf('--ext') + 1] === 'dd'
-const SRC = DD ? 'icons-dd/icon.svg' : 'icons/icon.svg'
-const OUT = DD ? 'icons-dd' : 'icons'
+const SRC = DD ? 'icons/dd/icon.svg' : 'icons/fetch/icon.svg'
+const OUT = DD ? 'icons/dd' : 'icons/fetch'
 const SAFARI = DD
-  ? 'safari-dd/Bridge Craftwork DD/Bridge Craftwork DD/Assets.xcassets/AppIcon.appiconset'
-  : 'safari/Bridge Classroom Fetch/Shared (App)/Assets.xcassets/AppIcon.appiconset'
+  ? 'safari/dd/Bridge Craftwork DD/Bridge Craftwork DD/Assets.xcassets/AppIcon.appiconset'
+  : 'safari/fetch/Bridge Classroom Fetch/Shared (App)/Assets.xcassets/AppIcon.appiconset'
 
 // 16/32/48/128 are the manifest set; 24 is for the toolbar action on some
 // display scales; 300 is Edge's store logo.

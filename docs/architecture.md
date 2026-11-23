@@ -21,7 +21,7 @@
 ## Adapter registry
 
 The service worker holds an ordered registry of adapters in
-`src/background/handlers.js`. When an `extract-session` message arrives, the
+`src/shared/background/handlers.js`. When an `extract-session` message arrives, the
 dispatcher picks the first adapter whose `matchesUrl(url)` returns true and
 delegates the rest of the work to it. New sources are added by writing an
 adapter and appending it to the registry — no other code path needs to change.
@@ -118,7 +118,7 @@ same reason nothing is kept in module-level variables (design principle 7).
 for an unrecognised `type`, and `unexpected` for anything else. The message
 text is user-facing — it is what the injected button displays — so it should
 say what to do, not just what failed. See the Cloudflare-challenge case in
-`src/lib/rateLimiter.js` for the shape to aim for.
+`src/shared/lib/rateLimiter.js` for the shape to aim for.
 
 The ingest bridge (`begin` / `chunk` / `finish` / `ack` / `ready`) is a separate
 `postMessage` channel between page and content script, not this one — see
@@ -144,7 +144,7 @@ when the message sequence changes.
 
 The service worker stores the envelope in `browser.storage.local` under a
 pending key, opens the ingest URL with the reference in the fragment, and
-`src/ui/ingestContent.js` bridges page and worker over `window.postMessage`.
+`src/shared/ui/ingestContent.js` bridges page and worker over `window.postMessage`.
 Every message carries `channel: 'bc-ingest'`, `v: 1`, a `type`, and the `ref`.
 
 **The page speaks first.** It emits `ready`, and only then does the content
@@ -205,7 +205,7 @@ The schema's top-level `tournaments: [...]` array (see [normalized-schema.md](no
 - **v2 — whole tournament**. Driven from the tournament's schedule page (`https://tournaments.acbl.org/schedule.php?sanction={sanction}`), which lists every event held under that sanction. The adapter discovers each event's pair-scorecard URLs and runs v1's session-fetch per event. Output: one tournament with multiple events.
 - **v3 — player history**. Driven from `live.acbl.org/player-results/{player_id}`. Each entry is a tournament the player attended; we walk to each one and run v2 (or v1 if only one event). Output: many tournaments.
 
-The currently implemented extractor only does the v1 single-session case (`extractSession` in `src/adapters/acbl-live/index.js`). Multi-session-per-event, then v2, then v3 are explicit follow-on phases.
+The currently implemented extractor only does the v1 single-session case (`extractSession` in `src/shared/adapters/acbl-live/index.js`). Multi-session-per-event, then v2, then v3 are explicit follow-on phases.
 
 ## Repo layout
 
@@ -257,18 +257,18 @@ src/
 Same source, per-browser artifacts. Vite reads `BROWSER` from the environment (defaults to `chrome`) and emits to `dist/<browser>/`:
 
 ```
-npm run build:chrome   → dist/chrome/
-npm run build:firefox  → dist/firefox/
-npm run build:edge     → dist/edge/
-npm run build:safari   → dist/safari/
+npm run build:chrome   → dist/fetch-chrome/
+npm run build:firefox  → dist/fetch-firefox/
+npm run build:edge     → dist/fetch-edge/
+npm run build:safari   → dist/fetch-safari/
 npm run build:all      → all four
 ```
 
-The base `manifest.json` is Chrome-compatible (Manifest V3, `service_worker`). Per-browser manifest overrides live in `vite.config.js` under `PER_BROWSER_OVERRIDES`:
+The base `manifests/fetch.json` is Chrome-compatible (Manifest V3, `service_worker`). Per-browser manifest overrides live in `vite.config.js` under `PER_BROWSER_OVERRIDES`:
 
 - **Chrome / Edge** — no overrides; the base Chromium MV3 manifest is used unchanged.
-- **Firefox** — adds `browser_specific_settings.gecko.id` (required) and replaces `background.service_worker` with `background.scripts: ['src/background.js']` (the form `@crxjs/vite-plugin` requires for Firefox builds). `strict_min_version: 121.0` ensures full MV3 service-worker support at runtime.
-- **Safari** — uses the base manifest. Distribution to the Mac/iOS App Store requires running `dist/safari/` through Xcode's `safari-web-extension-converter`, which wraps it in a native app shell.
+- **Firefox** — adds `browser_specific_settings.gecko.id` (required) and replaces `background.service_worker` with `background.scripts: ['src/fetch/background.js']` (the form `@crxjs/vite-plugin` requires for Firefox builds). `strict_min_version: 121.0` ensures full MV3 service-worker support at runtime.
+- **Safari** — uses the base manifest. Distribution to the Mac/iOS App Store requires running `dist/fetch-safari/` through Xcode's `safari-web-extension-converter`, which wraps it in a native app shell.
 
 Source files use `browser.*` via `webextension-polyfill`:
 
@@ -297,8 +297,8 @@ platform-sensitive code in the extension, and the hand viewer reaches none of it
 Notes worth carrying forward:
 
 - **Edge** was tested on Windows rather than macOS, which is where the great
-  majority of Edge users are. `dist/edge` is byte-for-byte identical to
-  `dist/chrome` — its entry in `PER_BROWSER_OVERRIDES` is `{}` — and to the
+  majority of Edge users are. `dist/fetch-edge` is byte-for-byte identical to
+  `dist/fetch-chrome` — its entry in `PER_BROWSER_OVERRIDES` is `{}` — and to the
   contents of the packaged `-edge.zip`, so loading the directory tested exactly
   the bytes that go to Partner Center.
 - **Firefox** reports 0 errors from `web-ext lint`; the 2 remaining warnings are
@@ -310,7 +310,7 @@ Notes worth carrying forward:
   that catches it recurring.
 
 One gap remains, and it is Safari's alone: **whether the packaged app registers
-its extension with Safari.** The temporary-extension route loads `dist/safari`
+its extension with Safari.** The temporary-extension route loads `dist/fetch-safari`
 directly, which is byte-identical to what the `.appex` bundles, so it proves the
 extension's behaviour but not the app's registration — and the App Store ships
 an app. A build run from a temporary directory did not appear under Installed;

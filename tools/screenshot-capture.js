@@ -21,7 +21,7 @@
 //
 // The viewport is re-asserted at 1280×800 before each shot rather than trusted:
 // this process did not launch the browser, so it cannot assume what emulation a
-// given tab carries. Files land in screenshots/ at 2560×1600 — see
+// given tab carries. Files land in store/fetch/screenshots/ at 2560×1600 — see
 // docs/store-review.md § 4 for why that size.
 
 import fs from 'node:fs'
@@ -30,7 +30,7 @@ import { fileURLToPath } from 'node:url'
 import { chromium } from '@playwright/test'
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const OUT = path.join(REPO, 'screenshots')
+const OUT = path.join(REPO, 'store/fetch/screenshots')
 const CDP = 'http://127.0.0.1:9222'
 
 const argv = process.argv.slice(2)

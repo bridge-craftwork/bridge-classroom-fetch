@@ -1,6 +1,6 @@
 # Instructions for Claude Code
 
-This is a new browser extension project. Read this file first, then read all files in `docs/` for context. Then read `START_HERE.md` for the immediate first task.
+This is a browser extension project — two extensions, Bridge Classroom Fetch and Bridge Craftwork DD, from one source tree. Read this file first, then the files in `docs/` for context. `docs/history/` holds the original brief (`START_HERE.md`, `INITIAL_PROMPT.md`) and is background only.
 
 ## Project context
 
@@ -12,6 +12,25 @@ Two friction points motivate this extension:
 2. Tournament results (e.g., on `live.acbl.org`) don't expose downloadable files at all — users would have to click through every board's detail page by hand.
 
 This extension solves both: one click on the user's results page, and the extension fetches and parses everything in the background, then hands normalized JSON to the analyzer.
+
+## Layout: fetch, dd, shared
+
+Every per-extension thing is named `fetch` or `dd`, by kind (restructured 23 Nov 2026):
+
+| | Fetch | DD |
+|---|---|---|
+| Manifest | `manifests/fetch.json` | `manifests/dd.json` |
+| Source | `src/fetch/` | `src/dd/` |
+| Used by both | `src/shared/` (adapters, ingest hand-off, shared lib) | |
+| Tests | `tests/fetch/` | `tests/dd/` (and `tests/shared/`; `tests/` mirrors `src/`) |
+| Icons | `icons/fetch/` | `icons/dd/` |
+| Xcode project | `safari/fetch/` | `safari/dd/` |
+| Store copy, screenshots, privacy | `store/fetch/` | `store/dd/` |
+| Build output | `dist/fetch-<browser>` | `dist/dd-<browser>` |
+
+`EXT=fetch` (the default) or `EXT=dd` picks the extension at build time. Stable
+on purpose and not renamed: gecko ids, bundle ids, store ids, and the Pages
+paths `demo/` and `test-ingest/` (served as `/ingest`).
 
 ## Tech and conventions
 
@@ -117,10 +136,10 @@ Verified for this release rather than assumed:
 - 470 unit tests, 5 e2e, `addons-linter` 0 errors / 2 warnings — the same two
   linkedom `innerHTML` sites, now at line 2 col 8311 and line 7 col 443.
 
-Done: icons (a mortarboard — `icons/icon.svg`, rendered by
+Done: icons (a mortarboard — `icons/fetch/icon.svg`, rendered by
 `scripts/render-icons.mjs`; deliberately not a spade, see `docs/store-review.md`),
 the toolbar `action`, the published privacy URL, the version, the artwork
-sign-off, and the five screenshots (in `screenshots/`, 2560x1600, one set for
+sign-off, and the five screenshots (in `store/fetch/screenshots/`, 2560x1600, one set for
 all four stores).
 
 All four browsers are QA'd against both no-account paths — see
@@ -368,10 +387,10 @@ the ingest content script never runs and the hand-off hangs silently. A local
 target needs the test build too:
 
 ```bash
-npm run build:test    # INGEST_TEST=1 → dist/test, adds localhost to matches and host_permissions
+npm run build:test    # INGEST_TEST=1 → dist/fetch-test, adds localhost to matches and host_permissions
 ```
 
-Load `dist/test` unpacked, not `dist/chrome`. This is the same build the
+Load `dist/fetch-test` unpacked, not `dist/fetch-chrome`. This is the same build the
 Playwright e2e tests load, for the same reason. Run the local analyzer with:
 
 ```bash
@@ -383,9 +402,9 @@ The local server serves the static SPA; extension-path analysis is fully client-
 
 ## Capturing store screenshots
 
-`npm run build:shots` (`SHOT_MODE=1` → `dist/shots`) is an ordinary build plus a
+`npm run build:shots` (`SHOT_MODE=1` → `dist/fetch-shots`) is an ordinary build plus a
 content script that redacts personal data on every page load —
-`src/ui/redactContent.js` running `src/lib/redact.js`. **It never ships**;
+`src/fetch/ui/redactContent.js` running `src/fetch/lib/redact.js`. **It never ships**;
 `package-stores.sh` refuses any build containing it, the same way it refuses
 test origins.
 

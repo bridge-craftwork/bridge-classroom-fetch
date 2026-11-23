@@ -19,7 +19,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "format": "prettier --write .",
-    "build:test": "INGEST_TEST=1 vite build --outDir dist/test",
+    "build:test": "INGEST_TEST=1 vite build --outDir dist/fetch-test",
     "build:dd": "EXT=dd vite build",
     "build:dd:all": "EXT=dd BROWSER=chrome vite build && EXT=dd BROWSER=firefox vite build && EXT=dd BROWSER=edge vite build && EXT=dd BROWSER=safari vite build",
     "build:dd:test": "EXT=dd INGEST_TEST=1 vite build --outDir dist/dd-test",
@@ -27,7 +27,7 @@
     "shots": "node tools/screenshot-session.js",
     "shot": "node tools/screenshot-capture.js",
     "serve:ingest": "python3 -m http.server 4173 --directory test-ingest",
-    "build:shots": "SHOT_MODE=1 vite build --outDir dist/shots"
+    "build:shots": "SHOT_MODE=1 vite build --outDir dist/fetch-shots"
   },
   "devDependencies": {
     "@crxjs/vite-plugin": "^2.4.0",

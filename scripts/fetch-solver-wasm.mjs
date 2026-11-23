@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Fetch bridge-solver's WASM package into src/vendor/solver-wasm/, where the
 // background imports it to score each card of a BBO board double-dummy (see
-// src/background/ddSolver.js).
+// src/dd/background/ddSolver.js).
 //
 // The package is NOT vendored. It is downloaded from a pinned GitHub release of
 // bridge-craftwork/bridge-solver and checked against the SHA-256 committed

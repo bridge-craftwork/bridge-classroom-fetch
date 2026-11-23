@@ -48,12 +48,12 @@ BUILD_NUMBER="${APPLE_BUILD:-$(date +%Y%m%d%H%M)}"
 
 case "$APP" in
   fetch)
-    PROJECT="safari/Bridge Classroom Fetch/Bridge Classroom Fetch.xcodeproj"
-    RESOURCES="safari/Bridge Classroom Fetch/Shared (Extension)/Resources"
+    PROJECT="safari/fetch/Bridge Classroom Fetch/Bridge Classroom Fetch.xcodeproj"
+    RESOURCES="safari/fetch/Bridge Classroom Fetch/Shared (Extension)/Resources"
     ;;
   dd)
-    PROJECT="safari-dd/Bridge Craftwork DD/Bridge Craftwork DD.xcodeproj"
-    RESOURCES="safari-dd/Bridge Craftwork DD/Bridge Craftwork DD Extension/Resources"
+    PROJECT="safari/dd/Bridge Craftwork DD/Bridge Craftwork DD.xcodeproj"
+    RESOURCES="safari/dd/Bridge Craftwork DD/Bridge Craftwork DD Extension/Resources"
     PLATFORM="mac"
     ;;
   *) sed -n '4,8p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;

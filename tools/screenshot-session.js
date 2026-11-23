@@ -33,9 +33,9 @@ import { fileURLToPath } from 'node:url'
 import { chromium } from '@playwright/test'
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const EXTENSION = path.join(REPO, 'dist/chrome')
+const EXTENSION = path.join(REPO, 'dist/fetch-chrome')
 const PROFILE = path.join(REPO, '.screenshot-profile')
-const OUT = path.join(REPO, 'screenshots')
+const OUT = path.join(REPO, 'store/fetch/screenshots')
 
 // The first page to open — the hand viewer test deal from store-review.md § 2.
 // Complete deal, seat names rather than real handles, and no login or network.
@@ -119,7 +119,7 @@ console.log(`
 Screenshot session ready.
 
   viewport   1280×800 at 2× → files are 2560×1600
-  extension  dist/chrome (production build)
+  extension  dist/fetch-chrome (production build)
   output     ${path.relative(REPO, OUT)}/
   profile    ${path.relative(REPO, PROFILE)}/  (logins persist between runs)
   CDP        http://127.0.0.1:${CDP_PORT}
