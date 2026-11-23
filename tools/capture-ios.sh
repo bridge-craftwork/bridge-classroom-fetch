@@ -22,7 +22,9 @@ cd "$(dirname "$0")/.."
 DEVICE_KIND="${1:-iphone}"
 case "$DEVICE_KIND" in
   iphone) DEVICE_NAME="iPhone 17 Pro Max"; EXPECT="1320x2868" ;;
-  ipad)   DEVICE_NAME="iPad Pro 13-inch (M5)"; EXPECT="2064x2752" ;;
+  # Apple takes the 13-inch set in either orientation; Safari full screen in
+  # landscape shows the most of a results page.
+  ipad)   DEVICE_NAME="iPad Pro 13-inch (M5)"; EXPECT="2064x2752 2752x2064" ;;
   *) echo "usage: $0 [iphone|ipad]" >&2; exit 1 ;;
 esac
 
@@ -95,7 +97,7 @@ shoot() { # shoot <name> <url>
   rm -f "$raw"
   local got
   got=$(magick identify -format "%wx%h" "$OUT/$name.png")
-  [ "$got" = "$EXPECT" ] || echo "      WARNING: $got, expected $EXPECT" >&2
+  [[ " $EXPECT " == *" $got "* ]] || echo "      WARNING: $got, expected $EXPECT" >&2
   # A near-uniform frame is a page that never rendered. Cheap to check, and it
   # is the failure that looks fine in a listing folder until someone opens it.
   local sd
@@ -108,7 +110,10 @@ echo "==> capturing"
 # so the shot must not scroll it away — and a button alone only proves it
 # exists. The menu shows what it does: a date range, up to all time.
 shoot "1-club-results-list" "https://my.acbl.org/club-results/233437#bc-shot-menu"
-shoot "2-club-game"         "https://my.acbl.org/club-results/details/1455416"
+# Not on iPad: by 22 Nov 2026 a club game's page redirected to login.acbl.org,
+# where the iPhone set (taken in August) had shown it signed out. The list and
+# its menu above still open without a login.
+[ "$DEVICE_KIND" = ipad ] || shoot "2-club-game" "https://my.acbl.org/club-results/details/1455416"
 shoot "3-bbo-handviewer" \
   "https://www.bridgebase.com/tools/handviewer.html?bbo=y&lin=pn%7CSouth%2CWest%2CNorth%2CEast%7Cst%7C%7Cmd%7C3S789TQH5KD2C2478T%2CS2456JAH6TD57TKC6%2CS3H78JD4689JQC39J%2C%7Crh%7C%7Cah%7CBoard%201%7Csv%7Co%7Cmb%7Cp%7Cmb%7C2C%7Cmb%7C2S%7Cmb%7Cp%7Cmb%7Cp%7Cmb%7C3H%7Cmb%7Cp%7Cmb%7C3N%7Cmb%7Cp%7Cmb%7Cp%7Cmb%7Cp%7Cpc%7CDQ%7Cpc%7CD3%7Cpc%7CD2%7Cpc%7CDK%7Cpc%7CHT%7Cpc%7CH7%7Cpc%7CH2%7Cpc%7CHK%7Cpc%7CST%7Cpc%7CS2%7Cpc%7CS3%7Cpc%7CSK%7Cpc%7CHA%7Cpc%7CH5%7Cpc%7CH6%7Cpc%7CH8%7Cpc%7CHQ%7Cpc%7CS7%7Cpc%7CS4%7Cpc%7CHJ%7Cpc%7CH9%7Cpc%7CS8%7Cpc%7CS5%7Cpc%7CD4%7Cpc%7CH4%7Cpc%7CS9%7Cpc%7CS6%7Cpc%7CD6%7Cpc%7CH3%7Cpc%7CSQ%7Cpc%7CSJ%7Cpc%7CD8%7Cpc%7CDA%7Cpc%7CC2%7Cpc%7CD5%7Cpc%7CD9%7Cpc%7CCA%7Cpc%7CC4%7Cpc%7CC6%7Cpc%7CC3%7Cpc%7CCK%7Cpc%7CC7%7Cpc%7CD7%7Cpc%7CC9%7Cpc%7CCQ%7Cpc%7CC8%7Cpc%7CDT%7Cpc%7CCJ%7Cpc%7CC5%7Cpc%7CCT%7Cpc%7CSA%7Cpc%7CDJ%7C"
 
