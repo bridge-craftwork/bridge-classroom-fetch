@@ -1,0 +1,12 @@
+[
+  {
+    "bundle_id": "org.bridge-classroom.bridge-classroom-fetch",
+    "extension_manifest": "manifest.json",
+    "stores": {"chrome": "cpokagdkdagcojoogocjheefiicacnca", "edge": "pjomfmbcmaiikkfcnnpnlblmpokbcdei", "firefox": "bridge-classroom-fetch"}
+  },
+  {
+    "bundle_id": "org.bridge-classroom.bridge-craftwork-dd",
+    "extension_manifest": "manifest.dd.json",
+    "stores": {"chrome": "afaopnjobibdnpfaplcfemliaoejpjgl", "edge": "0RDCKF299KZ1", "firefox": "bridge-craftwork-dd"}
+  }
+]
