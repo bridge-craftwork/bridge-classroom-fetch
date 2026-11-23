@@ -70,7 +70,8 @@ https://bridge-classroom.org/privacy#extension
 
 ## Release notes — 1.1.0
 
-**Draft, needs Rick's sign-off before it goes in a console.** Edge Partner
+**Signed off by Rick, 23 Nov 2026**, and sent to addons.mozilla.org with
+1.1.0 by `scripts/upload-browsers.mjs --release-notes`. Edge Partner
 Center and addons.mozilla.org both ask for release notes per version. Chrome
 does not ask. Apple's field is *What's New in This Version*, which a **first**
 submission does not use — 1.1.0 is Apple's 1.0, so it gets the description
@@ -294,6 +295,12 @@ handles. The test deal uses seat names on purpose.
 
 Chrome's console has no general reviewer-notes field — its justifications are
 per-permission, above. Firefox and Apple do; paste this there.
+
+`scripts/upload-browsers.mjs` sends this block, and for Firefox the
+addons.mozilla.org block below it, straight from this file. AMO takes **3,000
+characters** of reviewer notes, and this with its block came to 3,420 — the hand
+viewer URL is ~900 on its own — so for AMO the script swaps the URL for
+`demo/deal`, the same redirect Chrome's box uses (2,727 for 1.1.0).
 
 ```
 No account is needed to test this extension end to end. The procedure below takes about a minute and exercises the whole pipeline: injection, extraction, and hand-off.

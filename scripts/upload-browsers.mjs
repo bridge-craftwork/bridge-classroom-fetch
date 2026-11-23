@@ -116,6 +116,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 // ── addons.mozilla.org ──────────────────────────────────────────────────────
 
 const AMO = 'https://addons.mozilla.org/api/v5'
+const AMO_NOTES_MAX = 3000
+const DEAL_REDIRECT = 'https://bridge-craftwork.github.io/bridge-classroom-fetch/demo/deal'
 let amoCreds
 function amoAuth() {
   amoCreds ??= { iss: keychain('AMO_JWT_ISSUER'), secret: keychain('AMO_JWT_SECRET') }
@@ -146,7 +148,16 @@ async function amo(method, path, body) {
 }
 
 async function firefox() {
-  const amoNotes = app.amoExtra ? `${notes}\n\n${fenced(app.amoExtra)}` : notes
+  // AMO takes 3,000 characters, and the hand viewer URL is about 900 of them,
+  // the deal being encoded in it. Our redirect to the same URL stands in, as in
+  // Chrome's 500-character box.
+  const full = app.amoExtra ? `${notes}\n\n${fenced(app.amoExtra)}` : notes
+  const amoNotes = full.replace(
+    /https:\/\/www\.bridgebase\.com\/tools\/handviewer\.html\?\S+/g,
+    `${DEAL_REDIRECT}\n(a redirect to BBO's hand viewer, with the deal encoded in the URL)`
+  )
+  if (amoNotes.length > AMO_NOTES_MAX)
+    fail(`reviewer notes are ${amoNotes.length} characters; AMO takes ${AMO_NOTES_MAX}`)
   console.log(`==> Firefox: ${app.guid} ${version}`)
   const existing = await fetch(`${AMO}/addons/addon/${encodeURIComponent(app.guid)}/`, { headers: amoAuth() })
   if (existing.status === 404)
