@@ -233,9 +233,12 @@ Things only Rick can do, in the order they block:
    `tools/record-dd-demo.mjs` after visible changes.
 6. ~~Republish the privacy page~~ — **done**, now names bridge-craftwork.com too
    (bridge-craftwork-site#13, 2 Nov 2026).
-7. **Mac App Store**: create the app record for bundle id
-   `org.bridge-classroom.bridge-craftwork-dd` (team 8H3FX5B8KD). The bundle id
-   is permanent once created; change it in `project.pbxproj` first if needed.
+7. ~~Mac App Store record~~ — **created**, 22 Nov 2026 (app id 6838192935),
+   for `org.bridge-classroom.bridge-craftwork-dd`. Deleting a record takes its
+   bundle id with it; the record can be restored from Apps ▸ ⋯ ▸ Removed Apps,
+   which is how this one came back. Build 202611222231 uploaded by
+   `scripts/upload-apple.sh dd`; the listing filled in by
+   `scripts/app-store-listing.mjs dd` from `store/apple/dd.md`.
 
 ### Before submitting 1.1.0
 
@@ -244,8 +247,10 @@ Things only Rick can do, in the order they block:
    store's listing with the package. **Demo** — **re-recorded**, 22 Nov 2026, with a
    caption for the double-dummy table; live once this reaches `main` (GitHub
    Pages serves it).
-9. **Firefox and Safari**: a quick look at the double-dummy table and the result
-   box in each. The 2 Nov passes predate them.
+9. **Safari** — **passed**, 22 Nov 2026 (Rick, on a Mac): the double-dummy
+   table, the result, DD all, the DD column and My Table. The first try ran a
+   1 Nov debug build that Safari still had registered and showed none of
+   them; rebuild before testing. **Firefox**: still a quick look to do.
 10. **Republish the privacy page** on bridge-craftwork-site from
     `store/dd/privacy-page.html`: the note about the event being played no
     longer says twelve hours, which it never did in practice. The note is
