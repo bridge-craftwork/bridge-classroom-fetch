@@ -26,7 +26,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import readline from 'node:readline'
-import { parseLin } from '../src/adapters/bbo/parsers/lin.js'
+import { parseLin } from '../src/shared/adapters/bbo/parsers/lin.js'
 
 const FETCHLIN = 'https://www.bridgebase.com/myhands/fetchlin.php'
 

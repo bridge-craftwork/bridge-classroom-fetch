@@ -2,14 +2,14 @@
 //
 //   node scripts/render-promo.mjs
 //
-//   icons/promo-440x280.png    small tile — category listings and search
-//   icons/promo-1400x560.png   marquee — only used if Google features us
+//   icons/fetch/promo-440x280.png    small tile — category listings and search
+//   icons/fetch/promo-1400x560.png   marquee — only used if Google features us
 //
 // Both are optional fields. The small one is worth having: without it the
 // listing looks thinner than its neighbours in a category grid.
 //
 // Composed here rather than drawn in an editor for the same reason the macOS
-// icon is: the mark is lifted out of icons/icon.svg, so the tiles cannot drift
+// icon is: the mark is lifted out of icons/fetch/icon.svg, so the tiles cannot drift
 // away from the icon they sit beside. Chromium does the rendering, via the
 // Playwright already installed for the e2e tests.
 //
@@ -23,8 +23,8 @@ import { chromium } from 'playwright'
 import fs from 'node:fs'
 import path from 'node:path'
 
-const SRC = 'icons/icon.svg'
-const OUT = 'icons'
+const SRC = 'icons/fetch/icon.svg'
+const OUT = 'icons/fetch'
 const BLUE = '#1a73e8'
 const GLYPH_GRID = 64
 

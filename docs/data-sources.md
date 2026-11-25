@@ -100,8 +100,8 @@ Injected UI and in-page parsing, not a fetch mechanism as such:
 | `bbo-page-hook.js` | `bridgebase.com/v3/*`, **in the page's own world** — Bridge Craftwork DD only | Copies BBO's `mh_list`/`mh_hand` responses to `ddContent.js` (§ 3.9) |
 | `ddContent.js` | `bridgebase.com/v3/*` — Bridge Craftwork DD only | The double-dummy review and its Show/Hide menu item |
 
-Three content scripts in Fetch's `manifest.json`. Bridge Craftwork DD
-(`manifest.dd.json`) has `ddContent.js` and `ingestContent.js`, plus the page
+Three content scripts in Fetch's `manifests/fetch.json`. Bridge Craftwork DD
+(`manifests/dd.json`) has `ddContent.js` and `ingestContent.js`, plus the page
 hook, which its background registers at runtime (§ 3.9 says why). A fourth,
 `analyzerContent.js`, wrote the envelope into the analyzer page's
 `sessionStorage`; it was removed when `/ingest` became the only destination.
@@ -294,7 +294,7 @@ panel loads all three as the user opens the list, an event and its boards; a pag
 hook copies the responses to the content script. **DD all** is the one exception:
 the content script asks for the last two itself, when the user chooses it. Used by **Bridge Craftwork DD**, the second extension built
 from this repo (`EXT=dd`), for its double-dummy review
-(`src/ui/bboDdOverlay.js`). Fetch does not read them.
+(`src/dd/ui/bboDdOverlay.js`). Fetch does not read them.
 
 Found by watching the panel's traffic, 1 Nov 2026:
 
@@ -314,7 +314,7 @@ by matching its hand panels against the deals it has seen, not by the last
 response.
 
 `mh_list`'s seat attributes and the LIN's positional `pn|` (S, W, N, E) agree —
-two independent sources, pinned in `tests/adapters/bbo/mhXml.test.js`.
+two independent sources, pinned in `tests/shared/adapters/bbo/parsers/mhXml.test.js`.
 
 **The last column is BBO's Prize, showing `award`.** Blank at zero, so DD's tally
 uses it and relabels the header; a row with `award` above zero keeps its prize, with
@@ -340,7 +340,7 @@ daylongs full, every one from Oct 3 back to Aug 20 empty). So an empty answer is
 asked again while the event started under three days ago, and is final after
 (`EMPTY_FINAL_AFTER_MS` in `ddBatch.js`). An old daylong's `–` is BBO's, not ours.
 
-**DD all** (`src/lib/ddBatch.js`) sends the panel's own parameters from the content
+**DD all** (`src/dd/lib/ddBatch.js`) sends the panel's own parameters from the content
 script: one request at a time, a second apart, `credentials: 'omit'`, stopping
 after three failures in a row. It needs no host permission, because of the
 `Access-Control-Allow-Origin: *` above. It resumes from the tallies, so a complete
@@ -380,7 +380,7 @@ a board sends `cs_get_board`; the answer is `<sc_board_details request_id=
 each `<sc_call_made>` and each `<sc_card_played>`, closed by
 `</sc_board_details >` — with a space, so the close is matched by pattern. Most
 frames are binary and a long message arrives in pieces. `parseBoardDetails`
-(`src/adapters/bbo/parsers/liveXml.js`) turns it into LIN; its key is
+(`src/shared/adapters/bbo/parsers/liveXml.js`) turns it into LIN; its key is
 `live:` + the request id. Checked against BBO's own `mh_hand.php` for the same
 board: identical but for rank order. Working live, 8 Nov 2026.
 
@@ -414,7 +414,7 @@ not after each board, nor on Refresh, so a board finished since the page loaded
 appears only after a reload. A passed-out board is `P` there and `Pass` on screen.
 
 **Daylong boards as they end: the robot game's polls.** Each board is also built
-from the robot game's own traffic (`src/adapters/bbo/parsers/ardPlay.js`),
+from the robot game's own traffic (`src/shared/adapters/bbo/parsers/ardPlay.js`),
 captured from a live daylong on 8 Nov 2026:
 
 | Request | Carries |
@@ -449,7 +449,7 @@ not authenticate`, so the extension cannot ask for the boards itself.
 content script through a dynamic `import()` of an extension URL. In the page's
 own world that import is subject to BBO's CSP, whose `script-src *` admits no
 extension scheme. `scripting.registerContentScripts({ world: 'MAIN' })` injects
-the file directly, so the CSP never applies. The file lives in `public/` and is
+the file directly, so the CSP never applies. The file lives in `public/dd/` and is
 copied unbundled.
 
 **The hook also shortens BBO's animation, on request.** Stepping the viewer to an

@@ -1,0 +1,70 @@
+{
+  "manifest_version": 3,
+  "name": "Bridge Classroom Fetch",
+  "version": "1.1.0",
+  "description": "Send your bridge results from ACBL Live, ACBL Live for Clubs and Bridge Base Online to Bridge Classroom for analysis in one click.",
+  "icons": {
+    "16": "icons/fetch/icon-16.png",
+    "32": "icons/fetch/icon-32.png",
+    "48": "icons/fetch/icon-48.png",
+    "128": "icons/fetch/icon-128.png"
+  },
+  "action": {
+    "default_title": "Bridge Classroom Fetch",
+    "default_icon": {
+      "16": "icons/fetch/icon-16.png",
+      "24": "icons/fetch/icon-24.png",
+      "32": "icons/fetch/icon-32.png"
+    }
+  },
+  "background": {
+    "service_worker": "src/fetch/background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://live.acbl.org/*",
+        "https://my.acbl.org/*",
+        "https://webutil.bridgebase.com/v2/tview.php*",
+        "https://www.bridgebase.com/myhands/hands.php*",
+        "https://www.bridgebase.com/tools/handviewer.html*"
+      ],
+      "js": [
+        "src/fetch/ui/sourceContent.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://www.bridgebase.com/v3/*"
+      ],
+      "js": [
+        "src/fetch/ui/bboLobbyContent.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "js": [
+        "src/shared/ui/ingestContent.js"
+      ],
+      "matches": [
+        "https://bridge-classroom.org/*",
+        "https://bridge-classroom.com/*"
+      ],
+      "run_at": "document_start"
+    }
+  ],
+  "permissions": [
+    "storage",
+    "tabs",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://live.acbl.org/*",
+    "https://my.acbl.org/*",
+    "https://webutil.bridgebase.com/*",
+    "https://www.bridgebase.com/*",
+    "https://tinyurl.bridgebase.com/*"
+  ]
+}

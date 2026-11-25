@@ -4,7 +4,7 @@
 #   tools/capture-ios.sh iphone    # 1320x2868, Apple's 6.9-inch slot
 #   tools/capture-ios.sh ipad      # 2064x2752, Apple's 13-inch slot
 #
-# Emits into screenshots/ios/<device>/ at exactly the size Apple asks for, with
+# Emits into store/fetch/screenshots/ios/<device>/ at exactly the size Apple asks for, with
 # a clean status bar and no alpha channel.
 #
 # ONE-TIME SETUP PER SIMULATOR, which cannot be scripted — there is no simctl
@@ -28,7 +28,7 @@ case "$DEVICE_KIND" in
   *) echo "usage: $0 [iphone|ipad]" >&2; exit 1 ;;
 esac
 
-OUT="screenshots/ios/$DEVICE_KIND"
+OUT="store/fetch/screenshots/ios/$DEVICE_KIND"
 mkdir -p "$OUT"
 
 UDID=$(xcrun simctl list devices available | grep -F "$DEVICE_NAME (" | head -1 |

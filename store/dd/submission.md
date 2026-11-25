@@ -3,9 +3,9 @@
 Version **1.1.0**. Chrome, Edge, Firefox (addons.mozilla.org) and the Mac App
 Store. Built with `EXT=dd scripts/package-stores.sh`, which writes
 `dist/packages/bridge-craftwork-dd-1.1.0-{chrome,edge,firefox,source}.zip` and
-refreshes the Xcode project in `safari-dd/`.
+refreshes the Xcode project in `safari/dd/`.
 
-Modelled on Fetch's [docs/submission-answers.md](../../docs/submission-answers.md),
+Modelled on Fetch's [store/fetch/submission.md](../../store/fetch/submission.md),
 which has been through review once; where this differs, it says why.
 
 **Before submitting, see [Blockers](#blockers) at the end.**
@@ -218,7 +218,7 @@ Boards are now analysed while you play: My Table is tagged as each board ends, i
 
 | | |
 |---|---|
-| Icon | `icons-dd/icon-128.png`; Edge's 300×300 store logo is `icons-dd/icon-300.png` |
+| Icon | `icons/dd/icon-128.png`; Edge's 300×300 store logo is `icons/dd/icon-300.png` |
 | Mac app icon | rendered into the Xcode project's asset catalog by `node scripts/render-icons.mjs --ext dd` |
 | Screenshots | `store/dd/screenshots/listing-1280/`, 1280×800 (Chrome, Edge, Firefox); `store/dd/screenshots/`, 2560×1600 (Mac App Store); see that folder's README |
 | Privacy page | live at https://bridge-craftwork.com/dd/privacy/, from `bridge-craftwork-site/site/dd/privacy/index.html` (copy of `store/dd/privacy-page.html`) |
@@ -229,7 +229,7 @@ Boards are now analysed while you play: My Table is tagged as each board ends, i
 
 Things only Rick can do, in the order they block:
 
-1. ~~Approve the icon~~ — **approved**, 2 Nov 2026 (`icons-dd/`: Fetch's
+1. ~~Approve the icon~~ — **approved**, 2 Nov 2026 (`icons/dd/`: Fetch's
    mortarboard with a red DD badge).
 2. ~~Publish the privacy page~~ — **done**, live at
    <https://bridge-craftwork.com/dd/privacy/> (bridge-craftwork-site#12,
@@ -249,7 +249,7 @@ Things only Rick can do, in the order they block:
    bundle id with it; the record can be restored from Apps ▸ ⋯ ▸ Removed Apps,
    which is how this one came back. Build 202611222231 uploaded by
    `scripts/upload-apple.sh dd`; the listing filled in by
-   `scripts/app-store-listing.mjs dd` from `store/apple/dd.md`.
+   `scripts/app-store-listing.mjs dd` from `store/dd/app-store.md`.
 
 ### Before submitting 1.1.0
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Fill in a Safari app's App Store Connect listing from store/apple/<app>.md
+// Fill in a Safari app's App Store Connect listing from store/<app>/app-store.md
 // and its screenshots. It doesn't submit. Adapted from ice-queue's script of the
 // same name.
 //
@@ -35,7 +35,7 @@ const APPS = {
   fetch: {
     bundleId: "org.bridge-classroom.bridge-classroom-fetch",
     platforms: { MAC_OS: ["mac"], IOS: ["iphone", "ipad"] },
-    shots: { mac: "screenshots/listing", iphone: "screenshots/ios/iphone", ipad: "screenshots/ios/ipad" },
+    shots: { mac: "store/fetch/screenshots/listing", iphone: "store/fetch/screenshots/ios/iphone", ipad: "store/fetch/screenshots/ios/ipad" },
   },
   dd: {
     bundleId: "org.bridge-classroom.bridge-craftwork-dd",
@@ -59,10 +59,10 @@ const onlyArg = args[args.indexOf("--only") + 1];
 const ONLY = args.includes("--only") ? new Set(onlyArg.split(",")) : null;
 const step = (name) => !ONLY || ONLY.has(name);
 
-// ---------- store/apple/<app>.md ----------
+// ---------- store/<app>/app-store.md ----------
 
 function readListing() {
-  const md = fs.readFileSync(path.join(ROOT, "store/apple", `${APP_KEY}.md`), "utf8");
+  const md = fs.readFileSync(path.join(ROOT, "store", APP_KEY, "app-store.md"), "utf8");
   const sections = {};
   let current = null;
   for (const line of md.split("\n")) {
@@ -71,7 +71,7 @@ function readListing() {
     if (current) sections[current].push(line);
   }
   const raw = (name) => {
-    if (!sections[name]) throw new Error(`${APP_KEY}.md has no "## ${name}" section`);
+    if (!sections[name]) throw new Error(`store/${APP_KEY}/app-store.md has no "## ${name}" section`);
     return sections[name].join("\n").trim();
   };
   // Join wrapped lines. A blank line ends a paragraph; a "• " or "1. " line, or
@@ -109,7 +109,7 @@ function readListing() {
     if (listing[k].length > max) throw new Error(`${k} is ${listing[k].length} characters (limit ${max})`);
   for (const [p, notes] of Object.entries(listing.reviewNotes))
     if (notes.length > 4000) throw new Error(`${p} review notes are ${notes.length} characters (limit 4000)`);
-  if (!listing.supportUrl || !listing.privacyPolicyUrl) throw new Error(`${APP_KEY}.md is missing a URL`);
+  if (!listing.supportUrl || !listing.privacyPolicyUrl) throw new Error(`store/${APP_KEY}/app-store.md is missing a URL`);
   return listing;
 }
 

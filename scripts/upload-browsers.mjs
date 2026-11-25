@@ -29,7 +29,7 @@
 // The Chrome Web Store is not here: its API cannot set the test instructions,
 // which are pasted in the dashboard.
 //
-// Text: the reviewer notes are the fenced blocks in docs/submission-answers.md
+// Text: the reviewer notes are the fenced blocks in store/fetch/submission.md
 // (Fetch) or store/dd/submission.md (DD), read at run time, so the copy in the
 // docs is the copy sent.
 //
@@ -51,20 +51,20 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const APPS = {
   fetch: {
     name: 'bridge-classroom-fetch',
-    manifest: 'manifest.json',
-    icon: 'icons/icon-128.png',
-    screenshots: 'screenshots/listing-1280',
+    manifest: 'manifests/fetch.json',
+    icon: 'icons/fetch/icon-128.png',
+    screenshots: 'store/fetch/screenshots/listing-1280',
     guid: 'bridge-classroom-fetch@bridge-classroom.org',
     edgeProduct: '82845df7-c00f-4f0e-98a7-b4d974c9c1c7', // store id 0RDCKDRFVZHS
-    doc: 'docs/submission-answers.md',
+    doc: 'store/fetch/submission.md',
     notes: { heading: '## Notes for reviewers', block: 0 },
     amoExtra: { heading: '**For addons.mozilla.org, add**', block: 0 },
     releaseNotes: { heading: '## Release notes', block: 0 },
   },
   dd: {
     name: 'bridge-craftwork-dd',
-    manifest: 'manifest.dd.json',
-    icon: 'icons-dd/icon-128.png',
+    manifest: 'manifests/dd.json',
+    icon: 'icons/dd/icon-128.png',
     screenshots: 'store/dd/screenshots/listing-1280',
     guid: 'bridge-craftwork-dd@bridge-classroom.org',
     edgeProduct: 'e333c1ec-a2a4-488a-b3df-78d823995dd7', // store id 0RDCKF299KZ1

@@ -1,8 +1,8 @@
 import { defineConfig } from 'vite'
 import { crx } from '@crxjs/vite-plugin'
 import { execFileSync } from 'node:child_process'
-import fetchManifest from './manifest.json' with { type: 'json' }
-import ddManifest from './manifest.dd.json' with { type: 'json' }
+import fetchManifest from './manifests/fetch.json' with { type: 'json' }
+import ddManifest from './manifests/dd.json' with { type: 'json' }
 
 // Two extensions from one source tree. EXT=fetch (the default) is Bridge
 // Classroom Fetch; EXT=dd is Bridge Craftwork DD, the double-dummy review in
@@ -51,7 +51,7 @@ const PER_BROWSER_OVERRIDES = {
   // There is no server and no telemetry here, which is what made `none` feel
   // right; but "collect" in every store's sense means "leaves the device", not
   // "reaches us". Same error was made on Chrome's disclosure and corrected
-  // there. See docs/submission-answers.md § Data use.
+  // there. See store/fetch/submission.md § Data use.
   //
   // That key forces the version floors: it landed in Firefox 140 and in
   // Firefox for Android 142, so 121 (which was only ever about MV3
@@ -81,7 +81,7 @@ const PER_BROWSER_OVERRIDES = {
   // Safari accepts the Chrome MV3 manifest as-is at the build level. Final
   // distribution to the Mac/iOS App Store requires running the build through
   // Xcode's `safari-web-extension-converter`, which wraps it in a native app
-  // shell. The dist/safari/ output is the source for that conversion step.
+  // shell. The dist/fetch-safari/ output is the source for that conversion step.
   safari: {},
 }
 
@@ -126,7 +126,7 @@ if (process.env.INGEST_TEST === '1') {
     'https://bridge-craftwork.github.io/*',
   ]
   manifest.content_scripts = manifest.content_scripts.map((cs) =>
-    cs.js?.includes('src/ui/ingestContent.js')
+    cs.js?.includes('src/shared/ui/ingestContent.js')
       ? { ...cs, matches: [...cs.matches, ...TEST_ORIGINS] }
       : cs
   )
@@ -154,7 +154,7 @@ if (SHOT_MODE) {
         'https://webutil.bridgebase.com/*',
         'https://www.bridgebase.com/*',
       ],
-      js: ['src/ui/redactContent.js'],
+      js: ['src/fetch/ui/redactContent.js'],
       // document_idle, not document_start. There is nothing to redact before
       // the content exists, and running early bought nothing while making the
       // first pass fire against an empty page.
@@ -172,9 +172,9 @@ export default defineConfig({
   },
   // Files copied as-is. Only DD has any — the page hook, which must not be
   // bundled — and Fetch must not ship it.
-  publicDir: EXT === 'dd' ? 'public-dd' : false,
+  publicDir: EXT === 'dd' ? 'public/dd' : false,
   build: {
-    outDir: EXT === 'dd' ? `dist/dd-${BROWSER}` : `dist/${BROWSER}`,
+    outDir: `dist/${EXT}-${BROWSER}`,
     emptyOutDir: true,
   },
 })

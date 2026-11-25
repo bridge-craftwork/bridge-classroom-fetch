@@ -22,7 +22,7 @@ normalized envelope, and none of them wants to be gated on extension review.
 
 1. The service worker runs an adapter and stashes the envelope in
    `chrome.storage.local` under a UUID. Batch envelopes are gzipped and base64'd
-   first ([handlers.js:78-96](../../src/background/handlers.js#L78-L96)).
+   first ([handlers.js:78-96](../../src/shared/background/handlers.js#L78-L96)).
 2. It opens `bridge-classroom.{org,com}/game-analysis/#sid=<uuid>` (or
    `#batch=<key>`).
 3. [analyzerContent.js](../../src/ui/analyzerContent.js), a content script matched
@@ -38,8 +38,8 @@ removed by changing the transport:
 | Limit | Where it binds | Evidence |
 |---|---|---|
 | `sessionStorage` ~5 MB/origin | Step 3, the page write | `storage-failed` state, [analyzerContent.js:100-107](../../src/ui/analyzerContent.js#L100-L107) |
-| `chrome.storage.local` quota (~10 MB in current Chrome) | Step 1, the durable buffer | gzip runs *before* `storage.set`; `storageQuotaHit` breaks the batch loop, [handlers.js:241-252](../../src/background/handlers.js#L241-L252) |
-| FIFO cache of 10 events | The **SPA's** own cache, not storage at all | [handlers.js:212-213](../../src/background/handlers.js#L212-L213) — the extension slices and reverses to feed it oldest-first |
+| `chrome.storage.local` quota (~10 MB in current Chrome) | Step 1, the durable buffer | gzip runs *before* `storage.set`; `storageQuotaHit` breaks the batch loop, [handlers.js:241-252](../../src/shared/background/handlers.js#L241-L252) |
+| FIFO cache of 10 events | The **SPA's** own cache, not storage at all | [handlers.js:212-213](../../src/shared/background/handlers.js#L212-L213) — the extension slices and reverses to feed it oldest-first |
 
 So gzip exists to fit `chrome.storage.local`, not `sessionStorage`, and the
 10-event cap is not an extension concern. A transport change alone leaves batch

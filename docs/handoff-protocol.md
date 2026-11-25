@@ -26,7 +26,7 @@ extension still does; it is kept for the reasoning, not the details.
 
 This document specifies how the extension hands a parsed session to the analyzer SPA at `club-game-analysis.bridge-classroom.com`. It's the contract between three pieces of code:
 
-- **Service worker** (`src/background.js`) — runs the adapter, holds the data briefly.
+- **Service worker** (`src/fetch/background.js`) — runs the adapter, holds the data briefly.
 - **Analyzer content script** (`src/ui/analyzerContent.js`) — runs in the analyzer page, bridges extension storage and the page's `sessionStorage`.
 - **Analyzer SPA** (served at `club-game-analysis.bridge-classroom.com`) — reads the session and renders.
 

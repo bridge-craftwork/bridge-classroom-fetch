@@ -18,7 +18,7 @@ import { gzipSync } from 'node:zlib'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const REPO = path.resolve(HERE, '../..')
-const EXTENSION = path.join(REPO, 'dist/test')
+const EXTENSION = path.join(REPO, 'dist/fetch-test')
 const PAGE = path.join(REPO, 'test-ingest/index.html')
 
 const PENDING_PREFIX = 'pending-sessions:'
@@ -122,7 +122,7 @@ test.describe('ingest handoff', () => {
 
   test.beforeAll(async () => {
     if (!fs.existsSync(EXTENSION)) {
-      throw new Error(`missing ${EXTENSION} — run: INGEST_TEST=1 npx vite build --outDir dist/test`)
+      throw new Error(`missing ${EXTENSION} — run: INGEST_TEST=1 npx vite build --outDir dist/fetch-test`)
     }
     ;({ server, port } = await startServer())
     ;({ context, sw } = await launch())

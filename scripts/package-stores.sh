@@ -15,16 +15,14 @@ cd "$(dirname "$0")/.."
 EXT="${EXT:-fetch}"
 if [ "$EXT" = "dd" ]; then
   NAME="bridge-craftwork-dd"
-  MANIFEST="manifest.dd.json"
-  DIST_PREFIX="dd-"
-  SAFARI_RES="safari-dd/Bridge Craftwork DD/Bridge Craftwork DD Extension/Resources"
-  SAFARI_PROJECT="safari-dd"
+  MANIFEST="manifests/dd.json"
+  SAFARI_RES="safari/dd/Bridge Craftwork DD/Bridge Craftwork DD Extension/Resources"
+  SAFARI_PROJECT="safari/dd"
 else
   NAME=$(python3 -c "import json;print(json.load(open('package.json'))['name'])")
-  MANIFEST="manifest.json"
-  DIST_PREFIX=""
-  SAFARI_RES="safari/Bridge Classroom Fetch/Shared (Extension)/Resources"
-  SAFARI_PROJECT="safari"
+  MANIFEST="manifests/fetch.json"
+  SAFARI_RES="safari/fetch/Bridge Classroom Fetch/Shared (Extension)/Resources"
+  SAFARI_PROJECT="safari/fetch"
 fi
 export EXT
 VERSION=$(python3 -c "import json;print(json.load(open('$MANIFEST'))['version'])")
@@ -75,7 +73,7 @@ EOF
 
 for target in chrome edge firefox; do
   echo "==> building $target"
-  dir="dist/$DIST_PREFIX$target"
+  dir="dist/$EXT-$target"
   BROWSER="$target" npx vite build --outDir "$dir" >/dev/null
   guard_test_origins "$dir/manifest.json"
   guard_shot_mode "$dir"
@@ -89,7 +87,7 @@ git archive --format=zip --prefix="$NAME-$VERSION/" HEAD \
   -o "$OUT/$NAME-$VERSION-source.zip"
 
 echo "==> refreshing Safari resources"
-SAFARI_DIST="dist/${DIST_PREFIX}safari"
+SAFARI_DIST="dist/$EXT-safari"
 BROWSER=safari npx vite build --outDir "$SAFARI_DIST" >/dev/null
 guard_test_origins "$SAFARI_DIST/manifest.json"
 guard_shot_mode "$SAFARI_DIST"

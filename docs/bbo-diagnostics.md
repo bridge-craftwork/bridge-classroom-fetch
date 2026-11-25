@@ -1,6 +1,6 @@
 # BBO page-hook diagnostics
 
-Instruments that were built into `public-dd/bbo-page-hook.js` on 6 Nov 2026 to find
+Instruments that were built into `public/dd/bbo-page-hook.js` on 6 Nov 2026 to find
 where My Table's boards come from during a live event, and removed on 8 Nov 2026
 once they had answered that (see `data-sources.md` § 3.9). They are kept here so a
 later investigation can paste them back in rather than rebuild them.
@@ -8,7 +8,7 @@ later investigation can paste them back in rather than rebuild them.
 The last commit that still had them is `fc0ca5b`:
 
 ```bash
-git show fc0ca5b:public-dd/bbo-page-hook.js
+git show fc0ca5b:public/dd/bbo-page-hook.js
 ```
 
 ## What they answered
