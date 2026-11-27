@@ -13,8 +13,8 @@ which has been through review once; where this differs, it says why.
 | Store | Status |
 |---|---|
 | Chrome Web Store | **1.0.0 published**, [listing](https://chromewebstore.google.com/detail/bridge-craftwork-dd/afaopnjobibdnpfaplcfemliaoejpjgl); **1.1.0 submitted 23 Nov**, pending review |
-| Edge | **1.1.0 submitted 23 Nov**, a first listing, published from Partner Center (the API refuses a first submission); product id e333c1ec-a2a4-488a-b3df-78d823995dd7 |
-| Firefox | **1.1.0 submitted 23 Nov**, a first listing, created in the Developer Hub; awaiting review. Listing icon and four screenshots uploaded through the API (`scripts/upload-browsers.mjs dd firefox --images`) |
+| Edge | **1.1.0 published**, [listing](https://microsoftedge.microsoft.com/addons/detail/oehjjelleedfafdeffbcmnigmolhemem) (Edge's public API, 27 Nov: version 1.1.0, Productivity). Submitted 23 Nov, a first listing, from Partner Center (the API refuses a first submission); product id e333c1ec-a2a4-488a-b3df-78d823995dd7, store id 0RDCKF299KZ1, crx id oehjjelleedfafdeffbcmnigmolhemem |
+| Firefox | **1.1.0 approved and public**, [listing](https://addons.mozilla.org/en-US/firefox/addon/bridge-craftwork-dd/) (AMO's API, 27 Nov: status public, last updated 26 Nov). Submitted 23 Nov, a first listing, created in the Developer Hub. Listing icon and four screenshots uploaded through the API (`scripts/upload-browsers.mjs dd firefox --images`) |
 | Mac App Store | **1.1.0 build 202611230714 submitted 23 Nov**, in review; a first listing |
 
 ---
