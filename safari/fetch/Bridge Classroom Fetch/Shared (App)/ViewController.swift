@@ -28,7 +28,9 @@ class ViewController: PlatformViewController, WKNavigationDelegate, WKScriptMess
         self.webView.navigationDelegate = self
 
 #if os(iOS)
-        self.webView.scrollView.isScrollEnabled = false
+        // The Getting started steps can be taller than a phone's screen
+        self.webView.scrollView.isScrollEnabled = true
+        self.webView.scrollView.alwaysBounceVertical = false
 #endif
 
         self.webView.configuration.userContentController.add(self, name: "controller")
